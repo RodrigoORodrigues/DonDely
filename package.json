@@ -1,0 +1,16 @@
+{
+  "name": "eli-e-dai-lanches",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "build": "echo \"Static HTML site, no build step required\""
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.112.3",
+    "dotenv": "^17.4.2",
+    "express": "^4.19.2",
+    "sharp": "^0.35.3"
+  }
+}
