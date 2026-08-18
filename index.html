@@ -4957,7 +4957,7 @@
                     <input type="password" id="devPasswordInput" class="form-input" placeholder="Digite a senha... " style="text-align: center; font-size: 1.1rem;" required autofocus>
                     <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('devPasswordInput', this)" title="Mostrar ou ocultar senha" aria-label="Mostrar senha">👁️</button>
                 </div>
-                <div id="devPasswordError" style="color: var(--danger); font-size: 0.8rem; font-weight: bold; display: none; margin-bottom: 0.75rem;">❌ Senha incorreta! (Tente: admin123 ou donfimdev)</div>
+                <div id="devPasswordError" style="color: var(--danger); font-size: 0.8rem; font-weight: bold; display: none; margin-bottom: 0.75rem;">❌ Senha incorreta! Tente novamente.</div>
                 <div style="display: flex; gap: 0.5rem;">
                     <button type="button" class="btn-admin" onclick="closeDevPasswordModal()" style="flex: 1; background: var(--gray-200); color: var(--gray-800);">Cancelar</button>
                     <button type="submit" class="btn-admin" style="flex: 1; background: #4F46E5; color: white; font-weight: bold;">Acessar</button>
@@ -5000,9 +5000,6 @@
                 </button>
                 <button type="button" class="btn-admin" id="devTabSupabaseBtn" onclick="switchDevTab('supabase')" style="background: var(--gray-200); color: var(--gray-800); border-radius: 20px; font-size: 0.82rem; padding: 0.4rem 0.9rem; font-weight: bold;">
                     ⚡ Supabase
-                </button>
-                <button type="button" class="btn-admin" onclick="exportHTML()" style="background: #10B981; color: white; border-radius: 20px; font-size: 0.82rem; padding: 0.4rem 0.9rem; font-weight: bold; margin-left: auto;">
-                    📥 Exportar HTML
                 </button>
             </div>
 
