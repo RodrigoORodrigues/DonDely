@@ -314,6 +314,9 @@
             restaurantName: 'Açaí na Quentinha do FB',
             subtitle: 'Sabor que conquista na primeira colherada! Monte do seu jeito.',
             whatsappNumber: '5521972888819',
+            instagram: '@acainaquentinha_do_fb',
+            cnpj: '45.123.789/0001-90',
+            address: 'Rua Principal, 123 - Centro',
             logoUrl: 'Logo.jpg',
             adminPassword: 'admin123',
             deliveryFee: 5.00,
@@ -991,6 +994,9 @@
             });
         }
 
+        // ========== SEÇÃO DE ACOMPANHAMENTOS DINÂMICOS COM MÚLTIPLAS CATEGORIAS ==========
+        let currentAdminExtrasCategories = [];
+
         function renderDynamicIngredientsSection() {
             const sectionEl = document.getElementById('dynamicIngredientsSection');
             if (!sectionEl) return;
@@ -1010,40 +1016,38 @@
             const title = extrasData.title !== undefined && extrasData.title !== '' ? extrasData.title : defaultData.title;
             const desc = extrasData.desc !== undefined && extrasData.desc !== '' ? extrasData.desc : defaultData.desc;
 
-            let categoriesContent = '';
+            let categoriesList = [];
 
-            if (extrasData.chips && Array.isArray(extrasData.chips)) {
-                const catName = extrasData.categoryName || (defaultData.categories && defaultData.categories[0] ? defaultData.categories[0].name : 'Acompanhamentos');
-                categoriesContent = `
-                    ${catName ? `<div class="ingredients-category-title">${catName}</div>` : ''}
+            if (extrasData.categories && Array.isArray(extrasData.categories) && extrasData.categories.length > 0) {
+                categoriesList = extrasData.categories;
+            } else if (extrasData.chips && Array.isArray(extrasData.chips)) {
+                categoriesList = [{
+                    name: extrasData.categoryName || (defaultData.categories && defaultData.categories[0] ? defaultData.categories[0].name : 'Acompanhamentos'),
+                    chips: extrasData.chips
+                }];
+            } else if (defaultData.categories && Array.isArray(defaultData.categories)) {
+                categoriesList = defaultData.categories;
+            }
+
+            const categoriesContent = categoriesList.map(cat => `
+                <div style="margin-bottom: 2rem;">
+                    ${cat.name ? `<div class="ingredients-category-title">${cat.name}</div>` : ''}
                     <div class="ingredients-grid">
-                        ${extrasData.chips.map(chip => `
+                        ${(cat.chips || []).map(chip => `
                             <div class="ingredient-chip">
                                 <span>${chip.icon || '✨'}</span> ${chip.name || ''}
                                 ${chip.price ? `<span class="ingredient-chip-price">${chip.price}</span>` : ''}
                             </div>
                         `).join('')}
                     </div>
-                `;
-            } else if (extrasData.categories && Array.isArray(extrasData.categories)) {
-                categoriesContent = extrasData.categories.map(cat => `
-                    <div class="ingredients-category-title">${cat.name}</div>
-                    <div class="ingredients-grid">
-                        ${cat.chips.map(chip => `
-                            <div class="ingredient-chip">
-                                <span>${chip.icon}</span> ${chip.name}
-                                ${chip.price ? `<span class="ingredient-chip-price">${chip.price}</span>` : ''}
-                            </div>
-                        `).join('')}
-                    </div>
-                `).join('');
-            }
+                </div>
+            `).join('');
 
             sectionEl.innerHTML = `
                 <div style="text-align: center; margin-bottom: 2rem;">
                     ${badge ? `<span style="background: var(--primary); color: var(--white); font-weight: 800; padding: 0.4rem 1.2rem; border-radius: 30px; font-size: 0.85rem; display: inline-block; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">${badge}</span>` : ''}
                     ${title ? `<h3 style="font-size: 1.6rem; color: var(--primary-dark); font-weight: 800; margin-top: 0.5rem;">${title}</h3>` : ''}
-                    ${desc ? `<p style="color: var(--gray-600); font-size: 0.9rem;">${desc}</p>` : ''}
+                    ${desc ? `<p style="color: var(--gray-600); max-width: 600px; margin: 0.5rem auto 0; font-size: 0.95rem;">${desc}</p>` : ''}
                 </div>
                 ${categoriesContent}
             `;
@@ -1174,6 +1178,9 @@
                     email: 'donfim@gmail.com',
                     subtitle: 'Sabor que conquista na primeira colherada! Monte do seu jeito.',
                     whatsappNumber: '5521972888819',
+                    instagram: '@acainaquentinha_do_fb',
+                    cnpj: '45.123.789/0001-90',
+                    address: 'Rua Principal, 123 - Centro',
                     logoUrl: 'Logo.jpg',
                     adminPassword: 'admin123',
                     deliveryFee: 5.00,
@@ -1208,6 +1215,9 @@
                 email: activeComp.email || 'donfim@gmail.com',
                 subtitle: activeComp.subtitle,
                 whatsappNumber: activeComp.whatsappNumber,
+                instagram: activeComp.instagram || (activeComp.id === 'company-fb-default' ? '@acainaquentinha_do_fb' : ''),
+                cnpj: activeComp.cnpj || (activeComp.id === 'company-fb-default' ? '45.123.789/0001-90' : ''),
+                address: activeComp.address || '',
                 logoUrl: activeComp.logoUrl,
                 adminPassword: activeComp.adminPassword,
                 deliveryFee: activeComp.deliveryFee || 5.00,
@@ -1288,6 +1298,9 @@
                 activeComp.email = settings.email || activeComp.email || 'donfim@gmail.com';
                 activeComp.subtitle = settings.subtitle;
                 activeComp.whatsappNumber = settings.whatsappNumber;
+                activeComp.instagram = settings.instagram || '';
+                activeComp.cnpj = settings.cnpj || '';
+                activeComp.address = settings.address || '';
                 activeComp.logoUrl = settings.logoUrl;
                 activeComp.adminPassword = settings.adminPassword;
                 activeComp.deliveryFee = settings.deliveryFee;
@@ -2289,6 +2302,9 @@
             const email = emailInput ? emailInput.value.trim() : `contato@${name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`;
             const subtitle = document.getElementById('devNewCompSubtitle').value.trim() || 'Delivery rápido e sabor inigualável!';
             const whatsapp = document.getElementById('devNewCompWhatsapp').value.trim() || '5521999999999';
+            const instagram = document.getElementById('devNewCompInstagram')?.value.trim() || '';
+            const cnpj = document.getElementById('devNewCompCnpj')?.value.trim() || '';
+            const address = document.getElementById('devNewCompAddress')?.value.trim() || '';
             const password = document.getElementById('devNewCompPassword').value.trim() || 'admin123';
             const fee = parseFloat(document.getElementById('devNewCompFee').value) || 6.00;
             const deliveryTime = document.getElementById('devNewCompDeliveryTime')?.value.trim() || '30 - 45 min';
@@ -2306,6 +2322,9 @@
                 email: email,
                 subtitle: subtitle,
                 whatsappNumber: whatsapp,
+                instagram: instagram,
+                cnpj: cnpj,
+                address: address,
                 logoUrl: logo,
                 adminPassword: password,
                 deliveryFee: fee,
@@ -2359,6 +2378,9 @@
             const emailInput = document.getElementById('devEditCompEmail');
             const passwordInput = document.getElementById('devEditCompPassword');
             const whatsappInput = document.getElementById('devEditCompWhatsapp');
+            const instagramInput = document.getElementById('devEditCompInstagram');
+            const cnpjInput = document.getElementById('devEditCompCnpj');
+            const addressInput = document.getElementById('devEditCompAddress');
             const subtitleInput = document.getElementById('devEditCompSubtitle');
             const feeInput = document.getElementById('devEditCompFee');
             const deliveryTimeInput = document.getElementById('devEditCompDeliveryTime');
@@ -2369,6 +2391,9 @@
             if (emailInput) emailInput.value = comp.email || 'donfim@gmail.com';
             if (passwordInput) passwordInput.value = comp.adminPassword || 'admin123';
             if (whatsappInput) whatsappInput.value = comp.whatsappNumber || '';
+            if (instagramInput) instagramInput.value = comp.instagram || '';
+            if (cnpjInput) cnpjInput.value = comp.cnpj || '';
+            if (addressInput) addressInput.value = comp.address || '';
             if (subtitleInput) subtitleInput.value = comp.subtitle || '';
             if (feeInput) feeInput.value = comp.deliveryFee !== undefined ? comp.deliveryFee : 6.00;
             if (deliveryTimeInput) deliveryTimeInput.value = comp.deliveryTime || '30 - 45 min';
@@ -2409,6 +2434,9 @@
             const email = document.getElementById('devEditCompEmail').value.trim();
             const password = document.getElementById('devEditCompPassword').value.trim();
             const whatsapp = document.getElementById('devEditCompWhatsapp').value.trim();
+            const instagram = document.getElementById('devEditCompInstagram')?.value.trim() || '';
+            const cnpj = document.getElementById('devEditCompCnpj')?.value.trim() || '';
+            const address = document.getElementById('devEditCompAddress')?.value.trim() || '';
             const subtitle = document.getElementById('devEditCompSubtitle').value.trim();
             const fee = parseFloat(document.getElementById('devEditCompFee').value) || 0;
             const deliveryTime = document.getElementById('devEditCompDeliveryTime')?.value.trim() || '30 - 45 min';
@@ -2424,6 +2452,9 @@
             comp.email = email;
             comp.adminPassword = password;
             comp.whatsappNumber = whatsapp;
+            comp.instagram = instagram;
+            comp.cnpj = cnpj;
+            comp.address = address;
             comp.subtitle = subtitle;
             comp.deliveryFee = fee;
             comp.deliveryTime = deliveryTime;
@@ -2483,6 +2514,15 @@
             }
             document.getElementById('logoUrl').value = settings.logoUrl || '';
             document.getElementById('restaurantSubtitle').value = settings.subtitle || '';
+            if (document.getElementById('restaurantInstagram')) {
+                document.getElementById('restaurantInstagram').value = settings.instagram || '';
+            }
+            if (document.getElementById('restaurantCnpj')) {
+                document.getElementById('restaurantCnpj').value = settings.cnpj || '';
+            }
+            if (document.getElementById('restaurantAddress')) {
+                document.getElementById('restaurantAddress').value = settings.address || '';
+            }
             document.getElementById('whatsappNumber').value = settings.whatsappNumber || '';
             document.getElementById('adminPassword').value = settings.adminPassword || 'admin123';
             document.getElementById('deliveryFee').value = settings.deliveryFee || 6.00;
@@ -2534,27 +2574,33 @@
             if (extrasEnabledEl) extrasEnabledEl.checked = extras.enabled !== false;
 
             const extrasBadgeEl = document.getElementById('extrasSectionBadge');
-            if (extrasBadgeEl) extrasBadgeEl.value = extras.badge || defaultExtras.badge || '';
+            if (extrasBadgeEl) extrasBadgeEl.value = extras.badge !== undefined ? extras.badge : (defaultExtras.badge || '');
 
             const extrasTitleEl = document.getElementById('extrasSectionTitle');
-            if (extrasTitleEl) extrasTitleEl.value = extras.title || defaultExtras.title || '';
+            if (extrasTitleEl) extrasTitleEl.value = extras.title !== undefined ? extras.title : (defaultExtras.title || '');
 
             const extrasDescEl = document.getElementById('extrasSectionDesc');
-            if (extrasDescEl) extrasDescEl.value = extras.desc || defaultExtras.desc || '';
+            if (extrasDescEl) extrasDescEl.value = extras.desc !== undefined ? extras.desc : (defaultExtras.desc || '');
 
-            const catTitleEl = document.getElementById('extrasCategoryTitle');
-            const defaultCatName = defaultExtras.categories && defaultExtras.categories[0] ? defaultExtras.categories[0].name : 'Acompanhamentos';
-            if (catTitleEl) catTitleEl.value = extras.categoryName || defaultCatName;
-
-            if (extras.chips && Array.isArray(extras.chips)) {
-                currentAdminExtrasChips = JSON.parse(JSON.stringify(extras.chips));
-            } else if (defaultExtras.categories && defaultExtras.categories[0] && defaultExtras.categories[0].chips) {
-                currentAdminExtrasChips = JSON.parse(JSON.stringify(defaultExtras.categories[0].chips));
+            if (extras.categories && Array.isArray(extras.categories) && extras.categories.length > 0) {
+                currentAdminExtrasCategories = JSON.parse(JSON.stringify(extras.categories));
+            } else if (extras.chips && Array.isArray(extras.chips)) {
+                currentAdminExtrasCategories = [{
+                    name: extras.categoryName || (defaultExtras.categories && defaultExtras.categories[0] ? defaultExtras.categories[0].name : 'Acompanhamentos'),
+                    chips: JSON.parse(JSON.stringify(extras.chips))
+                }];
+            } else if (defaultExtras.categories && Array.isArray(defaultExtras.categories)) {
+                currentAdminExtrasCategories = JSON.parse(JSON.stringify(defaultExtras.categories));
             } else {
-                currentAdminExtrasChips = [];
+                currentAdminExtrasCategories = [{
+                    name: '🍳 Acompanhamentos e Adicionais',
+                    chips: [
+                        { icon: '✨', name: 'Item Padrão', price: '' }
+                    ]
+                }];
             }
 
-            renderAdminExtrasChipsEditor();
+            renderAdminExtrasCategoriesEditor();
 
             // Renderizar horários e paleta de cores
             renderSchedule();
@@ -3290,6 +3336,15 @@
             }
             settings.logoUrl = document.getElementById('logoUrl').value;
             settings.subtitle = document.getElementById('restaurantSubtitle').value;
+            if (document.getElementById('restaurantInstagram')) {
+                settings.instagram = document.getElementById('restaurantInstagram').value.trim();
+            }
+            if (document.getElementById('restaurantCnpj')) {
+                settings.cnpj = document.getElementById('restaurantCnpj').value.trim();
+            }
+            if (document.getElementById('restaurantAddress')) {
+                settings.address = document.getElementById('restaurantAddress').value.trim();
+            }
             settings.whatsappNumber = document.getElementById('whatsappNumber').value;
             settings.adminPassword = document.getElementById('adminPassword').value || 'admin123';
             settings.deliveryFee = parseFloat(document.getElementById('deliveryFee').value) || 6.00;
@@ -3340,20 +3395,24 @@
                 ]
             };
 
-            // Salvar Seção de Acompanhamentos Customizada
+            // Salvar Seção de Acompanhamentos Customizada (Suporta múltiplos blocos/títulos de categorias)
             const extrasEnabled = document.getElementById('extrasSectionEnabled')?.checked;
             const extrasBadge = document.getElementById('extrasSectionBadge')?.value;
             const extrasTitle = document.getElementById('extrasSectionTitle')?.value;
             const extrasDesc = document.getElementById('extrasSectionDesc')?.value;
-            const extrasCatTitle = document.getElementById('extrasCategoryTitle')?.value;
+
+            // Garantir que categorias salvas sejam válidas e limpas
+            const cleanCategories = (currentAdminExtrasCategories || []).map(cat => ({
+                name: (cat.name || '').trim() || 'Acompanhamentos',
+                chips: Array.isArray(cat.chips) ? cat.chips.filter(chip => (chip.name || '').trim() !== '') : []
+            }));
 
             settings.customExtras = {
                 enabled: extrasEnabled !== false,
                 badge: extrasBadge || '',
                 title: extrasTitle || '',
                 desc: extrasDesc || '',
-                categoryName: extrasCatTitle || 'Acompanhamentos',
-                chips: currentAdminExtrasChips ? JSON.parse(JSON.stringify(currentAdminExtrasChips)) : []
+                categories: cleanCategories
             };
 
             saveData();
@@ -3364,27 +3423,59 @@
             showNotification('Configurações salvas com sucesso!', 'success');
         }
 
-        // Editor e Manipuladores da Seção de Acompanhamentos no Painel
-        function renderAdminExtrasChipsEditor() {
-            const container = document.getElementById('adminExtrasChipsListContainer');
+        // Editor e Manipuladores da Seção de Acompanhamentos no Painel (Múltiplas Categorias)
+        function renderAdminExtrasCategoriesEditor() {
+            const container = document.getElementById('adminExtrasCategoriesContainer');
             if (!container) return;
 
-            if (!currentAdminExtrasChips || currentAdminExtrasChips.length === 0) {
-                container.innerHTML = '<p style="font-size: 0.8rem; color: var(--gray-600); text-align: center; padding: 0.5rem;">Nenhum acompanhamento cadastrado nesta lista.</p>';
+            if (!currentAdminExtrasCategories || currentAdminExtrasCategories.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; color: var(--gray-600); font-size: 0.82rem; padding: 1rem; background: var(--gray-50); border: 1px dashed var(--gray-300); border-radius: 8px;">
+                        Nenhuma categoria/bloco cadastrado. Clique no botão abaixo para adicionar sua primeira categoria!
+                    </div>
+                `;
                 return;
             }
 
-            container.innerHTML = currentAdminExtrasChips.map((chip, index) => `
-                <div style="display: grid; grid-template-columns: 80px 1fr 100px 36px; gap: 0.35rem; align-items: center; background: #F8FAFC; padding: 0.4rem; border-radius: 6px; border: 1px solid #E2E8F0;">
-                    <div style="display: flex; gap: 0.15rem;">
-                        <input type="text" class="form-input" value="${chip.icon || '✨'}" readonly onclick="openIconPickerForExtrasChip(${index})" style="text-align: center; font-size: 1.1rem; padding: 0.3rem; cursor: pointer; width: 45px;" title="Clique para escolher ícone">
-                        <button type="button" onclick="openIconPickerForExtrasChip(${index})" title="Escolher Ícone na Coleção" style="background: #E2E8F0; border: 1px solid #CBD5E1; border-radius: 6px; padding: 0 0.25rem; cursor: pointer; font-size: 0.85rem;">🎨</button>
+            container.innerHTML = currentAdminExtrasCategories.map((cat, catIdx) => `
+                <div class="extras-category-block" style="background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 10px; padding: 0.85rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                    <!-- Cabeçalho do Bloco da Categoria -->
+                    <div style="display: flex; gap: 0.5rem; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; flex-wrap: wrap; background: #F8FAFC; padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid #E2E8F0;">
+                        <div style="display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 240px;">
+                            <span style="font-size: 0.82rem; font-weight: bold; color: #4F46E5;">Bloco ${catIdx + 1}:</span>
+                            <input type="text" class="form-input" id="extrasCatTitleInput_${catIdx}" value="${cat.name || ''}" placeholder="Ex: 🍳 Acompanhamentos Salgados" oninput="updateAdminExtrasCategoryTitle(${catIdx}, this.value)" style="font-weight: bold; font-size: 0.9rem; padding: 0.35rem 0.5rem; flex: 1;">
+                            <button type="button" onclick="appendIconToInput('extrasCatTitleInput_${catIdx}')" title="Inserir Ícone no Título" style="background: #E2E8F0; border: 1px solid #CBD5E1; border-radius: 6px; padding: 0.35rem 0.5rem; cursor: pointer; font-size: 0.85rem;">🎨</button>
+                        </div>
+                        <div style="display: flex; gap: 0.35rem; align-items: center;">
+                            <button type="button" class="btn-admin" onclick="addAdminExtrasChipToCategory(${catIdx})" style="background: #10B981; color: white; font-size: 0.75rem; padding: 0.3rem 0.6rem; border-radius: 6px; font-weight: bold;">
+                                ➕ Add Item
+                            </button>
+                            <button type="button" onclick="removeAdminExtrasCategoryBlock(${catIdx})" title="Excluir este bloco de categoria" style="background: #FEE2E2; color: #DC2626; border: 1px solid #FCA5A5; border-radius: 6px; padding: 0.3rem 0.55rem; font-size: 0.82rem; cursor: pointer;">
+                                🗑️ Excluir Bloco
+                            </button>
+                        </div>
                     </div>
-                    <input type="text" class="form-input" value="${chip.name || ''}" placeholder="Nome do item" onchange="updateAdminExtrasChipField(${index}, 'name', this.value)" style="font-size: 0.82rem; padding: 0.3rem;">
-                    <input type="text" class="form-input" value="${chip.price || ''}" placeholder="+R$ 2,50" onchange="updateAdminExtrasChipField(${index}, 'price', this.value)" style="font-size: 0.82rem; padding: 0.3rem;">
-                    <button type="button" onclick="removeAdminExtrasChipRow(${index})" title="Remover item" style="background: #FEE2E2; color: #DC2626; border: 1px solid #FCA5A5; border-radius: 6px; padding: 0.3rem; font-size: 0.85rem; cursor: pointer; text-align: center;">
-                        🗑️
-                    </button>
+
+                    <!-- Lista de Itens/Chips desta Categoria -->
+                    <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                        ${(!cat.chips || cat.chips.length === 0) ? `
+                            <div style="text-align: center; color: var(--gray-600); font-size: 0.76rem; padding: 0.5rem; background: #F8FAFC; border-radius: 6px;">
+                                Nenhum item neste bloco. Clique em "➕ Add Item" acima para adicionar.
+                            </div>
+                        ` : cat.chips.map((chip, chipIdx) => `
+                            <div style="display: grid; grid-template-columns: 80px 1fr 100px 34px; gap: 0.35rem; align-items: center; background: #F8FAFC; padding: 0.35rem; border-radius: 6px; border: 1px solid #E2E8F0;">
+                                <div style="display: flex; gap: 0.15rem;">
+                                    <input type="text" class="form-input" value="${chip.icon || '✨'}" readonly onclick="openIconPickerForExtrasCategoryChip(${catIdx}, ${chipIdx})" style="text-align: center; font-size: 1.05rem; padding: 0.25rem; cursor: pointer; width: 44px;" title="Clique para escolher ícone">
+                                    <button type="button" onclick="openIconPickerForExtrasCategoryChip(${catIdx}, ${chipIdx})" title="Escolher Ícone" style="background: #E2E8F0; border: 1px solid #CBD5E1; border-radius: 6px; padding: 0 0.25rem; cursor: pointer; font-size: 0.8rem;">🎨</button>
+                                </div>
+                                <input type="text" class="form-input" value="${chip.name || ''}" placeholder="Nome do acompanhamento / item" oninput="updateAdminExtrasCategoryChipField(${catIdx}, ${chipIdx}, 'name', this.value)" style="font-size: 0.82rem; padding: 0.3rem;">
+                                <input type="text" class="form-input" value="${chip.price || ''}" placeholder="+R$ 2,50" oninput="updateAdminExtrasCategoryChipField(${catIdx}, ${chipIdx}, 'price', this.value)" style="font-size: 0.82rem; padding: 0.3rem;">
+                                <button type="button" onclick="removeAdminExtrasChipFromCategory(${catIdx}, ${chipIdx})" title="Remover este item" style="background: #FEE2E2; color: #DC2626; border: 1px solid #FCA5A5; border-radius: 6px; padding: 0.25rem; font-size: 0.82rem; cursor: pointer; text-align: center;">
+                                    🗑️
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
                 </div>
             `).join('');
         }
@@ -3920,15 +4011,84 @@
             }, currentVal);
         }
 
-        function openIconPickerForExtrasChip(index) {
-            const currentChip = currentAdminExtrasChips && currentAdminExtrasChips[index];
+        function openIconPickerForExtrasCategoryChip(catIdx, chipIdx) {
+            const currentCat = currentAdminExtrasCategories && currentAdminExtrasCategories[catIdx];
+            const currentChip = currentCat && currentCat.chips && currentCat.chips[chipIdx];
             const currentVal = currentChip ? currentChip.icon : '✨';
             openIconPicker(function(selectedEmoji) {
-                if (currentAdminExtrasChips && currentAdminExtrasChips[index]) {
-                    currentAdminExtrasChips[index].icon = selectedEmoji;
-                    renderAdminExtrasChipsEditor();
+                if (currentAdminExtrasCategories[catIdx] && currentAdminExtrasCategories[catIdx].chips[chipIdx]) {
+                    currentAdminExtrasCategories[catIdx].chips[chipIdx].icon = selectedEmoji;
+                    renderAdminExtrasCategoriesEditor();
                 }
             }, currentVal);
+        }
+
+        function updateAdminExtrasCategoryTitle(catIdx, value) {
+            if (currentAdminExtrasCategories[catIdx]) {
+                currentAdminExtrasCategories[catIdx].name = value;
+            }
+        }
+
+        function updateAdminExtrasCategoryChipField(catIdx, chipIdx, field, value) {
+            if (currentAdminExtrasCategories[catIdx] && currentAdminExtrasCategories[catIdx].chips[chipIdx]) {
+                currentAdminExtrasCategories[catIdx].chips[chipIdx][field] = value;
+            }
+        }
+
+        function addAdminExtrasCategoryBlock() {
+            if (!currentAdminExtrasCategories) currentAdminExtrasCategories = [];
+            currentAdminExtrasCategories.push({
+                name: `Novo Bloco / Categoria ${currentAdminExtrasCategories.length + 1}`,
+                chips: [
+                    { icon: '✨', name: 'Item Exemplo', price: '' }
+                ]
+            });
+            renderAdminExtrasCategoriesEditor();
+            showNotification('Novo bloco de categoria adicionado! 🗂️', 'success');
+        }
+
+        async function removeAdminExtrasCategoryBlock(catIdx) {
+            const cat = currentAdminExtrasCategories[catIdx];
+            const name = cat ? cat.name : 'este bloco';
+            const confirmed = await showCustomConfirm({
+                title: 'Excluir Bloco de Categoria',
+                message: `Tem certeza que deseja excluir o bloco "${name}" e todos os seus itens?`,
+                icon: '🗑️',
+                confirmText: 'Sim, Excluir',
+                cancelText: 'Cancelar'
+            });
+            if (confirmed) {
+                currentAdminExtrasCategories.splice(catIdx, 1);
+                renderAdminExtrasCategoriesEditor();
+                showNotification('Bloco de categoria removido! 🗑️', 'info');
+            }
+        }
+
+        function addAdminExtrasChipToCategory(catIdx) {
+            if (currentAdminExtrasCategories[catIdx]) {
+                if (!Array.isArray(currentAdminExtrasCategories[catIdx].chips)) {
+                    currentAdminExtrasCategories[catIdx].chips = [];
+                }
+                currentAdminExtrasCategories[catIdx].chips.push({
+                    icon: '✨',
+                    name: 'Novo Item',
+                    price: '+R$ 3,00'
+                });
+                renderAdminExtrasCategoriesEditor();
+            }
+        }
+
+        function removeAdminExtrasChipFromCategory(catIdx, chipIdx) {
+            if (currentAdminExtrasCategories[catIdx] && currentAdminExtrasCategories[catIdx].chips) {
+                currentAdminExtrasCategories[catIdx].chips.splice(chipIdx, 1);
+                renderAdminExtrasCategoriesEditor();
+            }
+        }
+
+        function openIconPickerForExtrasChip(index) {
+            if (currentAdminExtrasCategories[0] && currentAdminExtrasCategories[0].chips[index]) {
+                openIconPickerForExtrasCategoryChip(0, index);
+            }
         }
 
         function appendIconToInput(inputId) {
@@ -3942,19 +4102,23 @@
         }
 
         function updateAdminExtrasChipField(index, field, value) {
-            if (currentAdminExtrasChips[index]) {
-                currentAdminExtrasChips[index][field] = value;
+            if (currentAdminExtrasCategories[0] && currentAdminExtrasCategories[0].chips[index]) {
+                currentAdminExtrasCategories[0].chips[index][field] = value;
             }
         }
 
         function addAdminExtrasChipRow() {
-            currentAdminExtrasChips.push({ icon: '✨', name: 'Novo Acompanhamento', price: '+R$ 3,00' });
-            renderAdminExtrasChipsEditor();
+            if (!currentAdminExtrasCategories || currentAdminExtrasCategories.length === 0) {
+                addAdminExtrasCategoryBlock();
+            } else {
+                addAdminExtrasChipToCategory(0);
+            }
         }
 
         function removeAdminExtrasChipRow(index) {
-            currentAdminExtrasChips.splice(index, 1);
-            renderAdminExtrasChipsEditor();
+            if (currentAdminExtrasCategories[0] && currentAdminExtrasCategories[0].chips) {
+                removeAdminExtrasChipFromCategory(0, index);
+            }
         }
 
         function resetPromoBannerToCategoryDefault() {
@@ -3991,19 +4155,19 @@
             const defaultData = EXTRAS_PRESETS[presetKey] || EXTRAS_PRESETS.acai;
 
             document.getElementById('extrasSectionEnabled').checked = true;
-            document.getElementById('extrasSectionBadge').value = defaultData.badge;
-            document.getElementById('extrasSectionTitle').value = defaultData.title;
-            document.getElementById('extrasSectionDesc').value = defaultData.desc;
+            document.getElementById('extrasSectionBadge').value = defaultData.badge || '';
+            document.getElementById('extrasSectionTitle').value = defaultData.title || '';
+            document.getElementById('extrasSectionDesc').value = defaultData.desc || '';
 
-            const firstCat = defaultData.categories && defaultData.categories[0] ? defaultData.categories[0] : null;
-            document.getElementById('extrasCategoryTitle').value = firstCat ? firstCat.name : 'Acompanhamentos';
-
-            if (firstCat && firstCat.chips) {
-                currentAdminExtrasChips = JSON.parse(JSON.stringify(firstCat.chips));
+            if (defaultData.categories && Array.isArray(defaultData.categories)) {
+                currentAdminExtrasCategories = JSON.parse(JSON.stringify(defaultData.categories));
             } else {
-                currentAdminExtrasChips = [];
+                currentAdminExtrasCategories = [{
+                    name: '🍳 Acompanhamentos e Adicionais',
+                    chips: []
+                }];
             }
-            renderAdminExtrasChipsEditor();
+            renderAdminExtrasCategoriesEditor();
 
             settings.customExtras = null;
             saveData();
@@ -5095,12 +5259,23 @@
             const line = '-'.repeat(cols) + '\n';
             const doubleLine = '='.repeat(cols) + '\n';
 
+            const storeName = (settings.restaurantName || 'DON DELIVERY').toUpperCase();
+            const storeAddress = (settings.address || '').trim();
+            const storeCnpj = (settings.cnpj || '').trim();
+            const storeInstagram = (settings.instagram || '@acainaquentinha_do_fb').trim();
+
             let text = '';
             text += '\x1B\x40'; // Inicializar
             text += '\x1B\x61\x01'; // Centralizar
             text += '\x1D\x21\x11'; // Fonte dupla
-            text += `${(settings.restaurantName || 'AÇAI DO FB').toUpperCase()}\n`;
+            text += `${storeName}\n`;
             text += '\x1D\x21\x00'; // Normal
+            if (storeCnpj) {
+                text += `CNPJ: ${storeCnpj}\n`;
+            }
+            if (storeAddress) {
+                text += `${storeAddress}\n`;
+            }
             text += 'COMPROVANTE DE PEDIDO 58MM\n';
             text += doubleLine;
 
@@ -5139,7 +5314,10 @@
 
             text += '\x1B\x61\x01';
             text += 'Obrigado pela preferencia!\n';
-            text += '@acainaquentinha_do_fb\n\n\n\n';
+            if (storeInstagram) {
+                text += `${storeInstagram}\n`;
+            }
+            text += '\n\n\n\n';
             text += '\x1D\x56\x00';
 
             return encoder.encode(text);
@@ -5154,11 +5332,17 @@
             }
 
             const pWidth = (printerSettings.paperWidth || 58) + 'mm';
+            const storeName = (settings.restaurantName || 'DON DELIVERY').toUpperCase();
+            const storeAddress = (settings.address || '').trim();
+            const storeCnpj = (settings.cnpj || '').trim();
+            const storeInstagram = (settings.instagram || '@acainaquentinha_do_fb').trim();
 
             area.innerHTML = `
                 <div style="font-family: 'Courier New', Courier, monospace; font-size: 12px; width: ${pWidth}; margin: 0 auto; text-align: center; color: #000; line-height: 1.25; padding: 4px;">
-                    <div style="font-size: 15px; font-weight: bold; text-transform: uppercase;">${settings.restaurantName || 'AÇAI DO FB'}</div>
-                    <div style="font-size: 11px; margin-bottom: 4px;">COMPROVANTE DE PEDIDO (${pWidth})</div>
+                    <div style="font-size: 15px; font-weight: bold; text-transform: uppercase;">${storeName}</div>
+                    ${storeCnpj ? `<div style="font-size: 10px; margin-top: 1px; color: #333;">CNPJ: ${storeCnpj}</div>` : ''}
+                    ${storeAddress ? `<div style="font-size: 10px; margin-top: 2px; color: #333;">${storeAddress}</div>` : ''}
+                    <div style="font-size: 11px; margin: 3px 0;">COMPROVANTE DE PEDIDO (${pWidth})</div>
                     <div>================================</div>
                     <div style="text-align: left; margin: 4px 0; font-size: 11px;">
                         <strong>PEDIDO:</strong> ${order.id}<br>
@@ -5189,7 +5373,7 @@
                     <div>================================</div>
                     <div style="margin-top: 6px; font-size: 10px; text-align: center;">
                         Obrigado pela preferência!<br>
-                        @acainaquentinha_do_fb
+                        ${storeInstagram ? `<span>${storeInstagram}</span>` : ''}
                     </div>
                 </div>
             `;
