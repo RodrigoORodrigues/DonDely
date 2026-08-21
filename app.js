@@ -310,6 +310,54 @@
             { code: 'DONFIM20', discount: 20, description: '20% de super desconto', active: true }
         ];
 
+        // ========== BAIRROS E TAXAS DE ENTREGA PADRÃO (ZONA SUL, ZONA NORTE, CENTRO) ==========
+        const DEFAULT_DELIVERY_NEIGHBORHOODS = [
+            // 🏙️ CENTRO
+            { id: 'b-centro', name: 'Centro', zone: 'centro', zoneName: 'Centro', fee: 5.00, time: '20 - 35 min', active: true },
+            { id: 'b-lapa', name: 'Lapa', zone: 'centro', zoneName: 'Centro', fee: 5.00, time: '20 - 35 min', active: true },
+            { id: 'b-santa-teresa', name: 'Santa Teresa', zone: 'centro', zoneName: 'Centro', fee: 7.00, time: '30 - 45 min', active: true },
+            { id: 'b-fatima', name: 'Bairro de Fátima', zone: 'centro', zoneName: 'Centro', fee: 5.00, time: '25 - 35 min', active: true },
+            { id: 'b-estacio', name: 'Estácio', zone: 'centro', zoneName: 'Centro', fee: 6.00, time: '25 - 35 min', active: true },
+            { id: 'b-catumbi', name: 'Catumbi', zone: 'centro', zoneName: 'Centro', fee: 6.00, time: '25 - 40 min', active: true },
+            { id: 'b-rio-comprido', name: 'Rio Comprido', zone: 'centro', zoneName: 'Centro', fee: 6.00, time: '25 - 40 min', active: true },
+            { id: 'b-cidade-nova', name: 'Cidade Nova', zone: 'centro', zoneName: 'Centro', fee: 5.00, time: '20 - 35 min', active: true },
+            { id: 'b-praca-maua', name: 'Praça Mauá / Saúde', zone: 'centro', zoneName: 'Centro', fee: 6.00, time: '25 - 40 min', active: true },
+            { id: 'b-gamboa', name: 'Gamboa / Santo Cristo', zone: 'centro', zoneName: 'Centro', fee: 6.00, time: '25 - 40 min', active: true },
+
+            // 🌊 ZONA SUL
+            { id: 'b-copacabana', name: 'Copacabana', zone: 'zona_sul', zoneName: 'Zona Sul', fee: 8.00, time: '30 - 45 min', active: true },
+            { id: 'b-leme', name: 'Leme', zone: 'zona_sul', zoneName: 'Zona Sul', fee: 8.00, time: '30 - 45 min', active: true },
+            { id: 'b-ipanema', name: 'Ipanema', zone: 'zona_sul', zoneName: 'Zona Sul', fee: 8.00, time: '35 - 50 min', active: true },
+            { id: 'b-leblon', name: 'Leblon', zone: 'zona_sul', zoneName: 'Zona Sul', fee: 10.00, time: '35 - 50 min', active: true },
+            { id: 'b-botafogo', name: 'Botafogo', zone: 'zona_sul', zoneName: 'Zona Sul', fee: 6.00, time: '25 - 40 min', active: true },
+            { id: 'b-flamengo', name: 'Flamengo', zone: 'zona_sul', zoneName: 'Zona Sul', fee: 6.00, time: '25 - 40 min', active: true },
+            { id: 'b-catete', name: 'Catete', zone: 'zona_sul', zoneName: 'Zona Sul', fee: 6.00, time: '25 - 40 min', active: true },
+            { id: 'b-gloria', name: 'Glória', zone: 'zona_sul', zoneName: 'Zona Sul', fee: 6.00, time: '25 - 40 min', active: true },
+            { id: 'b-laranjeiras', name: 'Laranjeiras', zone: 'zona_sul', zoneName: 'Zona Sul', fee: 7.00, time: '30 - 45 min', active: true },
+            { id: 'b-cosme-velho', name: 'Cosme Velho', zone: 'zona_sul', zoneName: 'Zona Sul', fee: 7.00, time: '30 - 45 min', active: true },
+            { id: 'b-humaita', name: 'Humaitá', zone: 'zona_sul', zoneName: 'Zona Sul', fee: 7.00, time: '30 - 45 min', active: true },
+            { id: 'b-urca', name: 'Urca', zone: 'zona_sul', zoneName: 'Zona Sul', fee: 8.00, time: '30 - 45 min', active: true },
+            { id: 'b-jardim-botanico', name: 'Jardim Botânico', zone: 'zona_sul', zoneName: 'Zona Sul', fee: 10.00, time: '40 - 55 min', active: true },
+            { id: 'b-gavea', name: 'Gávea', zone: 'zona_sul', zoneName: 'Zona Sul', fee: 10.00, time: '40 - 55 min', active: true },
+            { id: 'b-sao-conrado', name: 'São Conrado', zone: 'zona_sul', zoneName: 'Zona Sul', fee: 12.00, time: '45 - 60 min', active: true },
+
+            // 🌳 ZONA NORTE
+            { id: 'b-tijuca', name: 'Tijuca', zone: 'zona_norte', zoneName: 'Zona Norte', fee: 6.00, time: '25 - 40 min', active: true },
+            { id: 'b-maracana', name: 'Maracanã', zone: 'zona_norte', zoneName: 'Zona Norte', fee: 6.00, time: '25 - 40 min', active: true },
+            { id: 'b-vila-isabel', name: 'Vila Isabel', zone: 'zona_norte', zoneName: 'Zona Norte', fee: 7.00, time: '30 - 45 min', active: true },
+            { id: 'b-grajau', name: 'Grajaú', zone: 'zona_norte', zoneName: 'Zona Norte', fee: 7.00, time: '30 - 45 min', active: true },
+            { id: 'b-andarai', name: 'Andaraí', zone: 'zona_norte', zoneName: 'Zona Norte', fee: 7.00, time: '30 - 45 min', active: true },
+            { id: 'b-sao-cristovao', name: 'São Cristóvão', zone: 'zona_norte', zoneName: 'Zona Norte', fee: 6.00, time: '25 - 40 min', active: true },
+            { id: 'b-meier', name: 'Méier', zone: 'zona_norte', zoneName: 'Zona Norte', fee: 9.00, time: '40 - 55 min', active: true },
+            { id: 'b-engenho-novo', name: 'Engenho Novo', zone: 'zona_norte', zoneName: 'Zona Norte', fee: 9.00, time: '40 - 55 min', active: true },
+            { id: 'b-engenho-dentro', name: 'Engenho de Dentro', zone: 'zona_norte', zoneName: 'Zona Norte', fee: 10.00, time: '40 - 55 min', active: true },
+            { id: 'b-cachambi', name: 'Cachambi', zone: 'zona_norte', zoneName: 'Zona Norte', fee: 10.00, time: '40 - 55 min', active: true },
+            { id: 'b-del-castilho', name: 'Del Castilho / Inhaúma', zone: 'zona_norte', zoneName: 'Zona Norte', fee: 11.00, time: '45 - 60 min', active: true },
+            { id: 'b-bonsucesso', name: 'Bonsucesso / Ramos', zone: 'zona_norte', zoneName: 'Zona Norte', fee: 11.00, time: '45 - 60 min', active: true },
+            { id: 'b-madureira', name: 'Madureira / Cascadura', zone: 'zona_norte', zoneName: 'Zona Norte', fee: 13.00, time: '50 - 65 min', active: true },
+            { id: 'b-penha', name: 'Penha / Olaria', zone: 'zona_norte', zoneName: 'Zona Norte', fee: 12.00, time: '50 - 65 min', active: true }
+        ];
+
         const defaultSettings = {
             restaurantName: 'Açaí na Quentinha do FB',
             subtitle: 'Sabor que conquista na primeira colherada! Monte do seu jeito.',
@@ -322,6 +370,7 @@
             deliveryFee: 5.00,
             deliveryTime: '30 - 45 min',
             coupons: defaultCoupons,
+            deliveryNeighborhoods: DEFAULT_DELIVERY_NEIGHBORHOODS,
             schedule: {
                 monday: { enabled: true, open: '09:00', close: '22:00' },
                 tuesday: { enabled: true, open: '09:00', close: '22:00' },
@@ -1227,7 +1276,8 @@
                 themeColors: activeComp.themeColors || THEME_PRESETS.acai,
                 customBanner: activeComp.customBanner || null,
                 customExtras: activeComp.customExtras || null,
-                coupons: activeComp.coupons || (defaultSettings.coupons ? JSON.parse(JSON.stringify(defaultSettings.coupons)) : defaultCoupons)
+                coupons: activeComp.coupons || (defaultSettings.coupons ? JSON.parse(JSON.stringify(defaultSettings.coupons)) : defaultCoupons),
+                deliveryNeighborhoods: activeComp.deliveryNeighborhoods || (defaultSettings.deliveryNeighborhoods ? JSON.parse(JSON.stringify(defaultSettings.deliveryNeighborhoods)) : DEFAULT_DELIVERY_NEIGHBORHOODS)
             };
 
             products = activeComp.products || defaultProducts;
@@ -1284,7 +1334,11 @@
             if (loggedCustomer) {
                 customerData = {
                     name: loggedCustomer.name,
+                    neighborhoodId: loggedCustomer.neighborhoodId || '',
+                    neighborhood: loggedCustomer.neighborhood || '',
+                    neighborhoodZone: loggedCustomer.neighborhoodZone || '',
                     address: loggedCustomer.address,
+                    reference: loggedCustomer.reference || '',
                     phone: loggedCustomer.phone
                 };
             }
@@ -1311,6 +1365,7 @@
                 activeComp.customBanner = settings.customBanner;
                 activeComp.customExtras = settings.customExtras;
                 activeComp.coupons = settings.coupons;
+                activeComp.deliveryNeighborhoods = settings.deliveryNeighborhoods;
                 activeComp.products = products;
                 activeComp.orders = customerOrders;
             }
@@ -2493,6 +2548,7 @@
             renderSettings();
             renderActiveCompanySelectUI();
             renderAdminCouponsList();
+            renderAdminNeighborhoodsList();
             updateCartUI();
             updateSiteSettings();
             updateCustomerHeaderUI();
@@ -3618,6 +3674,318 @@
             showNotification(`Cupom "${couponCode}" excluído com sucesso!`, 'info');
         }
 
+        // ========== GERENCIAMENTO DE BAIRROS E FRETE POR REGIÃO (ZONA SUL, ZONA NORTE, CENTRO) ==========
+        let currentNeighborhoodFilterZone = 'all';
+        let currentNeighborhoodSearchTerm = '';
+
+        function getZoneBadgeHTML(zone, zoneName) {
+            let label = zoneName;
+            let badgeClass = 'zone-badge-outra';
+            let icon = '➕';
+
+            if (zone === 'centro') {
+                label = 'Centro';
+                badgeClass = 'zone-badge-centro';
+                icon = '🏙️';
+            } else if (zone === 'zona_sul') {
+                label = 'Zona Sul';
+                badgeClass = 'zone-badge-zona_sul';
+                icon = '🌊';
+            } else if (zone === 'zona_norte') {
+                label = 'Zona Norte';
+                badgeClass = 'zone-badge-zona_norte';
+                icon = '🌳';
+            }
+
+            return `<span class="neighborhood-zone-badge ${badgeClass}">${icon} ${label}</span>`;
+        }
+
+        function setNeighborhoodFilterZone(zone) {
+            currentNeighborhoodFilterZone = zone;
+            const tabsContainer = document.getElementById('zoneFilterTabs');
+            if (tabsContainer) {
+                const buttons = tabsContainer.querySelectorAll('.zone-tab-btn');
+                buttons.forEach(btn => btn.classList.remove('active'));
+                const activeBtn = tabsContainer.querySelector(`button[onclick*="'${zone}'"]`);
+                if (activeBtn) activeBtn.classList.add('active');
+            }
+            renderAdminNeighborhoodsList();
+        }
+
+        function handleSearchNeighborhood(term) {
+            currentNeighborhoodSearchTerm = (term || '').trim().toLowerCase();
+            renderAdminNeighborhoodsList();
+        }
+
+        function renderAdminNeighborhoodsList() {
+            const container = document.getElementById('adminNeighborhoodsList');
+            if (!container) return;
+
+            const list = settings.deliveryNeighborhoods || DEFAULT_DELIVERY_NEIGHBORHOODS;
+
+            // Atualizar contadores
+            const countAll = list.length;
+            const countCentro = list.filter(n => n.zone === 'centro').length;
+            const countZonaSul = list.filter(n => n.zone === 'zona_sul').length;
+            const countZonaNorte = list.filter(n => n.zone === 'zona_norte').length;
+            const countOutros = list.filter(n => n.zone !== 'centro' && n.zone !== 'zona_sul' && n.zone !== 'zona_norte').length;
+
+            const elAll = document.getElementById('countAllNeighborhoods');
+            const elCentro = document.getElementById('countCentroNeighborhoods');
+            const elZonaSul = document.getElementById('countZonaSulNeighborhoods');
+            const elZonaNorte = document.getElementById('countZonaNorteNeighborhoods');
+            const elOutros = document.getElementById('countOutrosNeighborhoods');
+
+            if (elAll) elAll.textContent = countAll;
+            if (elCentro) elCentro.textContent = countCentro;
+            if (elZonaSul) elZonaSul.textContent = countZonaSul;
+            if (elZonaNorte) elZonaNorte.textContent = countZonaNorte;
+            if (elOutros) elOutros.textContent = countOutros;
+
+            // Filtragem
+            let filtered = list;
+            if (currentNeighborhoodFilterZone !== 'all') {
+                if (currentNeighborhoodFilterZone === 'outra') {
+                    filtered = filtered.filter(n => n.zone !== 'centro' && n.zone !== 'zona_sul' && n.zone !== 'zona_norte');
+                } else {
+                    filtered = filtered.filter(n => n.zone === currentNeighborhoodFilterZone);
+                }
+            }
+
+            if (currentNeighborhoodSearchTerm) {
+                filtered = filtered.filter(n => 
+                    (n.name && n.name.toLowerCase().includes(currentNeighborhoodSearchTerm)) ||
+                    (n.zoneName && n.zoneName.toLowerCase().includes(currentNeighborhoodSearchTerm))
+                );
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; color: var(--gray-600); font-size: 0.85rem; padding: 1.5rem; background: var(--gray-50); border: 1px dashed var(--gray-300); border-radius: 8px;">
+                        Nenhum bairro encontrado com os filtros selecionados.
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filtered.map(n => {
+                const isActive = n.active !== false;
+                const feeVal = typeof n.fee === 'number' ? n.fee.toFixed(2) : parseFloat(n.fee || 0).toFixed(2);
+                const timeVal = n.time || '30 - 45 min';
+
+                return `
+                    <div class="neighborhood-item-card ${!isActive ? 'inactive' : ''}" id="card-neighborhood-${n.id}">
+                        <div class="neighborhood-info">
+                            <div class="neighborhood-name-text">
+                                <span>${n.name}</span>
+                                ${getZoneBadgeHTML(n.zone, n.zoneName)}
+                            </div>
+                        </div>
+
+                        <div class="neighborhood-inputs-grid">
+                            <div class="neighborhood-input-wrapper" title="Valor do Frete para este bairro">
+                                <label>R$</label>
+                                <input 
+                                    type="number" 
+                                    step="0.50" 
+                                    min="0" 
+                                    value="${feeVal}" 
+                                    onchange="updateNeighborhoodField('${n.id}', 'fee', this.value)"
+                                    style="width: 65px;"
+                                >
+                            </div>
+
+                            <div class="neighborhood-input-wrapper neighborhood-input-time" title="Tempo estimado de entrega para este bairro">
+                                <label>⏱️</label>
+                                <input 
+                                    type="text" 
+                                    value="${timeVal}" 
+                                    placeholder="30 - 45 min" 
+                                    onchange="updateNeighborhoodField('${n.id}', 'time', this.value)"
+                                    style="width: 90px;"
+                                >
+                            </div>
+
+                            <button 
+                                type="button" 
+                                class="btn-icon btn-toggle" 
+                                onclick="toggleNeighborhoodActive('${n.id}')" 
+                                title="${isActive ? 'Bairro ativo para entregas (clique para pausar)' : 'Bairro pausado (clique para ativar)'}"
+                                style="width: 32px; height: 32px; font-size: 0.9rem;"
+                            >
+                                ${isActive ? '✅' : '🚫'}
+                            </button>
+
+                            <button 
+                                type="button" 
+                                class="btn-icon btn-delete" 
+                                onclick="deleteNeighborhood('${n.id}')" 
+                                title="Excluir bairro"
+                                style="width: 32px; height: 32px; font-size: 0.85rem;"
+                            >
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateNeighborhoodField(id, field, value) {
+            if (!settings.deliveryNeighborhoods) settings.deliveryNeighborhoods = [...DEFAULT_DELIVERY_NEIGHBORHOODS];
+            const item = settings.deliveryNeighborhoods.find(n => n.id === id);
+            if (!item) return;
+
+            if (field === 'fee') {
+                item.fee = parseFloat(value) || 0;
+            } else if (field === 'time') {
+                item.time = value.trim() || '30 - 45 min';
+            }
+            saveData();
+            updateCartUI();
+        }
+
+        function toggleNeighborhoodActive(id) {
+            if (!settings.deliveryNeighborhoods) settings.deliveryNeighborhoods = [...DEFAULT_DELIVERY_NEIGHBORHOODS];
+            const item = settings.deliveryNeighborhoods.find(n => n.id === id);
+            if (!item) return;
+
+            item.active = !(item.active !== false);
+            saveData();
+            renderAdminNeighborhoodsList();
+            updateCartUI();
+            showNotification(`Bairro ${item.name} ${item.active ? 'ativado' : 'pausado'}!`, 'info');
+        }
+
+        async function deleteNeighborhood(id) {
+            if (!settings.deliveryNeighborhoods) return;
+            const item = settings.deliveryNeighborhoods.find(n => n.id === id);
+            if (!item) return;
+
+            const confirmed = await showCustomConfirm({
+                title: 'Excluir Bairro',
+                message: `Deseja realmente remover o bairro "${item.name}" das opções de entrega?`,
+                icon: '🛵',
+                confirmText: 'Sim, Excluir',
+                cancelText: 'Cancelar'
+            });
+            if (!confirmed) return;
+
+            settings.deliveryNeighborhoods = settings.deliveryNeighborhoods.filter(n => n.id !== id);
+            saveData();
+            renderAdminNeighborhoodsList();
+            updateCartUI();
+            showNotification(`Bairro "${item.name}" excluído!`, 'info');
+        }
+
+        function handleAdminAddNeighborhood(event) {
+            event.preventDefault();
+            const nameInput = document.getElementById('newNeighborhoodName');
+            const zoneInput = document.getElementById('newNeighborhoodZone');
+            const feeInput = document.getElementById('newNeighborhoodFee');
+            const timeInput = document.getElementById('newNeighborhoodTime');
+
+            if (!nameInput || !feeInput) return;
+
+            const name = nameInput.value.trim();
+            const zone = zoneInput ? zoneInput.value : 'centro';
+            const fee = parseFloat(feeInput.value) || 0;
+            const time = timeInput && timeInput.value.trim() ? timeInput.value.trim() : '30 - 45 min';
+
+            if (!name) {
+                showNotification('Informe o nome do bairro!', 'warning');
+                return;
+            }
+
+            if (!settings.deliveryNeighborhoods) settings.deliveryNeighborhoods = [...DEFAULT_DELIVERY_NEIGHBORHOODS];
+
+            const zoneNameMap = {
+                'centro': 'Centro',
+                'zona_sul': 'Zona Sul',
+                'zona_norte': 'Zona Norte',
+                'outra': 'Outra Região'
+            };
+
+            const newId = 'b-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 5);
+            settings.deliveryNeighborhoods.unshift({
+                id: newId,
+                name: name,
+                zone: zone,
+                zoneName: zoneNameMap[zone] || 'Outra Região',
+                fee: fee,
+                time: time,
+                active: true
+            });
+
+            saveData();
+            renderAdminNeighborhoodsList();
+            updateCartUI();
+
+            nameInput.value = '';
+            feeInput.value = '';
+            if (timeInput) timeInput.value = '';
+
+            showNotification(`Bairro "${name}" adicionado com sucesso! 🛵✨`, 'success');
+        }
+
+        function applyBulkZoneSettings() {
+            const zone = document.getElementById('bulkZoneSelect')?.value || 'all';
+            const feeVal = document.getElementById('bulkZoneFee')?.value;
+            const timeVal = document.getElementById('bulkZoneTime')?.value?.trim();
+
+            if (!feeVal && !timeVal) {
+                showNotification('Informe o valor do frete ou o tempo estimado para aplicar!', 'warning');
+                return;
+            }
+
+            if (!settings.deliveryNeighborhoods) settings.deliveryNeighborhoods = [...DEFAULT_DELIVERY_NEIGHBORHOODS];
+
+            let count = 0;
+            settings.deliveryNeighborhoods.forEach(n => {
+                const match = zone === 'all' || 
+                              (zone === 'outra' && n.zone !== 'centro' && n.zone !== 'zona_sul' && n.zone !== 'zona_norte') ||
+                              n.zone === zone;
+                if (match) {
+                    if (feeVal !== '' && !isNaN(parseFloat(feeVal))) {
+                        n.fee = parseFloat(feeVal);
+                    }
+                    if (timeVal) {
+                        n.time = timeVal;
+                    }
+                    count++;
+                }
+            });
+
+            saveData();
+            renderAdminNeighborhoodsList();
+            updateCartUI();
+            showNotification(`Configurações aplicadas a ${count} bairro(s)! ⚡`, 'success');
+        }
+
+        async function resetNeighborhoodsToDefault() {
+            const confirmed = await showCustomConfirm({
+                title: 'Restaurar Bairros Padrão',
+                message: 'Deseja restaurar a lista original de bairros do Rio de Janeiro (Centro, Zona Sul e Zona Norte) com suas taxas padrão?',
+                icon: '🔄',
+                confirmText: 'Sim, Restaurar',
+                cancelText: 'Cancelar'
+            });
+            if (!confirmed) return;
+
+            settings.deliveryNeighborhoods = JSON.parse(JSON.stringify(DEFAULT_DELIVERY_NEIGHBORHOODS));
+            saveData();
+            renderAdminNeighborhoodsList();
+            updateCartUI();
+            showNotification('Bairros padrão restaurados com sucesso!', 'success');
+        }
+
+        function saveNeighborhoodsChanges() {
+            saveData();
+            renderAdminNeighborhoodsList();
+            updateCartUI();
+            showNotification('Todas as alterações de bairros e fretes foram salvas com sucesso! 💾🎉', 'success');
+        }
+
         // ========== CATEGORIAS E COLEÇÃO DE ÍCONES / EMOJIS COMPLETA ==========
         const ICON_CATEGORIES = [
             { id: 'all', name: 'Todas', icon: '🗂️' },
@@ -4445,7 +4813,98 @@
             showNotification(`Cupom "${removedCode}" removido.`, 'info');
         }
 
-        function updateCartUI() {
+        function getActiveDeliveryInfo() {
+            let fee = typeof settings.deliveryFee === 'number' ? settings.deliveryFee : (parseFloat(settings.deliveryFee) || 5.00);
+            let time = settings.deliveryTime || '30 - 45 min';
+            let neighborhoodName = '';
+            let neighborhoodZone = '';
+            let neighborhoodZoneName = '';
+
+            const list = (settings.deliveryNeighborhoods && settings.deliveryNeighborhoods.length > 0) 
+                         ? settings.deliveryNeighborhoods 
+                         : DEFAULT_DELIVERY_NEIGHBORHOODS;
+
+            // 1. Tentar pegar do select atual no DOM se existir
+            const selectEl = document.getElementById('customerNeighborhood');
+            let selectedId = selectEl ? selectEl.value : null;
+
+            // 2. Se não tiver no DOM ou se selectEl estiver vazio, tentar pegar dos dados do cliente salvos
+            if (!selectedId && customerData && customerData.neighborhoodId) {
+                selectedId = customerData.neighborhoodId;
+            }
+
+            if (selectedId === 'other') {
+                const customInput = document.getElementById('customerCustomNeighborhood');
+                neighborhoodName = (customInput && customInput.value.trim()) || (customerData && customerData.neighborhood) || 'Outro Bairro';
+                neighborhoodZone = 'outra';
+                neighborhoodZoneName = 'Outra Região';
+                return { fee, time, neighborhoodName, neighborhoodZone, neighborhoodZoneName, selectedId };
+            }
+
+            if (selectedId && selectedId !== 'other') {
+                const found = list.find(n => n.id === selectedId || (n.name && n.name.toLowerCase() === selectedId.toLowerCase()));
+                if (found) {
+                    fee = typeof found.fee === 'number' ? found.fee : (parseFloat(found.fee) || 0);
+                    time = found.time || time;
+                    neighborhoodName = found.name;
+                    neighborhoodZone = found.zone;
+                    neighborhoodZoneName = found.zoneName || (found.zone === 'centro' ? 'Centro' : (found.zone === 'zona_sul' ? 'Zona Sul' : (found.zone === 'zona_norte' ? 'Zona Norte' : 'Outra Região')));
+                    return { fee, time, neighborhoodName, neighborhoodZone, neighborhoodZoneName, selectedId: found.id };
+                }
+            }
+
+            // 3. Tentar pelo nome do bairro salvo no customerData
+            if (customerData && customerData.neighborhood) {
+                const found = list.find(n => (n.name && n.name.toLowerCase() === customerData.neighborhood.toLowerCase()) || n.id === customerData.neighborhoodId);
+                if (found) {
+                    fee = typeof found.fee === 'number' ? found.fee : (parseFloat(found.fee) || 0);
+                    time = found.time || time;
+                    neighborhoodName = found.name;
+                    neighborhoodZone = found.zone;
+                    neighborhoodZoneName = found.zoneName || '';
+                    return { fee, time, neighborhoodName, neighborhoodZone, neighborhoodZoneName, selectedId: found.id };
+                }
+                neighborhoodName = customerData.neighborhood;
+            }
+
+            return { fee, time, neighborhoodName, neighborhoodZone, neighborhoodZoneName, selectedId };
+        }
+
+        function handleCustomerNeighborhoodChange(val) {
+            const customWrap = document.getElementById('customerCustomNeighborhoodWrapper');
+            const customInput = document.getElementById('customerCustomNeighborhood');
+            if (customWrap) {
+                if (val === 'other') {
+                    customWrap.style.display = 'block';
+                    if (customInput) {
+                        customInput.required = true;
+                        customInput.focus();
+                    }
+                } else {
+                    customWrap.style.display = 'none';
+                    if (customInput) {
+                        customInput.required = false;
+                        customInput.value = '';
+                    }
+                }
+            }
+
+            const badgeEl = document.getElementById('customerNeighborhoodBadge');
+            const info = getActiveDeliveryInfo();
+            if (badgeEl) {
+                if (val && val !== '') {
+                    badgeEl.style.display = 'block';
+                    badgeEl.innerHTML = `🛵 Frete: <strong>R$ ${info.fee.toFixed(2).replace('.', ',')}</strong> | ⏱️ Previsão: <strong>${info.time}</strong>`;
+                } else {
+                    badgeEl.style.display = 'none';
+                }
+            }
+
+            // Atualiza valores do carrinho sem recriar os campos do formulário
+            updateCartUI(false);
+        }
+
+        function updateCartUI(forceFormRender = false) {
             const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
             const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
@@ -4482,7 +4941,7 @@
                 `).join('');
                 
                 cartFooter.style.display = 'block';
-                renderCustomerForm();
+                renderCustomerForm(forceFormRender);
             }
 
             // Calcular Desconto do Cupom
@@ -4513,8 +4972,11 @@
                 }
             }
 
-            const deliveryFee = settings.deliveryFee || 0;
-            const deliveryTimeText = settings.deliveryTime || '30 - 45 min';
+            // Obter taxa e tempo dinâmico por bairro ou região
+            const deliveryInfo = getActiveDeliveryInfo();
+            const deliveryFee = deliveryInfo.fee;
+            const deliveryTimeText = deliveryInfo.time;
+            
             const estTimeEl = document.getElementById('cartEstimatedTime');
             if (estTimeEl) estTimeEl.textContent = deliveryTimeText;
 
@@ -4665,6 +5127,52 @@
             document.getElementById('customerAuthModal').classList.remove('active');
         }
 
+        function populateAuthRegisterNeighborhoods() {
+            const selectEl = document.getElementById('authRegisterNeighborhood');
+            if (!selectEl) return;
+
+            const list = (settings.deliveryNeighborhoods && settings.deliveryNeighborhoods.length > 0) 
+                         ? settings.deliveryNeighborhoods 
+                         : DEFAULT_DELIVERY_NEIGHBORHOODS;
+            const activeList = list.filter(n => n.active !== false);
+
+            const centroItems = activeList.filter(n => n.zone === 'centro');
+            const zonaSulItems = activeList.filter(n => n.zone === 'zona_sul');
+            const zonaNorteItems = activeList.filter(n => n.zone === 'zona_norte');
+            const outrosItems = activeList.filter(n => n.zone !== 'centro' && n.zone !== 'zona_sul' && n.zone !== 'zona_norte');
+
+            const renderOptions = (items) => items.map(n => `<option value="${n.id}">${n.name}</option>`).join('');
+
+            selectEl.innerHTML = `
+                <option value="">Selecione seu Bairro *</option>
+                ${centroItems.length > 0 ? `<optgroup label="🏙️ Centro">${renderOptions(centroItems)}</optgroup>` : ''}
+                ${zonaSulItems.length > 0 ? `<optgroup label="🌊 Zona Sul">${renderOptions(zonaSulItems)}</optgroup>` : ''}
+                ${zonaNorteItems.length > 0 ? `<optgroup label="🌳 Zona Norte">${renderOptions(zonaNorteItems)}</optgroup>` : ''}
+                ${outrosItems.length > 0 ? `<optgroup label="➕ Outras Regiões">${renderOptions(outrosItems)}</optgroup>` : ''}
+                <option value="other">Outro Bairro</option>
+            `;
+        }
+
+        function handleAuthRegisterNeighborhoodChange(val) {
+            const customWrap = document.getElementById('authRegisterCustomNeighborhoodWrapper');
+            const customInput = document.getElementById('authRegisterCustomNeighborhood');
+            if (customWrap) {
+                if (val === 'other') {
+                    customWrap.style.display = 'block';
+                    if (customInput) {
+                        customInput.required = true;
+                        customInput.focus();
+                    }
+                } else {
+                    customWrap.style.display = 'none';
+                    if (customInput) {
+                        customInput.required = false;
+                        customInput.value = '';
+                    }
+                }
+            }
+        }
+
         function switchAuthTab(tab) {
             const tabLogin = document.getElementById('tabBtnLogin');
             const tabRegister = document.getElementById('tabBtnRegister');
@@ -4685,6 +5193,7 @@
                 formLogin.style.display = 'none';
                 formRegister.style.display = 'block';
                 document.getElementById('authModalTitle').textContent = '✨ Criar Cadastro';
+                populateAuthRegisterNeighborhoods();
             }
         }
 
@@ -4699,7 +5208,11 @@
                 loggedCustomer = account;
                 customerData = {
                     name: account.name,
+                    neighborhood: account.neighborhood || '',
+                    neighborhoodId: account.neighborhoodId || '',
+                    neighborhoodZone: account.neighborhoodZone || '',
                     address: account.address,
+                    reference: account.reference || '',
                     phone: account.phone
                 };
                 localStorage.setItem('loggedCustomer', JSON.stringify(loggedCustomer));
@@ -4707,6 +5220,7 @@
 
                 closeCustomerAuthModal();
                 renderCustomerForm();
+                updateCartUI();
                 updateCustomerHeaderUI();
                 updateCheckoutButton();
                 showNotification(`Bem-vindo(a) de volta, ${account.name}! 👋`, 'success');
@@ -4718,9 +5232,41 @@
         function handleCustomerRegister(e) {
             e.preventDefault();
             const name = document.getElementById('authRegisterName').value.trim();
+            const nSelect = document.getElementById('authRegisterNeighborhood');
+            const nId = nSelect ? nSelect.value : '';
             const address = document.getElementById('authRegisterAddress').value.trim();
+            const reference = document.getElementById('authRegisterReference')?.value.trim() || '';
             const phone = document.getElementById('authRegisterPhone').value.trim();
             const password = document.getElementById('authRegisterPassword').value.trim();
+
+            if (!nId) {
+                showNotification('Por favor, selecione seu Bairro / Região de entrega!', 'warning');
+                if (nSelect) nSelect.focus();
+                return;
+            }
+
+            const list = (settings.deliveryNeighborhoods && settings.deliveryNeighborhoods.length > 0) 
+                         ? settings.deliveryNeighborhoods 
+                         : DEFAULT_DELIVERY_NEIGHBORHOODS;
+
+            if (nId === 'other') {
+                const customName = document.getElementById('authRegisterCustomNeighborhood')?.value.trim();
+                if (!customName) {
+                    showNotification('Por favor, digite o nome do seu bairro!', 'warning');
+                    document.getElementById('authRegisterCustomNeighborhood')?.focus();
+                    return;
+                }
+                nName = customName;
+                nZone = 'outra';
+                nZoneName = 'Outra Região';
+            } else if (nId) {
+                const found = list.find(n => n.id === nId);
+                if (found) {
+                    nName = found.name;
+                    nZone = found.zone;
+                    nZoneName = found.zoneName || (found.zone === 'centro' ? 'Centro' : (found.zone === 'zona_sul' ? 'Zona Sul' : (found.zone === 'zona_norte' ? 'Zona Norte' : 'Outra Região')));
+                }
+            }
 
             if (customerAccounts.some(acc => acc.phone === phone)) {
                 showNotification('Já existe uma conta com este telefone. Faça login!', 'info');
@@ -4729,21 +5275,39 @@
                 return;
             }
 
-            const newAccount = { name, address, phone, password };
+            const newAccount = { 
+                name, 
+                neighborhoodId: nId,
+                neighborhood: nName,
+                neighborhoodZone: nZoneName || nZone,
+                address, 
+                reference,
+                phone, 
+                password 
+            };
             customerAccounts.push(newAccount);
             localStorage.setItem('customerAccounts', JSON.stringify(customerAccounts));
 
             // Logar automaticamente
             loggedCustomer = newAccount;
-            customerData = { name, address, phone };
+            customerData = { 
+                name, 
+                neighborhoodId: nId,
+                neighborhood: nName,
+                neighborhoodZone: nZoneName || nZone,
+                address, 
+                reference,
+                phone 
+            };
             localStorage.setItem('loggedCustomer', JSON.stringify(loggedCustomer));
             localStorage.setItem('customerData', JSON.stringify(customerData));
 
             closeCustomerAuthModal();
             renderCustomerForm();
+            updateCartUI();
             updateCustomerHeaderUI();
             updateCheckoutButton();
-            showNotification('Cadastro realizado com sucesso! Seus dados foram preenchidos para entrega. ✨', 'success');
+            showNotification(`Cadastro realizado com sucesso! Bem-vindo(a), ${name}! ✨`, 'success');
         }
 
         function logoutCustomer() {
@@ -4752,7 +5316,8 @@
             localStorage.removeItem('loggedCustomer');
             localStorage.removeItem('customerData');
             closeCustomerOrdersModal();
-            renderCustomerForm();
+            renderCustomerForm(true);
+            updateCartUI(false);
             updateCustomerHeaderUI();
             updateCheckoutButton();
             showNotification('Você saiu da sua conta.', 'info');
@@ -4777,6 +5342,10 @@
             const container = document.getElementById('customerProfileCardContainer');
             if (!container || !loggedCustomer) return;
 
+            const deliveryInfo = getActiveDeliveryInfo();
+            const bName = loggedCustomer.neighborhood || deliveryInfo.neighborhoodName || '';
+            const zName = loggedCustomer.neighborhoodZone || deliveryInfo.neighborhoodZoneName || '';
+
             container.innerHTML = `
                 <div class="customer-profile-card">
                     <div class="customer-profile-header">
@@ -4784,7 +5353,9 @@
                         <button class="btn-edit-customer" onclick="logoutCustomer()" style="color: #DC2626; border-color: #FCA5A5;">🚪 Sair</button>
                     </div>
                     <div class="customer-profile-detail">
+                        ${bName ? `🛵 <strong>Bairro de Entrega:</strong> ${bName} ${zName ? `<span style="font-size: 0.75rem; background: #E0E7FF; color: #3730A3; padding: 0.1rem 0.35rem; border-radius: 4px; font-weight: 700; margin-left: 4px;">${zName}</span>` : ''}<br>` : ''}
                         📍 <strong>Endereço de Entrega:</strong> ${loggedCustomer.address}<br>
+                        ${loggedCustomer.reference ? `🎯 <strong>Ponto de Referência:</strong> ${loggedCustomer.reference}<br>` : ''}
                         📱 <strong>Telefone:</strong> ${loggedCustomer.phone}
                     </div>
                 </div>
@@ -4986,6 +5557,7 @@
                     </div>
                     <div style="font-size: 0.8rem; color: var(--gray-700); margin-bottom: 0.38rem;">
                         📍 ${order.customerAddress}<br>
+                        ${order.customerReference ? `🎯 <span style="color: #6D28D9; font-weight: 600;">Ref: ${order.customerReference}</span><br>` : ''}
                         📱 ${order.customerPhone} | 📅 ${order.date}<br>
                         <span style="color: var(--primary); font-weight: 700;">💳 ${order.paymentMethod || 'Pix'}</span> | 
                         <span style="color: #D97706; font-weight: 700;">⏱️ Previsão: ${order.deliveryTime || '30 - 45 min'}</span>
@@ -5284,7 +5856,13 @@
             text += `DATA    : ${order.date}\n`;
             text += `CLIENTE : ${order.customerName}\n`;
             text += `TEL     : ${order.customerPhone}\n`;
+            if (order.customerNeighborhood) {
+                text += `BAIRRO  : ${order.customerNeighborhood}${order.customerNeighborhoodZone ? ` (${order.customerNeighborhoodZone})` : ''}\n`;
+            }
             text += `ENDERECO: ${order.customerAddress}\n`;
+            if (order.customerReference) {
+                text += `REF     : ${order.customerReference}\n`;
+            }
             text += `PAGAMENTO: ${order.paymentMethod || 'Pix'}\n`;
             text += `PREVISAO : ${order.deliveryTime || '30 - 45 min'}\n`;
             text += line;
@@ -5349,7 +5927,9 @@
                         <strong>DATA:</strong> ${order.date}<br>
                         <strong>CLIENTE:</strong> ${order.customerName}<br>
                         <strong>TELEFONE:</strong> ${order.customerPhone}<br>
+                        ${order.customerNeighborhood ? `<strong>BAIRRO:</strong> ${order.customerNeighborhood}${order.customerNeighborhoodZone ? ` (${order.customerNeighborhoodZone})` : ''}<br>` : ''}
                         <strong>ENDEREÇO:</strong> ${order.customerAddress}<br>
+                        ${order.customerReference ? `<strong>PONTO DE REF.:</strong> ${order.customerReference}<br>` : ''}
                         <strong>PAGAMENTO:</strong> ${order.paymentMethod || 'Pix'}<br>
                         <strong>PREVISÃO:</strong> ${order.deliveryTime || '30 - 45 min'}
                     </div>
@@ -5452,71 +6032,235 @@
             await triggerPrintOrder(testOrder);
         }
 
-        // ========== FORMULÁRIO DO CLIENTE ==========
-        function renderCustomerForm() {
+        // ========== FORMULÁRIO DO CLIENTE & ENTREGA POR BAIRRO ==========
+        function renderCustomerForm(force = false) {
+            if (!customerFormContainer) return;
+            const list = (settings.deliveryNeighborhoods && settings.deliveryNeighborhoods.length > 0) 
+                         ? settings.deliveryNeighborhoods 
+                         : DEFAULT_DELIVERY_NEIGHBORHOODS;
+            const activeList = list.filter(n => n.active !== false);
+
             if (customerData) {
+                const deliveryInfo = getActiveDeliveryInfo();
+                const bName = customerData.neighborhood || deliveryInfo.neighborhoodName || 'Centro';
+                const zName = customerData.neighborhoodZone || deliveryInfo.neighborhoodZoneName || 'RJ';
+
                 // Mostrar dados salvos
                 customerFormContainer.innerHTML = `
-                    <div class="saved-customer">
-                        <div class="saved-customer-header">
-                            <div class="saved-customer-title">
-                                ✅ Dados de Entrega (Preenchidos)
+                    <div class="saved-customer" style="border: 1px solid var(--primary-light, #E9D5FF); background: #FAF5FF; border-radius: 8px; padding: 0.75rem;">
+                        <div class="saved-customer-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                            <div class="saved-customer-title" style="font-weight: 800; font-size: 0.85rem; color: var(--primary-dark, #59176B);">
+                                ✅ Endereço de Entrega Selecionado
                             </div>
-                            <button class="btn-edit-customer" onclick="editCustomerData()">Editar</button>
+                            <button type="button" class="btn-edit-customer" onclick="editCustomerData()" style="font-size: 0.75rem; color: var(--primary); background: white; border: 1px solid var(--primary); padding: 0.2rem 0.6rem; border-radius: 4px; cursor: pointer; font-weight: 700;">Editar</button>
                         </div>
-                        <div class="saved-customer-info">
-                            <strong>${customerData.name}</strong><br>
-                            ${customerData.address}<br>
-                            📱 ${customerData.phone}
+                        <div class="saved-customer-info" style="font-size: 0.83rem; line-height: 1.4; color: var(--gray-800);">
+                            <strong>👤 ${customerData.name}</strong><br>
+                            🛵 <strong>Bairro:</strong> ${bName} <span style="font-size: 0.75rem; background: #E0E7FF; color: #3730A3; padding: 0.1rem 0.35rem; border-radius: 4px; font-weight: 700;">${zName}</span><br>
+                            📍 <strong>Endereço:</strong> ${customerData.address}<br>
+                            ${customerData.reference ? `🎯 <strong>Ponto de Ref.:</strong> ${customerData.reference}<br>` : ''}
+                            📱 <strong>Telefone:</strong> ${customerData.phone}<br>
+                            <div style="margin-top: 0.4rem; padding-top: 0.35rem; border-top: 1px dashed #CBD5E1; font-size: 0.78rem; color: #047857; font-weight: 700;">
+                                🛵 Frete: R$ ${deliveryInfo.fee.toFixed(2).replace('.', ',')} | ⏱️ Previsão: ${deliveryInfo.time}
+                            </div>
                         </div>
                     </div>
                 `;
             } else {
+                // Se o formulário já existir no DOM e não forçado, não recriar para manter valores e seleção do usuário
+                if (!force && document.getElementById('customerDataForm')) {
+                    return;
+                }
+
+                // Prefill inicial com cliente logado se houver
+                const initialName = loggedCustomer ? (loggedCustomer.name || '') : '';
+                const initialAddress = loggedCustomer ? (loggedCustomer.address || '') : '';
+                const initialRef = loggedCustomer ? (loggedCustomer.reference || '') : '';
+                const initialPhone = loggedCustomer ? (loggedCustomer.phone || '') : '';
+                const initialNeighborhoodId = loggedCustomer ? (loggedCustomer.neighborhoodId || '') : '';
+
+                // Montar opções agrupadas por região
+                const centroItems = activeList.filter(n => n.zone === 'centro');
+                const zonaSulItems = activeList.filter(n => n.zone === 'zona_sul');
+                const zonaNorteItems = activeList.filter(n => n.zone === 'zona_norte');
+                const outrosItems = activeList.filter(n => n.zone !== 'centro' && n.zone !== 'zona_sul' && n.zone !== 'zona_norte');
+
+                const renderOptions = (items) => items.map(n => {
+                    const feeStr = typeof n.fee === 'number' ? n.fee.toFixed(2).replace('.', ',') : parseFloat(n.fee || 0).toFixed(2).replace('.', ',');
+                    const isSelected = initialNeighborhoodId && (initialNeighborhoodId === n.id || initialNeighborhoodId === n.name) ? 'selected' : '';
+                    return `<option value="${n.id}" ${isSelected}>${n.name} (R$ ${feeStr} • ${n.time || '30-45 min'})</option>`;
+                }).join('');
+
                 // Mostrar formulário
                 customerFormContainer.innerHTML = `
                     <div class="customer-form">
-                        <div class="customer-form-title" style="display: flex; justify-content: space-between; align-items: center;">
-                            <span>📋 Dados para Entrega</span>
+                        <div class="customer-form-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <span style="font-weight: 800; font-size: 0.88rem; color: var(--gray-800);">📋 Dados para Entrega</span>
                             <button type="button" onclick="openCustomerAuthModal('login')" style="background: none; border: none; color: var(--primary); font-weight: 700; font-size: 0.75rem; cursor: pointer;">🔑 Entrar/Cadastrar</button>
                         </div>
                         <form id="customerDataForm" onsubmit="saveCustomerData(event)">
-                            <input 
-                                type="text" 
-                                class="form-input-small" 
-                                id="customerName" 
-                                placeholder="Nome completo *" 
-                                required
-                            >
-                            <input 
-                                type="text" 
-                                class="form-input-small" 
-                                id="customerAddress" 
-                                placeholder="Endereço completo *" 
-                                required
-                            >
-                            <input 
-                                type="tel" 
-                                class="form-input-small" 
-                                id="customerPhone" 
-                                placeholder="Telefone (ex: 21999999999) *" 
-                                required
-                            >
-                            <button type="submit" class="btn-admin btn-success" style="width: 100%;">
-                                💾 Salvar Dados
+                            <div style="margin-bottom: 0.45rem;">
+                                <input 
+                                    type="text" 
+                                    class="form-input-small" 
+                                    id="customerName" 
+                                    placeholder="Nome completo *" 
+                                    value="${initialName ? initialName.replace(/"/g, '&quot;') : ''}"
+                                    required
+                                >
+                            </div>
+
+                            <div style="margin-bottom: 0.45rem;">
+                                <select 
+                                    id="customerNeighborhood" 
+                                    class="form-input-small" 
+                                    required 
+                                    onchange="handleCustomerNeighborhoodChange(this.value)"
+                                    style="font-weight: 600; color: #1E293B;"
+                                >
+                                    <option value="">🛵 Selecione seu Bairro / Região *</option>
+                                    ${centroItems.length > 0 ? `<optgroup label="🏙️ Centro">${renderOptions(centroItems)}</optgroup>` : ''}
+                                    ${zonaSulItems.length > 0 ? `<optgroup label="🌊 Zona Sul">${renderOptions(zonaSulItems)}</optgroup>` : ''}
+                                    ${zonaNorteItems.length > 0 ? `<optgroup label="🌳 Zona Norte">${renderOptions(zonaNorteItems)}</optgroup>` : ''}
+                                    ${outrosItems.length > 0 ? `<optgroup label="➕ Outras Regiões">${renderOptions(outrosItems)}</optgroup>` : ''}
+                                    <option value="other">➕ Outro Bairro (Taxa Base: R$ ${(settings.deliveryFee || 5).toFixed(2).replace('.', ',')})</option>
+                                </select>
+                                <div id="customerCustomNeighborhoodWrapper" style="display: none; margin-top: 0.35rem;">
+                                    <input 
+                                        type="text" 
+                                        class="form-input-small" 
+                                        id="customerCustomNeighborhood" 
+                                        placeholder="Digite o nome do seu bairro *" 
+                                        style="border-color: var(--primary);"
+                                    >
+                                </div>
+                                <div id="customerNeighborhoodBadge" style="display: none; font-size: 0.76rem; color: #047857; background: #ECFDF5; padding: 0.25rem 0.5rem; border-radius: 6px; margin-top: 0.25rem; border: 1px solid #A7F3D0;"></div>
+                            </div>
+
+                            <div style="margin-bottom: 0.45rem;">
+                                <input 
+                                    type="text" 
+                                    class="form-input-small" 
+                                    id="customerAddress" 
+                                    placeholder="Rua, Número e Complemento *" 
+                                    value="${initialAddress ? initialAddress.replace(/"/g, '&quot;') : ''}"
+                                    required
+                                >
+                            </div>
+
+                            <div style="margin-bottom: 0.45rem;">
+                                <input 
+                                    type="text" 
+                                    class="form-input-small" 
+                                    id="customerReference" 
+                                    placeholder="Ponto de Referência (ex: próx. ao mercado, portão branco)" 
+                                    value="${initialRef ? initialRef.replace(/"/g, '&quot;') : ''}"
+                                >
+                            </div>
+
+                            <div style="margin-bottom: 0.45rem;">
+                                <input 
+                                    type="tel" 
+                                    class="form-input-small" 
+                                    id="customerPhone" 
+                                    placeholder="WhatsApp / Telefone (ex: 21999999999) *" 
+                                    value="${initialPhone ? initialPhone.replace(/"/g, '&quot;') : ''}"
+                                    required
+                                >
+                            </div>
+
+                            <button type="submit" class="btn-admin btn-success" style="width: 100%; font-weight: 800; font-size: 0.85rem; padding: 0.5rem;">
+                                💾 Confirmar Endereço & Calcular Frete
                             </button>
                         </form>
                     </div>
                 `;
+
+                if (initialNeighborhoodId) {
+                    const sel = document.getElementById('customerNeighborhood');
+                    if (sel && sel.value) {
+                        handleCustomerNeighborhoodChange(sel.value);
+                    }
+                }
             }
         }
 
         function saveCustomerData(event) {
-            event.preventDefault();
+            if (event && event.preventDefault) {
+                event.preventDefault();
+            }
+            
+            const nameInput = document.getElementById('customerName');
+            const addressInput = document.getElementById('customerAddress');
+            const phoneInput = document.getElementById('customerPhone');
+            const refInput = document.getElementById('customerReference');
+            const nSelect = document.getElementById('customerNeighborhood');
+
+            const nameVal = nameInput ? nameInput.value.trim() : '';
+            const addressVal = addressInput ? addressInput.value.trim() : '';
+            const phoneVal = phoneInput ? phoneInput.value.trim() : '';
+            const refValue = refInput ? refInput.value.trim() : '';
+
+            if (!nameVal) {
+                showNotification('Por favor, digite seu nome completo!', 'warning');
+                nameInput?.focus();
+                return false;
+            }
+
+            const nId = nSelect ? nSelect.value : null;
+            if (!nId) {
+                showNotification('Por favor, selecione seu bairro / região de entrega!', 'warning');
+                nSelect?.focus();
+                return false;
+            }
+
+            let nName = '';
+            let nZone = '';
+            let nZoneName = '';
+
+            const list = (settings.deliveryNeighborhoods && settings.deliveryNeighborhoods.length > 0) 
+                         ? settings.deliveryNeighborhoods 
+                         : DEFAULT_DELIVERY_NEIGHBORHOODS;
+
+            if (nId === 'other') {
+                const customName = document.getElementById('customerCustomNeighborhood')?.value.trim();
+                if (!customName) {
+                    showNotification('Por favor, digite o nome do seu bairro!', 'warning');
+                    document.getElementById('customerCustomNeighborhood')?.focus();
+                    return false;
+                }
+                nName = customName;
+                nZone = 'outra';
+                nZoneName = 'Outra Região';
+            } else if (nId) {
+                const found = list.find(n => n.id === nId);
+                if (found) {
+                    nName = found.name;
+                    nZone = found.zone;
+                    nZoneName = found.zoneName || (found.zone === 'centro' ? 'Centro' : (found.zone === 'zona_sul' ? 'Zona Sul' : (found.zone === 'zona_norte' ? 'Zona Norte' : 'Outra Região')));
+                }
+            }
+
+            if (!addressVal) {
+                showNotification('Por favor, informe seu endereço completo!', 'warning');
+                addressInput?.focus();
+                return false;
+            }
+
+            if (!phoneVal) {
+                showNotification('Por favor, informe seu WhatsApp ou telefone!', 'warning');
+                phoneInput?.focus();
+                return false;
+            }
             
             customerData = {
-                name: document.getElementById('customerName').value,
-                address: document.getElementById('customerAddress').value,
-                phone: document.getElementById('customerPhone').value
+                name: nameVal,
+                neighborhoodId: nId,
+                neighborhood: nName,
+                neighborhoodZone: nZoneName || nZone,
+                address: addressVal,
+                reference: refValue,
+                phone: phoneVal
             };
             
             localStorage.setItem('customerData', JSON.stringify(customerData));
@@ -5526,30 +6270,51 @@
                 const existing = customerAccounts.find(a => a.phone === customerData.phone);
                 if (existing) {
                     loggedCustomer = existing;
+                    loggedCustomer.name = customerData.name;
+                    loggedCustomer.neighborhood = nName;
+                    loggedCustomer.neighborhoodId = nId;
+                    loggedCustomer.neighborhoodZone = nZoneName;
+                    loggedCustomer.address = customerData.address;
+                    loggedCustomer.reference = refValue;
                 } else {
                     loggedCustomer = {
                         name: customerData.name,
+                        neighborhood: nName,
+                        neighborhoodId: nId,
+                        neighborhoodZone: nZoneName,
                         address: customerData.address,
+                        reference: refValue,
                         phone: customerData.phone,
                         password: '123'
                     };
                     customerAccounts.push(loggedCustomer);
-                    localStorage.setItem('customerAccounts', JSON.stringify(customerAccounts));
                 }
+                localStorage.setItem('customerAccounts', JSON.stringify(customerAccounts));
                 localStorage.setItem('loggedCustomer', JSON.stringify(loggedCustomer));
                 updateCustomerHeaderUI();
+            } else {
+                loggedCustomer.name = customerData.name;
+                loggedCustomer.neighborhood = nName;
+                loggedCustomer.neighborhoodId = nId;
+                loggedCustomer.neighborhoodZone = nZoneName;
+                loggedCustomer.address = customerData.address;
+                loggedCustomer.reference = refValue;
+                localStorage.setItem('loggedCustomer', JSON.stringify(loggedCustomer));
             }
 
             renderCustomerForm();
+            updateCartUI();
             updateCheckoutButton();
             
-            showNotification('Dados de entrega salvos!', 'success');
+            showNotification('Dados de entrega e frete calculados com sucesso!', 'success');
+            return false;
         }
 
         function editCustomerData() {
             customerData = null;
             localStorage.removeItem('customerData');
-            renderCustomerForm();
+            renderCustomerForm(true);
+            updateCartUI(false);
             updateCheckoutButton();
         }
 
@@ -5558,7 +6323,7 @@
             btnCheckout.disabled = !hasCustomerData;
             
             if (!hasCustomerData) {
-                btnCheckout.innerHTML = '📋 Preencha os dados acima';
+                btnCheckout.innerHTML = '📋 Confirme o endereço acima';
                 btnCheckout.style.background = 'var(--gray-300)';
             } else {
                 btnCheckout.innerHTML = '💬 Finalizar no WhatsApp';
@@ -5589,10 +6354,11 @@
                 discountValue = (subtotal * appliedCoupon.discount) / 100;
             }
 
-            const deliveryFee = settings.deliveryFee || 0;
+            const deliveryInfo = getActiveDeliveryInfo();
+            const deliveryFee = deliveryInfo.fee;
+            const estimatedDeliveryTime = deliveryInfo.time;
             const total = Math.max(0, subtotal - discountValue + deliveryFee);
             const paymentMethodLabel = getFormattedPaymentMethod();
-            const estimatedDeliveryTime = settings.deliveryTime || '30 - 45 min';
 
             // Criar registro de pedido para o histórico do cliente e admin
             const activeComp = (companies && companies.find(c => c.id === activeCompanyId)) || settings;
@@ -5607,7 +6373,10 @@
                 companyName: currentCompName,
                 companyWhatsapp: currentCompWa,
                 customerName: customerData.name,
+                customerNeighborhood: customerData.neighborhood || deliveryInfo.neighborhoodName || 'Centro',
+                customerNeighborhoodZone: customerData.neighborhoodZone || deliveryInfo.neighborhoodZoneName || '',
                 customerAddress: customerData.address,
+                customerReference: customerData.reference || '',
                 customerPhone: customerData.phone,
                 paymentMethod: paymentMethodLabel,
                 deliveryTime: estimatedDeliveryTime,
@@ -5634,7 +6403,10 @@
             if (!loggedCustomer) {
                 loggedCustomer = {
                     name: customerData.name,
+                    neighborhood: customerData.neighborhood,
+                    neighborhoodZone: customerData.neighborhoodZone,
                     address: customerData.address,
+                    reference: customerData.reference || '',
                     phone: customerData.phone,
                     password: '123'
                 };
@@ -5649,9 +6421,15 @@
             let message = `*💜 Novo Pedido ${orderId} - ${settings.restaurantName}*\n\n`;
             
             // Dados do cliente
-            message += `*📋 DADOS DO CLIENTE*\n`;
+            message += `*📋 DADOS DO CLIENTE & ENTREGA*\n`;
             message += `👤 Nome: ${customerData.name}\n`;
+            if (newOrder.customerNeighborhood) {
+                message += `🛵 Bairro / Região: ${newOrder.customerNeighborhood}${newOrder.customerNeighborhoodZone ? ` (${newOrder.customerNeighborhoodZone})` : ''}\n`;
+            }
             message += `📍 Endereço: ${customerData.address}\n`;
+            if (customerData.reference) {
+                message += `🎯 Ponto de Referência: ${customerData.reference}\n`;
+            }
             message += `📱 Telefone: ${customerData.phone}\n\n`;
 
             // Forma de Pagamento e Previsão de Entrega
@@ -5953,6 +6731,12 @@
         window.deleteOrder = deleteOrder;
         window.openCustomerOrdersModal = openCustomerOrdersModal;
         window.closeCustomerOrdersModal = closeCustomerOrdersModal;
+        window.saveCustomerData = saveCustomerData;
+        window.editCustomerData = editCustomerData;
+        window.renderCustomerForm = renderCustomerForm;
+        window.handleCustomerNeighborhoodChange = handleCustomerNeighborhoodChange;
+        window.updateCheckoutButton = updateCheckoutButton;
+        window.checkout = checkout;
 
         // Funções do Painel Dev e Multi-Empresa
         window.logoutDev = logoutDev;
@@ -5995,6 +6779,8 @@
         window.openCustomerAuthModal = openCustomerAuthModal;
         window.closeCustomerAuthModal = closeCustomerAuthModal;
         window.switchAuthTab = switchAuthTab;
+        window.populateAuthRegisterNeighborhoods = populateAuthRegisterNeighborhoods;
+        window.handleAuthRegisterNeighborhoodChange = handleAuthRegisterNeighborhoodChange;
         window.logoutCustomer = logoutCustomer;
         window.toggleMobileHeaderMenu = toggleMobileHeaderMenu;
         window.closeMobileHeaderMenu = closeMobileHeaderMenu;
