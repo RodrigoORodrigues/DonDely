@@ -5902,67 +5902,145 @@
         }
 
         function printOrderSystemThermal(order) {
-            let area = document.getElementById('thermalPrintArea');
-            if (!area) {
-                area = document.createElement('div');
-                area.id = 'thermalPrintArea';
-                document.body.appendChild(area);
-            }
+            if (!order) return;
 
-            const pWidth = (printerSettings.paperWidth || 58) + 'mm';
+            const pWidthNum = printerSettings.paperWidth || 58;
+            const pWidth = pWidthNum + 'mm';
             const storeName = (settings.restaurantName || 'DON DELIVERY').toUpperCase();
             const storeAddress = (settings.address || '').trim();
             const storeCnpj = (settings.cnpj || '').trim();
             const storeInstagram = (settings.instagram || '@acainaquentinha_do_fb').trim();
 
-            area.innerHTML = `
-                <div style="font-family: 'Courier New', Courier, monospace; font-size: 12px; width: ${pWidth}; margin: 0 auto; text-align: center; color: #000; line-height: 1.25; padding: 4px;">
-                    <div style="font-size: 15px; font-weight: bold; text-transform: uppercase;">${storeName}</div>
-                    ${storeCnpj ? `<div style="font-size: 10px; margin-top: 1px; color: #333;">CNPJ: ${storeCnpj}</div>` : ''}
-                    ${storeAddress ? `<div style="font-size: 10px; margin-top: 2px; color: #333;">${storeAddress}</div>` : ''}
-                    <div style="font-size: 11px; margin: 3px 0;">COMPROVANTE DE PEDIDO (${pWidth})</div>
-                    <div>================================</div>
-                    <div style="text-align: left; margin: 4px 0; font-size: 11px;">
-                        <strong>PEDIDO:</strong> ${order.id}<br>
-                        <strong>DATA:</strong> ${order.date}<br>
-                        <strong>CLIENTE:</strong> ${order.customerName}<br>
-                        <strong>TELEFONE:</strong> ${order.customerPhone}<br>
-                        ${order.customerNeighborhood ? `<strong>BAIRRO:</strong> ${order.customerNeighborhood}${order.customerNeighborhoodZone ? ` (${order.customerNeighborhoodZone})` : ''}<br>` : ''}
-                        <strong>ENDEREÇO:</strong> ${order.customerAddress}<br>
-                        ${order.customerReference ? `<strong>PONTO DE REF.:</strong> ${order.customerReference}<br>` : ''}
-                        <strong>PAGAMENTO:</strong> ${order.paymentMethod || 'Pix'}<br>
-                        <strong>PREVISÃO:</strong> ${order.deliveryTime || '30 - 45 min'}
+            const items = order.items || [];
+            const subtotalVal = typeof order.subtotal === 'number' ? order.subtotal : (parseFloat(order.subtotal) || 0);
+            const discountVal = typeof order.discountValue === 'number' ? order.discountValue : (typeof order.discount === 'number' ? order.discount : (parseFloat(order.discountValue || order.discount) || 0));
+            const deliveryFeeVal = typeof order.deliveryFee === 'number' ? order.deliveryFee : (parseFloat(order.deliveryFee) || 0);
+            const totalVal = typeof order.total === 'number' ? order.total : (parseFloat(order.total) || 0);
+
+            const receiptContentHtml = `
+                <div class="thermal-ticket" style="font-family: 'Courier New', Courier, monospace; font-size: 11px; width: 100%; max-width: ${pWidth}; margin: 0 auto; text-align: center; color: #000000; line-height: 1.25; padding: 4px; box-sizing: border-box; background: #FFFFFF;">
+                    <div style="font-size: 14px; font-weight: bold; text-transform: uppercase;">${storeName}</div>
+                    ${storeCnpj ? `<div style="font-size: 9.5px; margin-top: 1px; color: #000;">CNPJ: ${storeCnpj}</div>` : ''}
+                    ${storeAddress ? `<div style="font-size: 9.5px; margin-top: 1px; color: #000;">${storeAddress}</div>` : ''}
+                    <div style="font-size: 10px; margin: 3px 0; font-weight: bold;">COMPROVANTE DE PEDIDO (${pWidth})</div>
+                    <div style="border-top: 1px dashed #000; margin: 3px 0;"></div>
+                    
+                    <div style="text-align: left; margin: 4px 0; font-size: 10.5px; line-height: 1.35;">
+                        <div><strong>PEDIDO:</strong> ${order.id || '#0000'}</div>
+                        <div><strong>DATA:</strong> ${order.date || new Date().toLocaleString('pt-BR')}</div>
+                        <div><strong>CLIENTE:</strong> ${order.customerName || 'Cliente'}</div>
+                        <div><strong>TEL:</strong> ${order.customerPhone || '-'}</div>
+                        ${order.customerNeighborhood ? `<div><strong>BAIRRO:</strong> ${order.customerNeighborhood}${order.customerNeighborhoodZone ? ` (${order.customerNeighborhoodZone})` : ''}</div>` : ''}
+                        <div><strong>ENDEREÇO:</strong> ${order.customerAddress || '-'}</div>
+                        ${order.customerReference ? `<div><strong>REF:</strong> ${order.customerReference}</div>` : ''}
+                        <div><strong>PAGAMENTO:</strong> ${order.paymentMethod || 'Pix'}</div>
+                        <div><strong>PREVISÃO:</strong> ${order.deliveryTime || '30 - 45 min'}</div>
                     </div>
-                    <div>================================</div>
-                    <div style="text-align: left; font-weight: bold; margin-top: 4px;">ITENS SOLICITADOS:</div>
+                    
+                    <div style="border-top: 1px dashed #000; margin: 3px 0;"></div>
+                    <div style="text-align: left; font-weight: bold; margin: 3px 0; font-size: 11px;">ITENS SOLICITADOS:</div>
                     <div style="text-align: left; margin-bottom: 4px;">
-                        ${order.items.map(item => `
-                            <div style="margin-top: 4px;">
-                                <strong>${item.quantity}x ${item.name}</strong> - R$ ${(item.price * item.quantity).toFixed(2).replace('.', ',')}
-                                ${item.details ? `<div style="font-size: 10px; padding-left: 6px; color: #333;">> ${item.details}</div>` : ''}
-                            </div>
-                        `).join('')}
+                        ${items.map(item => {
+                            const itemPrice = typeof item.price === 'number' ? item.price : (parseFloat(item.price) || 0);
+                            const itemTotal = (itemPrice * (item.quantity || 1)).toFixed(2).replace('.', ',');
+                            return `
+                                <div style="margin-top: 3px; font-size: 10.5px;">
+                                    <strong>${item.quantity || 1}x ${item.name}</strong> - R$ ${itemTotal}
+                                    ${item.details ? `<div style="font-size: 9.5px; padding-left: 6px; color: #111;">> ${item.details}</div>` : ''}
+                                </div>
+                            `;
+                        }).join('')}
                     </div>
-                    <div>================================</div>
-                    <div style="text-align: right; margin-top: 4px; font-size: 12px;">
-                        ${order.subtotal ? `<div>Subtotal: R$ ${order.subtotal.toFixed(2).replace('.', ',')}</div>` : ''}
-                        ${(order.discountValue || order.discount) ? `<div style="color: #047857; font-weight: bold;">Desconto (${order.couponCode || 'Cupom'}): -R$ ${(order.discountValue || order.discount).toFixed(2).replace('.', ',')}</div>` : ''}
-                        ${order.deliveryFee ? `<div>Taxa Entrega: R$ ${order.deliveryFee.toFixed(2).replace('.', ',')}</div>` : ''}
-                        <div style="font-weight: bold; font-size: 14px; margin-top: 2px;">TOTAL: R$ ${order.total.toFixed(2).replace('.', ',')}</div>
+                    
+                    <div style="border-top: 1px dashed #000; margin: 3px 0;"></div>
+                    <div style="text-align: right; margin-top: 4px; font-size: 11px; line-height: 1.35;">
+                        ${subtotalVal > 0 ? `<div>Subtotal: R$ ${subtotalVal.toFixed(2).replace('.', ',')}</div>` : ''}
+                        ${discountVal > 0 ? `<div style="font-weight: bold;">Desconto (${order.couponCode || 'Cupom'}): -R$ ${discountVal.toFixed(2).replace('.', ',')}</div>` : ''}
+                        <div>Taxa Entrega: R$ ${deliveryFeeVal.toFixed(2).replace('.', ',')}</div>
+                        <div style="font-weight: bold; font-size: 13px; margin-top: 3px; border-top: 1px solid #000; padding-top: 2px;">TOTAL: R$ ${totalVal.toFixed(2).replace('.', ',')}</div>
                     </div>
-                    <div>================================</div>
-                    <div style="margin-top: 6px; font-size: 10px; text-align: center;">
+                    
+                    <div style="border-top: 1px dashed #000; margin: 4px 0 2px 0;"></div>
+                    <div style="margin-top: 4px; font-size: 9.5px; text-align: center;">
                         Obrigado pela preferência!<br>
                         ${storeInstagram ? `<span>${storeInstagram}</span>` : ''}
                     </div>
                 </div>
             `;
 
-            area.style.display = 'block';
-            window.print();
-            setTimeout(() => {
-                area.style.display = 'none';
-            }, 1000);
+            // 1. Atualizar div #thermalPrintArea na página principal (garante que window.print funcione)
+            let area = document.getElementById('thermalPrintArea');
+            if (!area) {
+                area = document.createElement('div');
+                area.id = 'thermalPrintArea';
+                document.body.appendChild(area);
+            }
+            area.innerHTML = receiptContentHtml;
+
+            // 2. Tentar imprimir via Iframe isolado (elimina interferência de estilos do app e páginas em branco)
+            try {
+                let iframe = document.getElementById('thermalPrintIframe');
+                if (iframe) {
+                    iframe.remove();
+                }
+                iframe = document.createElement('iframe');
+                iframe.id = 'thermalPrintIframe';
+                iframe.setAttribute('style', 'position: fixed; top: -9999px; left: -9999px; width: 300px; height: 300px; border: 0; visibility: hidden;');
+                document.body.appendChild(iframe);
+
+                const iframeDoc = iframe.contentWindow || iframe.contentDocument;
+                const doc = iframe.contentDocument || iframe.contentWindow.document;
+
+                doc.open();
+                doc.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="utf-8">
+                        <title>Comprovante - ${order.id || 'Pedido'}</title>
+                        <style>
+                            @page {
+                                size: ${pWidth} auto;
+                                margin: 0;
+                            }
+                            * {
+                                box-sizing: border-box;
+                                margin: 0;
+                                padding: 0;
+                            }
+                            html, body {
+                                width: 100%;
+                                max-width: ${pWidth};
+                                margin: 0 auto;
+                                padding: 0;
+                                background: #FFFFFF;
+                                color: #000000;
+                                font-family: 'Courier New', Courier, monospace;
+                                -webkit-print-color-adjust: exact;
+                                print-color-adjust: exact;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        ${receiptContentHtml}
+                    </body>
+                    </html>
+                `);
+                doc.close();
+
+                setTimeout(() => {
+                    try {
+                        iframe.contentWindow.focus();
+                        iframe.contentWindow.print();
+                    } catch (e) {
+                        console.warn('Iframe print error, falling back to window.print:', e);
+                        window.print();
+                    }
+                }, 250);
+            } catch (err) {
+                console.warn('Erro ao criar iframe de impressão, fallback para window.print:', err);
+                window.print();
+            }
         }
 
         async function triggerPrintOrder(orderId) {

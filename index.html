@@ -4053,28 +4053,47 @@
             filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.35));
         }
 
-        /* REGRAS DE IMPRESSÃO 58MM TICKET TÉRMICO (window.print) */
+        /* REGRAS DE IMPRESSÃO 58MM / 80MM TICKET TÉRMICO */
+        #thermalPrintArea {
+            display: none;
+        }
+
         @media print {
-            body * {
-                visibility: hidden !important;
+            html, body {
+                width: 100% !important;
+                height: auto !important;
+                min-height: auto !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #FFFFFF !important;
+                color: #000000 !important;
+                overflow: visible !important;
             }
-            #thermalPrintArea, #thermalPrintArea * {
-                visibility: visible !important;
+            body > *:not(#thermalPrintArea) {
+                display: none !important;
             }
             #thermalPrintArea {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 58mm;
-                padding: 2mm 0;
-                font-family: 'Courier New', Courier, monospace;
-                font-size: 11px;
-                line-height: 1.25;
-                color: #000;
-                background: #fff;
+                display: block !important;
+                visibility: visible !important;
+                position: static !important;
+                width: 100% !important;
+                max-width: 58mm;
+                margin: 0 auto !important;
+                padding: 2mm !important;
+                box-sizing: border-box !important;
+                font-family: 'Courier New', Courier, monospace !important;
+                font-size: 11px !important;
+                line-height: 1.25 !important;
+                color: #000000 !important;
+                background: #FFFFFF !important;
+            }
+            #thermalPrintArea * {
+                visibility: visible !important;
+                color: #000000 !important;
+                background: transparent !important;
             }
             @page {
-                size: 58mm auto;
+                size: auto;
                 margin: 0;
             }
         }
