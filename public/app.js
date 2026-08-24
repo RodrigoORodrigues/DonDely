@@ -5439,13 +5439,10 @@
                 }
             }
 
-            // SEÇÃO 3: FERRAMENTAS & ADQUIRIR SISTEMA
+            // SEÇÃO 3: FERRAMENTAS & ACESSO
             itemsHtml += `<div class="mobile-dropdown-divider"></div>`;
             itemsHtml += `<div class="mobile-dropdown-header">Recursos & Acesso</div>`;
             itemsHtml += `
-                <button type="button" class="mobile-dropdown-item" onclick="closeMobileHeaderMenu(); openAcquireAppModal();" style="color: #D97706; font-weight: 800; background: #FEF3C7;">
-                    💎 Adquirir Don Delivery
-                </button>
                 <button type="button" class="mobile-dropdown-item" onclick="closeMobileHeaderMenu(); openQrCodeModal();" style="color: #4F46E5; font-weight: 700;">
                     📱 QR Code & Mesas
                 </button>
