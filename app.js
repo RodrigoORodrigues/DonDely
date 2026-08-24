@@ -3504,16 +3504,15 @@
             const modal = document.getElementById('passwordModal');
             if (modal) modal.classList.add('active');
             const emailInput = document.getElementById('companyLoginEmail');
-            const activeComp = companies.find(c => c.id === activeCompanyId);
             
             if (emailInput) {
-                emailInput.value = (activeComp && activeComp.email) ? activeComp.email : '';
+                emailInput.value = '';
             }
             if (passwordInput) passwordInput.value = '';
             if (passwordError) passwordError.style.display = 'none';
 
             setTimeout(() => {
-                if (emailInput && !emailInput.value) {
+                if (emailInput) {
                     emailInput.focus();
                 } else if (passwordInput) {
                     passwordInput.focus();
