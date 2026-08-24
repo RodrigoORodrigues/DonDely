@@ -869,10 +869,27 @@
             }
         };
 
+        // Helper para obter a empresa ativa no sistema
+        function getActiveCompany() {
+            if (companies && companies.length > 0) {
+                const found = companies.find(c => c.id === activeCompanyId);
+                if (found) return found;
+                return companies[0];
+            }
+            return {
+                id: activeCompanyId || 'company-fb-default',
+                name: (settings && settings.restaurantName) || 'Don Delivery',
+                slug: (settings && settings.slug) || 'demo',
+                presetType: (settings && settings.presetType) || 'acai',
+                email: (settings && settings.email) || 'donfim@gmail.com',
+                whatsappNumber: (settings && settings.whatsappNumber) || '5521972888819'
+            };
+        }
+
         // Helper para obter a categoria atual da empresa
         function getActiveCompanyPresetType() {
-            if (settings.presetType) return settings.presetType;
-            const activeComp = companies.find(c => c.id === activeCompanyId);
+            if (settings && settings.presetType) return settings.presetType;
+            const activeComp = getActiveCompany();
             if (activeComp && activeComp.presetType) return activeComp.presetType;
             return 'acai';
         }
@@ -1209,7 +1226,236 @@
             showNotification(`Sistema e cardápio completamente atualizados para "${profile.name}"! 🚀🎨`, 'success');
         }
 
+        // ========== FUNÇÕES UTILITÁRIAS DE SLUGS E LINKS DE ACESSO (dondelivery.site) ==========
+        function sanitizeSlug(text) {
+            if (!text) return '';
+            return text
+                .toString()
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '')
+                .substring(0, 40);
+        }
+
+        function generateSlug(text) {
+            const clean = sanitizeSlug(text);
+            return clean || ('loja-' + Date.now().toString(36));
+        }
+
+        function getCompanySlug(comp) {
+            if (!comp) return 'demo';
+            if (comp.slug) return sanitizeSlug(comp.slug);
+            if (comp.isDemo || comp.id === 'company-demo-don') return 'demo';
+            if (comp.id === 'company-fb-default') return 'acai-fb';
+            return generateSlug(comp.name || comp.id);
+        }
+
+        function getCompanyOfficialUrl(comp) {
+            const slug = getCompanySlug(comp);
+            return `https://dondelivery.site/?empresa=${encodeURIComponent(slug)}`;
+        }
+
+        function getCompanyCurrentUrl(comp) {
+            const slug = getCompanySlug(comp);
+            return `${window.location.origin}/?empresa=${encodeURIComponent(slug)}`;
+        }
+
+        function copyActiveCompanyOfficialLink() {
+            let activeComp = companies.find(c => c.id === activeCompanyId);
+            const url = getCompanyOfficialUrl(activeComp);
+            navigator.clipboard.writeText(url).then(() => {
+                showNotification(`Link oficial copiado: ${url} 📋`, 'success');
+            }).catch(() => {
+                prompt('Copie o link oficial do seu cardápio:', url);
+            });
+        }
+
+        function shareActiveCompanyWhatsApp() {
+            let activeComp = companies.find(c => c.id === activeCompanyId);
+            const url = getCompanyOfficialUrl(activeComp);
+            const name = activeComp ? activeComp.name : settings.restaurantName;
+            const text = encodeURIComponent(`Olá! Confira nosso cardápio digital completo e faça seu pedido online no *${name}* através do link oficial:\n${url}`);
+            window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+        }
+
+        function copyCompanyLink(slugOrId) {
+            const comp = companies.find(c => c.slug === slugOrId || c.id === slugOrId || getCompanySlug(c) === slugOrId);
+            const url = getCompanyOfficialUrl(comp);
+            navigator.clipboard.writeText(url).then(() => {
+                showNotification(`Link oficial copiado: ${url} 📋`, 'success');
+            }).catch(() => {
+                prompt('Copie o link oficial:', url);
+            });
+        }
+
+        function handleSlugSanitize(inputEl) {
+            if (!inputEl) return;
+            const clean = sanitizeSlug(inputEl.value);
+            inputEl.value = clean;
+        }
+
+        function handleAdminNameSlugSync(inputEl) {
+            const slugInput = document.getElementById('restaurantSlug');
+            if (slugInput && !slugInput.dataset.manualEdit) {
+                slugInput.value = generateSlug(inputEl.value);
+                updateAdminShareLinkDisplay();
+            }
+        }
+
+        function handleAdminSlugInput(inputEl) {
+            if (!inputEl) return;
+            inputEl.dataset.manualEdit = 'true';
+            inputEl.value = sanitizeSlug(inputEl.value);
+            updateAdminShareLinkDisplay();
+        }
+
+        function handleDevNewNameSlugSync(inputEl) {
+            const slugInput = document.getElementById('devNewCompSlug');
+            if (slugInput && !slugInput.dataset.manualEdit) {
+                slugInput.value = generateSlug(inputEl.value);
+            }
+        }
+
+        function updateAdminShareLinkDisplay() {
+            const slugInput = document.getElementById('restaurantSlug');
+            const slugVal = (slugInput && slugInput.value.trim()) || 'sua-loja';
+            const urlText = document.getElementById('adminCompanyShareUrlText');
+            const slugBadge = document.getElementById('adminCompanySlugBadge');
+            const openBtn = document.getElementById('adminCompanyOpenLinkBtn');
+            
+            if (urlText) urlText.textContent = `https://dondelivery.site/?empresa=${slugVal}`;
+            if (slugBadge) slugBadge.textContent = `dondelivery.site/?empresa=${slugVal}`;
+            if (openBtn) openBtn.href = `${window.location.origin}/?empresa=${slugVal}`;
+        }
+
         // ========== ARQUITETURA MULTI-EMPRESA UNIVERSAL & ISOLAMENTO DE BANCO DE DADOS ==========
+        const defaultDemoCompany = {
+            id: 'company-demo-don',
+            slug: 'demo',
+            isDemo: true,
+            name: 'Don Delivery',
+            email: 'demo@dondelivery.site',
+            subtitle: 'Cardápio Digital & Delivery Oficial! Faça seu pedido teste e monte do seu jeito.',
+            whatsappNumber: '5521999999999',
+            instagram: '@dondelivery.site',
+            cnpj: '00.000.000/0001-99',
+            address: 'Av. Brasil, 500 - Loja Modelo',
+            logoUrl: 'Logo_Don.png',
+            adminPassword: 'admin',
+            deliveryFee: 5.00,
+            deliveryTime: '25 - 40 min',
+            presetType: 'burguer',
+            themeColors: {
+                primary: '#0284C7',
+                primaryDark: '#0369A1',
+                secondary: '#38BDF8',
+                bgAccent: '#F0F9FF'
+            },
+            coupons: [
+                { code: 'DON10', discount: 10, type: 'percent', minOrder: 30, active: true },
+                { code: 'BEMVINDO', discount: 5, type: 'fixed', minOrder: 20, active: true },
+                { code: 'FRETEGRATIS', discount: 5, type: 'fixed', minOrder: 40, active: true }
+            ],
+            products: [
+                {
+                    id: 101,
+                    name: '🍔 Don Smash Burger Bacon Duplo',
+                    tag: '🔥 HAMBURGUERIA',
+                    description: 'Pão brioche tostado, 2x smash burger artesanal 90g com crostinha crocante, cheddar duplo derretido, bacon fatiado e maionese secreta da casa.',
+                    price: 28.90,
+                    image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&fit=crop',
+                    available: true,
+                    isAcai: false
+                },
+                {
+                    id: 201,
+                    name: '🍕 Pizza Calabresa Artesanal Especial',
+                    tag: '🍕 PIZZARIA',
+                    description: 'Massa artesanal italiana de longa fermentação, molho pelati fresco, calabresa selecionada fatiada, muçarela derretida, cebola roxa e orégano.',
+                    price: 45.00,
+                    image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500&fit=crop',
+                    available: true,
+                    isAcai: false
+                },
+                {
+                    id: 1,
+                    name: '🍧 Copo de Açaí Supremo 500ml Turbinado',
+                    tag: '🍧 AÇAÍ & SORVETES',
+                    description: 'Açaí artesanal super cremoso montado em camadas com Leite Ninho, Nutella pura, Morangos frescos fatiados, Banana e Granola crocante + adicionais à sua escolha.',
+                    price: 22.90,
+                    image: 'acai_copo.svg',
+                    available: true,
+                    isAcai: true
+                },
+                {
+                    id: 301,
+                    name: '🍱 Marmita Executiva Bife Acebolado Premium',
+                    tag: '🍱 MARMITARIA',
+                    description: 'Bife bovino macio grelhado na chapa com cebolas douradas, arroz branco soltinho, feijão carioca fresquinho, farofa crocante e salada da horta.',
+                    price: 24.90,
+                    image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&fit=crop',
+                    available: true,
+                    isAcai: false
+                },
+                {
+                    id: 401,
+                    name: '🍰 Bolo de Pote Ninho com Nutella & Morango',
+                    tag: '🍰 CONFEITARIA',
+                    description: 'Pão de ló leve e molhadinho intercalado com camadas generosas de brigadeiro de Leite Ninho, Nutella pura e pedaços de morangos frescos.',
+                    price: 14.50,
+                    image: 'https://images.unsplash.com/photo-1587314168485-3236d6710814?w=500&fit=crop',
+                    available: true,
+                    isAcai: false
+                },
+                {
+                    id: 104,
+                    name: '🥤 Coca-Cola Original Lata 350ml Geladíssima',
+                    tag: '🥤 BEBIDAS',
+                    description: 'Lata 350ml trincando de gelada com limão e gelo sob consulta.',
+                    price: 6.50,
+                    image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=500&fit=crop',
+                    available: true,
+                    isAcai: false
+                }
+            ],
+            schedule: defaultSettings.schedule,
+            deliveryNeighborhoods: [
+                { id: 'b1', name: 'Centro / Região Central', fee: 3.00, time: '20 - 35 min', zone: 'Zona 1' },
+                { id: 'b2', name: 'Jardins / Bairro Nobre', fee: 5.00, time: '25 - 40 min', zone: 'Zona 2' },
+                { id: 'b3', name: 'Vila Nova / Zona Sul', fee: 7.00, time: '30 - 45 min', zone: 'Zona 3' },
+                { id: 'b4', name: 'Planalto / Zona Norte', fee: 9.00, time: '35 - 50 min', zone: 'Zona 4' }
+            ]
+        };
+
+        const defaultFB = {
+            id: 'company-fb-default',
+            slug: 'acai-fb',
+            isDemo: false,
+            name: 'Açaí na Quentinha do FB',
+            email: 'donfim@gmail.com',
+            subtitle: 'Sabor que conquista na primeira colherada! Monte do seu jeito.',
+            whatsappNumber: '5521972888819',
+            instagram: '@acainaquentinha_do_fb',
+            cnpj: '45.123.789/0001-90',
+            address: 'Rua Principal, 123 - Centro',
+            logoUrl: 'Logo.jpg',
+            adminPassword: 'admin123',
+            deliveryFee: 5.00,
+            deliveryTime: '30 - 45 min',
+            presetType: 'acai',
+            themeColors: {
+                primary: '#59176B',
+                primaryDark: '#3E0C4C',
+                secondary: '#8B26A0',
+                bgAccent: '#FAF5FF'
+            },
+            coupons: defaultCoupons,
+            products: defaultProducts,
+            schedule: defaultSettings.schedule
+        };
+
         function loadData() {
             // 1. Carregar Coleção de Empresas
             const savedCompanies = localStorage.getItem('companies');
@@ -1219,43 +1465,101 @@
                 } catch(e) { companies = []; }
             }
 
-            // Se nenhuma empresa cadastrada, inicializar com a empresa "Açaí na Quentinha do FB" como padrão SEM MODIFICAR NADA
+            // Se nenhuma empresa cadastrada, inicializar com a Loja Demonstração e a Empresa FB
             if (!companies || companies.length === 0) {
-                const defaultFB = {
-                    id: 'company-fb-default',
-                    name: 'Açaí na Quentinha do FB',
-                    email: 'donfim@gmail.com',
-                    subtitle: 'Sabor que conquista na primeira colherada! Monte do seu jeito.',
-                    whatsappNumber: '5521972888819',
-                    instagram: '@acainaquentinha_do_fb',
-                    cnpj: '45.123.789/0001-90',
-                    address: 'Rua Principal, 123 - Centro',
-                    logoUrl: 'Logo.jpg',
-                    adminPassword: 'admin123',
-                    deliveryFee: 5.00,
-                    deliveryTime: '30 - 45 min',
-                    presetType: 'acai',
-                    themeColors: {
-                        primary: '#59176B',
-                        primaryDark: '#3E0C4C',
-                        secondary: '#8B26A0',
-                        bgAccent: '#FAF5FF'
-                    },
-                    coupons: defaultCoupons,
-                    products: defaultProducts,
-                    schedule: defaultSettings.schedule
-                };
-                companies = [defaultFB];
+                companies = [defaultDemoCompany, defaultFB];
+                localStorage.setItem('companies', JSON.stringify(companies));
+            } else {
+                // Garantir integridade dos Slugs e garantir que a empresa de demonstração exista
+                let hasDemo = companies.some(c => c.id === 'company-demo-don' || c.isDemo || c.slug === 'demo');
+                if (!hasDemo) {
+                    companies.unshift(defaultDemoCompany);
+                }
+                let hasFB = companies.some(c => c.id === 'company-fb-default');
+                if (!hasFB) {
+                    companies.push(defaultFB);
+                }
+                // Garantir que cada empresa tenha slug, logo e produtos da demo atualizados
+                companies.forEach(comp => {
+                     comp.slug = getCompanySlug(comp);
+                     if (comp.id === 'company-demo-don' || comp.isDemo || comp.slug === 'demo') {
+                         if (!comp.name || comp.name.includes('Don Burguer')) {
+                             comp.name = 'Don Delivery';
+                         }
+                         comp.logoUrl = 'Logo_Don.png';
+                         // Atualizar os produtos da demo com a vitrine diversificada
+                         comp.products = defaultDemoCompany.products;
+                     }
+                });
                 localStorage.setItem('companies', JSON.stringify(companies));
             }
 
-            // 2. Determinar Empresa Ativa
-            activeCompanyId = localStorage.getItem('activeCompanyId') || 'company-fb-default';
+            // 2. Determinar Empresa Ativa a partir da URL (Roteamento Dinâmico por Link: ?empresa=slug ou /slug)
+            const urlParams = new URLSearchParams(window.location.search);
+            const requestedParam = urlParams.get('empresa') || urlParams.get('loja') || urlParams.get('c') || urlParams.get('slug') || urlParams.get('tenant');
+            
+            let targetCompany = null;
+
+            if (requestedParam) {
+                const cleanParam = requestedParam.trim().toLowerCase();
+                targetCompany = companies.find(c => 
+                    (c.slug && c.slug.toLowerCase() === cleanParam) || 
+                    (c.id && c.id.toLowerCase() === cleanParam) ||
+                    (cleanParam === 'demo' && (c.isDemo || c.id === 'company-demo-don')) ||
+                    (cleanParam === 'fb' && c.id === 'company-fb-default')
+                );
+            }
+
+            // Fallback por pathname se for rota direta como /demo ou /acai-fb
+            if (!targetCompany && window.location.pathname && window.location.pathname !== '/' && window.location.pathname !== '/index.html') {
+                const pathSlug = window.location.pathname.replace(/^\/+/, '').split('/')[0].toLowerCase();
+                if (pathSlug && !pathSlug.endsWith('.js') && !pathSlug.endsWith('.css') && !pathSlug.endsWith('.png') && !pathSlug.endsWith('.jpg') && !pathSlug.endsWith('.svg') && !pathSlug.endsWith('.json') && !pathSlug.endsWith('.sql') && pathSlug !== 'api') {
+                    targetCompany = companies.find(c => 
+                        (c.slug && c.slug.toLowerCase() === pathSlug) || 
+                        (c.id && c.id.toLowerCase() === pathSlug)
+                    );
+                }
+            }
+
+            if (targetCompany) {
+                activeCompanyId = targetCompany.id;
+                localStorage.setItem('activeCompanyId', activeCompanyId);
+            } else {
+                // Se acessou link principal sem parâmetros e não há preferência recente:
+                const savedActiveId = localStorage.getItem('activeCompanyId');
+                if (savedActiveId && companies.some(c => c.id === savedActiveId)) {
+                    activeCompanyId = savedActiveId;
+                } else {
+                    // Padrão de apresentação no link principal: Loja Demonstração
+                    const demoComp = companies.find(c => c.isDemo || c.slug === 'demo' || c.id === 'company-demo-don');
+                    activeCompanyId = demoComp ? demoComp.id : companies[0].id;
+                    localStorage.setItem('activeCompanyId', activeCompanyId);
+                }
+            }
 
             let activeComp = companies.find(c => c.id === activeCompanyId);
             if (!activeComp) {
                 activeComp = companies[0];
                 activeCompanyId = activeComp.id;
+            }
+
+            // 3. Atualizar Visibilidade do Banner de Demonstração e Landing Page Showcase
+            const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+            const demoBar = document.getElementById('demoNoticeBar');
+            if (demoBar) {
+                demoBar.style.display = isCurrentDemo ? 'block' : 'none';
+            }
+            const demoHero = document.getElementById('demoLandingHero');
+            const heroSection = document.getElementById('inicio');
+            if (demoHero) {
+                demoHero.style.display = isCurrentDemo ? 'block' : 'none';
+            }
+            if (heroSection) {
+                if (isCurrentDemo) {
+                    heroSection.classList.add('has-demo-landing');
+                } else {
+                    heroSection.classList.remove('has-demo-landing');
+                }
             }
 
             // 3. Carregar Configurações, Produtos e Pedidos ISOLADOS por Empresa (Database Isolation)
@@ -1350,6 +1654,7 @@
             if (activeComp) {
                 activeComp.name = settings.restaurantName;
                 activeComp.email = settings.email || activeComp.email || 'donfim@gmail.com';
+                activeComp.slug = settings.slug || activeComp.slug || getCompanySlug(activeComp);
                 activeComp.subtitle = settings.subtitle;
                 activeComp.whatsappNumber = settings.whatsappNumber;
                 activeComp.instagram = settings.instagram || '';
@@ -2311,37 +2616,59 @@
             container.innerHTML = companies.map(comp => {
                 const isActive = comp.id === activeCompanyId;
                 const isDefaultFB = comp.id === 'company-fb-default';
+                const isDemo = comp.isDemo || comp.id === 'company-demo-don' || comp.slug === 'demo';
                 const compEmail = comp.email || 'donfim@gmail.com';
+                const compSlug = getCompanySlug(comp);
+                const officialUrl = getCompanyOfficialUrl(comp);
 
                 return `
-                    <div style="background: ${isActive ? '#EEF2FF' : '#F8FAFC'}; border: 1.5px solid ${isActive ? '#6366F1' : '#E2E8F0'}; border-radius: 10px; padding: 0.85rem 1rem; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;">
-                        <div>
-                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
-                                <strong style="font-size: 0.95rem; color: #1E1B4B;">${comp.name}</strong>
-                                ${isActive ? '<span style="background: #4F46E5; color: white; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 10px;">★ ATIVA</span>' : ''}
-                                ${isDefaultFB ? '<span style="background: #8B26A0; color: white; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 10px;">PADRÃO FB</span>' : ''}
+                    <div style="background: ${isActive ? '#EEF2FF' : '#F8FAFC'}; border: 1.5px solid ${isActive ? '#6366F1' : '#E2E8F0'}; border-radius: 10px; padding: 0.85rem 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;">
+                            <div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; flex-wrap: wrap;">
+                                    <strong style="font-size: 0.95rem; color: #1E1B4B;">${comp.name}</strong>
+                                    ${isActive ? '<span style="background: #4F46E5; color: white; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 10px;">★ ATIVA</span>' : ''}
+                                    ${isDemo ? '<span style="background: #EA580C; color: white; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 10px;">✨ DEMO PRINCIPAL</span>' : ''}
+                                    ${isDefaultFB ? '<span style="background: #8B26A0; color: white; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 10px;">PADRÃO FB</span>' : ''}
+                                </div>
+                                <div style="font-size: 0.8rem; color: var(--gray-600); display: flex; gap: 0.8rem; flex-wrap: wrap;">
+                                    <span>📧 E-mail: <strong>${compEmail}</strong></span>
+                                    <span>📱 WhatsApp: <strong>${comp.whatsappNumber}</strong></span>
+                                    <span>🔑 Senha: <strong>${comp.adminPassword}</strong></span>
+                                    <span>📦 Itens: <strong>${comp.products?.length || 0}</strong></span>
+                                </div>
                             </div>
-                            <div style="font-size: 0.8rem; color: var(--gray-600); display: flex; gap: 0.8rem; flex-wrap: wrap;">
-                                <span>📧 E-mail: <strong>${compEmail}</strong></span>
-                                <span>📱 WhatsApp: <strong>${comp.whatsappNumber}</strong></span>
-                                <span>🔑 Senha: <strong>${comp.adminPassword}</strong></span>
-                                <span>📦 Itens: <strong>${comp.products?.length || 0}</strong></span>
+                            <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
+                                <button type="button" onclick="openEditCompanyByDev('${comp.id}')" class="btn-admin" style="background: #3B82F6; color: white; font-size: 0.75rem; padding: 0.35rem 0.65rem;">
+                                    ✏️ Editar
+                                </button>
+                                ${!isActive ? `
+                                    <button type="button" onclick="switchActiveCompany('${comp.id}')" class="btn-admin" style="background: #10B981; color: white; font-size: 0.75rem; padding: 0.35rem 0.65rem;">
+                                        ✅ Ativar
+                                    </button>
+                                ` : ''}
+                                ${(!isDefaultFB && !isDemo) ? `
+                                    <button type="button" onclick="deleteCompanyByDev('${comp.id}')" class="btn-admin" style="background: #EF4444; color: white; font-size: 0.75rem; padding: 0.35rem 0.65rem;">
+                                        🗑️ Excluir
+                                    </button>
+                                ` : ''}
                             </div>
                         </div>
-                        <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
-                            <button type="button" onclick="openEditCompanyByDev('${comp.id}')" class="btn-admin" style="background: #3B82F6; color: white; font-size: 0.75rem; padding: 0.35rem 0.65rem;">
-                                ✏️ Editar
-                            </button>
-                            ${!isActive ? `
-                                <button type="button" onclick="switchActiveCompany('${comp.id}')" class="btn-admin" style="background: #10B981; color: white; font-size: 0.75rem; padding: 0.35rem 0.65rem;">
-                                    ✅ Ativar
+
+                        <!-- BARRA DE LINK OFICIAL DO SITE -->
+                        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; padding: 0.45rem 0.75rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; font-size: 0.78rem; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 0.4rem; font-family: monospace; color: #4F46E5; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                <span>🔗</span>
+                                <span>${officialUrl}</span>
+                            </div>
+                            <div style="display: flex; gap: 0.35rem;">
+                                <button type="button" onclick="copyCompanyLink('${compSlug}')" class="btn-admin" style="background: #EEF2FF; color: #4F46E5; border: 1px solid #C7D2FE; font-size: 0.72rem; padding: 0.25rem 0.55rem; font-weight: 600;">
+                                    📋 Copiar Link
                                 </button>
-                            ` : ''}
-                            ${!isDefaultFB ? `
-                                <button type="button" onclick="deleteCompanyByDev('${comp.id}')" class="btn-admin" style="background: #EF4444; color: white; font-size: 0.75rem; padding: 0.35rem 0.65rem;">
-                                    🗑️ Excluir
+                                <button type="button" onclick="window.open('/?empresa=${compSlug}', '_blank')" class="btn-admin" style="background: #F1F5F9; color: #334155; border: 1px solid #CBD5E1; font-size: 0.72rem; padding: 0.25rem 0.55rem; font-weight: 600;">
+                                    🚀 Testar Acesso
                                 </button>
-                            ` : ''}
+                            </div>
                         </div>
                     </div>
                 `;
@@ -2355,6 +2682,8 @@
 
             const emailInput = document.getElementById('devNewCompEmail');
             const email = emailInput ? emailInput.value.trim() : `contato@${name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`;
+            const slugInput = document.getElementById('devNewCompSlug');
+            const slug = (slugInput && slugInput.value.trim()) ? sanitizeSlug(slugInput.value) : generateSlug(name);
             const subtitle = document.getElementById('devNewCompSubtitle').value.trim() || 'Delivery rápido e sabor inigualável!';
             const whatsapp = document.getElementById('devNewCompWhatsapp').value.trim() || '5521999999999';
             const instagram = document.getElementById('devNewCompInstagram')?.value.trim() || '';
@@ -2373,6 +2702,7 @@
 
             const newCompany = {
                 id: newCompanyId,
+                slug: slug,
                 name: name,
                 email: email,
                 subtitle: subtitle,
@@ -2395,13 +2725,17 @@
             saveData();
             switchActiveCompany(newCompanyId);
             renderDevCompanyList();
-            alert(`🎉 Empresa "${name}" cadastrada com sucesso!\n📧 E-mail de Login: ${email}\n🔑 Senha: ${password}`);
+            alert(`🎉 Empresa "${name}" cadastrada com sucesso!\n🌐 Link Oficial: https://dondelivery.site/?empresa=${slug}\n📧 E-mail de Login: ${email}\n🔑 Senha: ${password}`);
             switchDevTab('companies');
         }
 
         async function deleteCompanyByDev(companyId) {
             if (companyId === 'company-fb-default') {
                 showNotification('Não é permitido excluir a empresa padrão "Açaí na Quentinha do FB".', 'warning');
+                return;
+            }
+            if (companyId === 'company-demo-don') {
+                showNotification('Não é permitido excluir a empresa de demonstração principal.', 'warning');
                 return;
             }
             const confirmed = await showCustomConfirm({
@@ -2414,7 +2748,7 @@
             if (confirmed) {
                 companies = companies.filter(c => c.id !== companyId);
                 if (activeCompanyId === companyId) {
-                    activeCompanyId = 'company-fb-default';
+                    activeCompanyId = 'company-demo-don';
                 }
                 saveData();
                 loadData();
@@ -2431,6 +2765,7 @@
             const idInput = document.getElementById('devEditCompId');
             const nameInput = document.getElementById('devEditCompName');
             const emailInput = document.getElementById('devEditCompEmail');
+            const slugInput = document.getElementById('devEditCompSlug');
             const passwordInput = document.getElementById('devEditCompPassword');
             const whatsappInput = document.getElementById('devEditCompWhatsapp');
             const instagramInput = document.getElementById('devEditCompInstagram');
@@ -2444,6 +2779,7 @@
             if (idInput) idInput.value = comp.id;
             if (nameInput) nameInput.value = comp.name || '';
             if (emailInput) emailInput.value = comp.email || 'donfim@gmail.com';
+            if (slugInput) slugInput.value = comp.slug || getCompanySlug(comp);
             if (passwordInput) passwordInput.value = comp.adminPassword || 'admin123';
             if (whatsappInput) whatsappInput.value = comp.whatsappNumber || '';
             if (instagramInput) instagramInput.value = comp.instagram || '';
@@ -2487,6 +2823,8 @@
 
             const name = document.getElementById('devEditCompName').value.trim();
             const email = document.getElementById('devEditCompEmail').value.trim();
+            const slugInput = document.getElementById('devEditCompSlug');
+            const slug = (slugInput && slugInput.value.trim()) ? sanitizeSlug(slugInput.value) : generateSlug(name);
             const password = document.getElementById('devEditCompPassword').value.trim();
             const whatsapp = document.getElementById('devEditCompWhatsapp').value.trim();
             const instagram = document.getElementById('devEditCompInstagram')?.value.trim() || '';
@@ -2505,6 +2843,7 @@
 
             comp.name = name;
             comp.email = email;
+            comp.slug = slug;
             comp.adminPassword = password;
             comp.whatsappNumber = whatsapp;
             comp.instagram = instagram;
@@ -2523,6 +2862,7 @@
             if (companyId === activeCompanyId) {
                 settings.restaurantName = name;
                 settings.email = email;
+                settings.slug = slug;
                 settings.adminPassword = password;
                 settings.whatsappNumber = whatsapp;
                 settings.subtitle = subtitle;
@@ -2564,7 +2904,16 @@
         let currentAdminExtrasChips = [];
 
         function renderSettings() {
+            const activeComp = getActiveCompany();
             document.getElementById('restaurantName').value = settings.restaurantName || '';
+            
+            const slugInput = document.getElementById('restaurantSlug');
+            if (slugInput) {
+                slugInput.value = settings.slug || activeComp.slug || getCompanySlug(activeComp);
+                slugInput.dataset.manualEdit = '';
+            }
+            updateAdminShareLinkDisplay();
+
             if (document.getElementById('companyEmail')) {
                 document.getElementById('companyEmail').value = settings.email || 'donfim@gmail.com';
             }
@@ -2712,12 +3061,17 @@
             // Atualizar a Logo do Header e do Hero dinamicamente
             if (settings.logoUrl && settings.logoUrl.trim() !== '') {
                 // Configurações do Header
-                logoIcon.innerHTML = `<img src="${settings.logoUrl}" alt="${settings.restaurantName}">`;
-                logoIcon.style.background = 'white';
+                logoIcon.innerHTML = `<img src="${settings.logoUrl}" alt="${settings.restaurantName}" onerror="if(this.src.indexOf('Logo_Don.png') === -1) { this.src = '/Logo_Don.png'; }">`;
+                logoIcon.style.background = 'transparent';
 
                 // Configurações do Hero (Imagem invés do texto)
                 heroLogo.src = settings.logoUrl;
                 heroLogo.alt = settings.restaurantName;
+                heroLogo.onerror = function() {
+                    if (this.src.indexOf('Logo_Don.png') === -1) {
+                        this.src = '/Logo_Don.png';
+                    }
+                };
                 heroLogo.style.display = 'block'; // Mostra a imagem
                 heroRestaurantName.style.display = 'none'; // Esconde o texto H1
             } else {
@@ -3387,6 +3741,11 @@
         // ========== SALVAR CONFIGURAÇÕES ==========
         function saveSettings() {
             settings.restaurantName = document.getElementById('restaurantName').value;
+            
+            const slugInput = document.getElementById('restaurantSlug');
+            const customSlug = slugInput ? sanitizeSlug(slugInput.value) : '';
+            settings.slug = customSlug || generateSlug(settings.restaurantName);
+
             if (document.getElementById('companyEmail')) {
                 settings.email = document.getElementById('companyEmail').value.trim();
             }
@@ -5081,6 +5440,21 @@
                 }
             }
 
+            // SEÇÃO 3: FERRAMENTAS & ADQUIRIR SISTEMA
+            itemsHtml += `<div class="mobile-dropdown-divider"></div>`;
+            itemsHtml += `<div class="mobile-dropdown-header">Recursos & Acesso</div>`;
+            itemsHtml += `
+                <button type="button" class="mobile-dropdown-item" onclick="closeMobileHeaderMenu(); openAcquireAppModal();" style="color: #D97706; font-weight: 800; background: #FEF3C7;">
+                    💎 Adquirir Don Delivery
+                </button>
+                <button type="button" class="mobile-dropdown-item" onclick="closeMobileHeaderMenu(); openQrCodeModal();" style="color: #4F46E5; font-weight: 700;">
+                    📱 QR Code & Mesas
+                </button>
+                <button type="button" class="mobile-dropdown-item" onclick="closeMobileHeaderMenu(); openDevPasswordModal();" style="color: #059669; font-weight: 600;">
+                    🛠️ Painel Master / Donfim
+                </button>
+            `;
+
             dropdown.innerHTML = itemsHtml;
         }
 
@@ -5526,28 +5900,324 @@
             }).join('');
         }
 
-        // ========== GERENCIAR PEDIDOS NO ADMIN (ISOLADOS POR EMPRESA) ==========
+        // ========== GERENCIAR PEDIDOS NO ADMIN (ISOLADOS POR EMPRESA, BUSCA & ROLAGEM) ==========
+        let adminOrderSearchQuery = '';
+        let adminOrderFilterStatus = 'ALL';
+        let expandedAdminOrders = new Set();
+
+        const adminOrderStatusMap = {
+            'RECEIVED': { text: 'Recebido', icon: '🟡', class: 'status-received', bg: '#FEF3C7', color: '#92400E', border: '#FDE68A' },
+            'PREPARING': { text: 'Em Preparo', icon: '🥣', class: 'status-preparing', bg: '#E0E7FF', color: '#3730A3', border: '#C7D2FE' },
+            'DELIVERING': { text: 'Saiu p/ Entrega', icon: '🛵', class: 'status-delivering', bg: '#E0F2FE', color: '#075985', border: '#BAE6FD' },
+            'COMPLETED': { text: 'Entregue', icon: '✅', class: 'status-completed', bg: '#D1FAE5', color: '#065F46', border: '#A7F3D0' },
+            'CANCELLED': { text: 'Cancelado', icon: '🔴', class: 'status-cancelled', bg: '#FEE2E2', color: '#991B1B', border: '#FCA5A5' }
+        };
+
+        function handleAdminOrderSearch(value) {
+            adminOrderSearchQuery = (value || '').trim();
+            const clearBtn = document.getElementById('adminOrderClearSearchBtn');
+            if (clearBtn) {
+                clearBtn.style.display = adminOrderSearchQuery ? 'block' : 'none';
+            }
+            renderAdminOrdersList();
+        }
+
+        function clearAdminOrderSearch() {
+            adminOrderSearchQuery = '';
+            const input = document.getElementById('adminOrderSearchInput');
+            const clearBtn = document.getElementById('adminOrderClearSearchBtn');
+            if (input) input.value = '';
+            if (clearBtn) clearBtn.style.display = 'none';
+            renderAdminOrdersList();
+        }
+
+        function filterAdminOrdersByStatus(status) {
+            adminOrderFilterStatus = status || 'ALL';
+            
+            // Atualizar classes ativas dos chips
+            const chips = ['ALL', 'RECEIVED', 'PREPARING', 'DELIVERING', 'COMPLETED', 'CANCELLED'];
+            chips.forEach(s => {
+                const chipEl = document.getElementById(`chipStatus${s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()}`);
+                if (chipEl) {
+                    if (s === adminOrderFilterStatus) {
+                        chipEl.classList.add('active');
+                    } else {
+                        chipEl.classList.remove('active');
+                    }
+                }
+            });
+
+            renderAdminOrdersList();
+        }
+
+        function toggleAdminOrderExpand(orderId, event) {
+            if (event) {
+                // Prevenir clique em botões internos, selects ou links
+                const tag = event.target.tagName.toLowerCase();
+                if (tag === 'select' || tag === 'button' || tag === 'a' || tag === 'input' || event.target.closest('.no-toggle')) {
+                    return;
+                }
+            }
+
+            if (expandedAdminOrders.has(orderId)) {
+                expandedAdminOrders.delete(orderId);
+            } else {
+                expandedAdminOrders.add(orderId);
+            }
+            renderAdminOrdersList();
+        }
+
+        function updateAdminOrderStatusCounts(companyOrdersList) {
+            const counts = {
+                ALL: companyOrdersList.length,
+                RECEIVED: 0,
+                PREPARING: 0,
+                DELIVERING: 0,
+                COMPLETED: 0,
+                CANCELLED: 0
+            };
+
+            companyOrdersList.forEach(o => {
+                const st = o.status || 'RECEIVED';
+                if (counts[st] !== undefined) counts[st]++;
+            });
+
+            const countAllEl = document.getElementById('countStatusAll');
+            const countRecEl = document.getElementById('countStatusReceived');
+            const countPrepEl = document.getElementById('countStatusPreparing');
+            const countDelEl = document.getElementById('countStatusDelivering');
+            const countCompEl = document.getElementById('countStatusCompleted');
+            const countCancEl = document.getElementById('countStatusCancelled');
+            const badgeEl = document.getElementById('adminOrdersCounterBadge');
+
+            if (countAllEl) countAllEl.textContent = counts.ALL;
+            if (countRecEl) countRecEl.textContent = counts.RECEIVED;
+            if (countPrepEl) countPrepEl.textContent = counts.PREPARING;
+            if (countDelEl) countDelEl.textContent = counts.DELIVERING;
+            if (countCompEl) countCompEl.textContent = counts.COMPLETED;
+            if (countCancEl) countCancEl.textContent = counts.CANCELLED;
+            if (badgeEl) badgeEl.textContent = `${counts.ALL} pedido(s)`;
+        }
+
         function renderAdminOrdersList() {
             const container = document.getElementById('adminOrdersList');
             if (!container) return;
 
-            // Filtrar estritamente pedidos pertencentes à empresa ativa
+            // 1. Filtrar estritamente pedidos pertencentes à empresa ativa
             const activeCompId = activeCompanyId || 'company-fb-default';
             const companyOrdersList = customerOrders.filter(o => 
                 o.companyId === activeCompId || 
                 (!o.companyId && activeCompId === 'company-fb-default')
             );
 
+            // 2. Atualizar contadores de status
+            updateAdminOrderStatusCounts(companyOrdersList);
+
             if (companyOrdersList.length === 0) {
-                container.innerHTML = `<p style="text-align: center; color: var(--gray-600); padding: 1rem;">Nenhum pedido registrado para ${settings.restaurantName}.</p>`;
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 2rem 1rem; color: var(--gray-600); background: #FFFFFF; border-radius: 8px; border: 1px dashed #CBD5E1;">
+                        <div style="font-size: 2.2rem; margin-bottom: 0.4rem;">📦</div>
+                        <strong style="color: var(--gray-800); display: block; font-size: 0.95rem;">Nenhum pedido registrado ainda</strong>
+                        <small style="color: var(--gray-500);">Os pedidos feitos pelos clientes aparecerão aqui automaticamente em tempo real.</small>
+                    </div>
+                `;
                 return;
             }
 
-            container.innerHTML = companyOrdersList.map(order => `
-                <div style="background: var(--white); border: 1px solid var(--gray-200); border-radius: 8px; padding: 0.75rem; margin-bottom: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem; flex-wrap: wrap; gap: 0.4rem;">
-                        <strong style="color: var(--primary); font-size: 0.9rem;">${order.id} - ${order.customerName}</strong>
-                        <select class="admin-order-status-select" onchange="updateOrderStatus('${order.id}', this.value)">
+            // 3. Aplicar Filtro de Status
+            let filteredList = companyOrdersList;
+            if (adminOrderFilterStatus !== 'ALL') {
+                filteredList = filteredList.filter(o => (o.status || 'RECEIVED') === adminOrderFilterStatus);
+            }
+
+            // 4. Aplicar Filtro de Busca (Nome do Cliente, Número do Pedido, Telefone ou Itens)
+            if (adminOrderSearchQuery) {
+                const q = adminOrderSearchQuery.toLowerCase();
+                filteredList = filteredList.filter(o => {
+                    const idMatch = (o.id || '').toLowerCase().includes(q);
+                    const nameMatch = (o.customerName || '').toLowerCase().includes(q);
+                    const phoneMatch = (o.customerPhone || '').toLowerCase().includes(q);
+                    const addrMatch = (o.customerAddress || '').toLowerCase().includes(q);
+                    const itemsMatch = (o.items || []).some(i => (i.name || '').toLowerCase().includes(q));
+                    return idMatch || nameMatch || phoneMatch || addrMatch || itemsMatch;
+                });
+            }
+
+            if (filteredList.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 2rem 1rem; color: var(--gray-600); background: #FFFFFF; border-radius: 8px; border: 1px dashed #CBD5E1;">
+                        <div style="font-size: 2rem; margin-bottom: 0.3rem;">🔍</div>
+                        <strong style="color: var(--gray-800); display: block; font-size: 0.92rem;">Nenhum pedido encontrado</strong>
+                        <small style="color: var(--gray-500);">Tente buscar por outro termo ou selecione outro filtro de status.</small>
+                        <br>
+                        <button type="button" onclick="clearAdminOrderSearch(); filterAdminOrdersByStatus('ALL');" class="btn-admin" style="margin-top: 0.75rem; background: #EEF2FF; color: #4338CA; border: 1px solid #C7D2FE; font-size: 0.78rem; padding: 0.35rem 0.8rem; border-radius: 6px;">
+                            Limpar Filtros
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filteredList.map(order => {
+                const isExpanded = expandedAdminOrders.has(order.id);
+                const st = adminOrderStatusMap[order.status] || adminOrderStatusMap['RECEIVED'];
+                const totalItemsCount = (order.items || []).reduce((acc, i) => acc + (i.quantity || 1), 0);
+                const encodedWa = encodeURIComponent(`Olá ${order.customerName}! Aqui é da ${settings.restaurantName}, sobre seu pedido ${order.id}.`);
+                const cleanPhone = (order.customerPhone || '').replace(/\D/g, '');
+
+                return `
+                    <div class="admin-order-compact-card ${isExpanded ? 'expanded' : ''}" id="adminOrderCard_${order.id}">
+                        <!-- BARRA RESUMO COMPACTA (CLIQUE PARA EXPANDIR/RECOLHER) -->
+                        <div class="admin-order-summary-row" onclick="toggleAdminOrderExpand('${order.id}', event)" title="Clique para ${isExpanded ? 'recolher' : 'ver'} todos os detalhes deste pedido">
+                            <!-- ESQUERDA: NÚMERO DO PEDIDO + NOME DO CLIENTE + DATA -->
+                            <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; min-width: 220px; flex: 1;">
+                                <span style="background: #312E81; color: #FFFFFF; font-weight: 800; font-size: 0.78rem; padding: 3px 8px; border-radius: 6px; font-family: monospace;">
+                                    ${order.id}
+                                </span>
+                                <div>
+                                    <div style="font-weight: 800; color: #1E1B4B; font-size: 0.92rem; display: flex; align-items: center; gap: 0.35rem;">
+                                        👤 ${order.customerName || 'Cliente'}
+                                        ${order.customerPhone ? `<span style="font-size: 0.75rem; color: #64748B; font-weight: normal;">(${order.customerPhone})</span>` : ''}
+                                    </div>
+                                    <div style="font-size: 0.72rem; color: #64748B; margin-top: 1px;">
+                                        📅 ${order.date || 'Hoje'} • 📦 <strong>${totalItemsCount} iten(s)</strong> • 💳 ${order.paymentMethod || 'Pix'}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- DIREITA: VALOR TOTAL + STATUS + AÇÕES RÁPIDAS + CHEVRON -->
+                            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;" class="no-toggle">
+                                <span style="font-size: 0.95rem; font-weight: 900; color: #047857; background: #ECFDF5; padding: 3px 8px; border-radius: 6px; border: 1px solid #A7F3D0;">
+                                    R$ ${order.total.toFixed(2).replace('.', ',')}
+                                </span>
+
+                                <select class="admin-order-status-select no-toggle" onchange="updateOrderStatus('${order.id}', this.value)" style="font-size: 0.78rem; padding: 0.3rem 0.5rem; border-radius: 6px; font-weight: 700; background: ${st.bg}; color: ${st.color}; border: 1px solid ${st.border};" title="Alterar status do pedido">
+                                    <option value="RECEIVED" ${order.status === 'RECEIVED' ? 'selected' : ''}>🟡 Recebido</option>
+                                    <option value="PREPARING" ${order.status === 'PREPARING' ? 'selected' : ''}>🟣 Em Preparação</option>
+                                    <option value="DELIVERING" ${order.status === 'DELIVERING' ? 'selected' : ''}>🔵 Saiu p/ Entrega</option>
+                                    <option value="COMPLETED" ${order.status === 'COMPLETED' ? 'selected' : ''}>🟢 Entregue</option>
+                                    <option value="CANCELLED" ${order.status === 'CANCELLED' ? 'selected' : ''}>🔴 Cancelado</option>
+                                </select>
+
+                                <button type="button" onclick="triggerPrintOrder('${order.id}')" class="btn-admin no-toggle" style="background: #4F46E5; color: white; padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700;" title="Imprimir comanda térmica 58mm">
+                                    🖨️ Imprimir
+                                </button>
+
+                                <button type="button" onclick="openAdminOrderDetailModal('${order.id}')" class="btn-admin no-toggle" style="background: #EEF2FF; color: #4338CA; border: 1px solid #C7D2FE; padding: 0.3rem 0.55rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700;" title="Abrir em Janela Modal">
+                                    🔍 Ver
+                                </button>
+
+                                <span class="admin-order-chevron" style="margin-left: 2px;">▼</span>
+                            </div>
+                        </div>
+
+                        <!-- PAINEL DE DETALHES EXPANDIDO -->
+                        <div class="admin-order-detail-panel">
+                            <!-- DADOS DE ENTREGA & CONTATO DO CLIENTE -->
+                            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 0.75rem; margin-bottom: 0.75rem; font-size: 0.82rem; color: #334155; line-height: 1.45;">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.35rem;">
+                                    <div>
+                                        📍 <strong>Endereço de Entrega:</strong> ${order.customerAddress || 'Endereço não informado'}<br>
+                                        ${order.customerReference ? `🎯 <strong style="color: #6D28D9;">Ponto de Referência:</strong> ${order.customerReference}<br>` : ''}
+                                        📱 <strong>Telefone:</strong> ${order.customerPhone || 'Sem telefone'} | 
+                                        ⏱️ <strong style="color: #D97706;">Previsão:</strong> ${order.deliveryTime || '30 - 45 min'}
+                                    </div>
+                                    ${cleanPhone ? `
+                                        <a href="https://wa.me/55${cleanPhone}?text=${encodedWa}" target="_blank" class="btn-admin" style="background: #25D366; color: white; font-size: 0.75rem; font-weight: 700; padding: 0.35rem 0.7rem; border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem;">
+                                            💬 WhatsApp do Cliente
+                                        </a>
+                                    ` : ''}
+                                </div>
+                            </div>
+
+                            <!-- LINHA DO TEMPO VISUAL DO STATUS -->
+                            <div style="margin-bottom: 0.75rem;">
+                                ${renderOrderTimeline(order)}
+                            </div>
+
+                            <!-- TABELA / LISTA DETALHADA DE ITENS -->
+                            <div style="background: #FAF5FF; border: 1px solid #F3E8FF; border-radius: 8px; padding: 0.75rem; margin-bottom: 0.75rem;">
+                                <div style="font-weight: 800; color: #59176B; font-size: 0.84rem; margin-bottom: 0.4rem; display: flex; justify-content: space-between;">
+                                    <span>🥣 Itens do Pedido:</span>
+                                    <span>${totalItemsCount} item(ns)</span>
+                                </div>
+                                <ul style="margin: 0; padding-left: 1.1rem; font-size: 0.84rem; color: #1E1B4B;">
+                                    ${order.items.map(i => `
+                                        <li style="margin-bottom: 0.4rem;">
+                                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                                <span><strong>${i.quantity}x ${i.name}</strong></span>
+                                                ${i.price ? `<span style="font-weight: 700; color: #4338CA;">R$ ${(i.price * (i.quantity || 1)).toFixed(2).replace('.', ',')}</span>` : ''}
+                                            </div>
+                                            ${i.details ? `<div style="font-size: 0.78rem; color: #6B21A8; margin-top: 1px; font-weight: 600;">🥣 ${i.details}</div>` : ''}
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                            </div>
+
+                            <!-- RESUMO FINANCEIRO & BOTÕES DE AÇÃO -->
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.6rem; border-top: 1px dashed #E2E8F0; padding-top: 0.6rem;">
+                                <div style="font-size: 0.84rem;">
+                                    <div style="font-weight: 800; color: #1E1B4B; font-size: 0.95rem;">
+                                        Total: <span style="color: #047857;">R$ ${order.total.toFixed(2).replace('.', ',')}</span>
+                                    </div>
+                                    ${(order.couponCode || (order.discountValue && order.discountValue > 0) || (order.discount && order.discount > 0)) ? `
+                                        <div style="font-size: 0.75rem; color: #059669; font-weight: 700; margin-top: 2px;">
+                                            🏷️ Cupom Aplicado: ${order.couponCode || 'PROMO'} (-R$ ${(order.discountValue || order.discount || 0).toFixed(2).replace('.', ',')})
+                                        </div>
+                                    ` : ''}
+                                    <div style="font-size: 0.75rem; color: #64748B; margin-top: 1px;">
+                                        Forma de Pagamento: <strong>${order.paymentMethod || 'Pix'}</strong>
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
+                                    <button type="button" onclick="triggerPrintOrder('${order.id}')" class="btn-print-order" style="padding: 0.45rem 0.85rem; font-size: 0.8rem;" title="Imprimir cupom de 58mm">
+                                        🖨️ Imprimir Comanda (58mm)
+                                    </button>
+                                    <button type="button" onclick="openAdminOrderDetailModal('${order.id}')" class="btn-admin" style="background: #312E81; color: white; font-size: 0.8rem; padding: 0.45rem 0.8rem; border-radius: 6px;" title="Ver comprovante e modal">
+                                        📋 Comprovante
+                                    </button>
+                                    <button type="button" onclick="deleteOrder('${order.id}')" style="background: #FEE2E2; color: #DC2626; border: 1px solid #FCA5A5; cursor: pointer; font-size: 0.8rem; padding: 0.45rem 0.75rem; border-radius: 6px; font-weight: 700;" title="Excluir pedido do histórico">
+                                        🗑️ Excluir
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ========== MODAL DE DETALHES DO PEDIDO (ADMIN) ==========
+        function openAdminOrderDetailModal(orderId) {
+            const order = customerOrders.find(o => o.id === orderId);
+            if (!order) return;
+
+            const modal = document.getElementById('adminOrderDetailModal');
+            const titleEl = document.getElementById('adminOrderDetailTitle');
+            const dateEl = document.getElementById('adminOrderDetailDate');
+            const bodyEl = document.getElementById('adminOrderDetailBody');
+
+            if (!modal || !bodyEl) return;
+
+            const st = adminOrderStatusMap[order.status] || adminOrderStatusMap['RECEIVED'];
+            const totalItemsCount = (order.items || []).reduce((acc, i) => acc + (i.quantity || 1), 0);
+            const encodedWa = encodeURIComponent(`Olá ${order.customerName}! Aqui é da ${settings.restaurantName}, sobre seu pedido ${order.id}.`);
+            const cleanPhone = (order.customerPhone || '').replace(/\D/g, '');
+
+            if (titleEl) titleEl.innerHTML = `📋 Pedido <strong>${order.id}</strong> — ${order.customerName}`;
+            if (dateEl) dateEl.innerHTML = `Realizado em: ${order.date || 'Hoje'} • Loja: <strong>${order.companyName || settings.restaurantName}</strong>`;
+
+            bodyEl.innerHTML = `
+                <!-- STATUS DO PEDIDO & SELETOR -->
+                <div style="background: ${st.bg}; border: 1px solid ${st.border}; border-radius: 10px; padding: 0.85rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                    <div>
+                        <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 800; color: ${st.color};">Status Atual</div>
+                        <div style="font-size: 1.05rem; font-weight: 900; color: ${st.color};">${st.icon} ${st.text}</div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.4rem;">
+                        <span style="font-size: 0.8rem; font-weight: 700; color: ${st.color};">Mudar:</span>
+                        <select onchange="updateOrderStatus('${order.id}', this.value); openAdminOrderDetailModal('${order.id}');" style="padding: 0.4rem 0.6rem; border-radius: 8px; font-weight: bold; font-size: 0.82rem; border: 1.5px solid ${st.color}; background: #FFFFFF; color: ${st.color};">
                             <option value="RECEIVED" ${order.status === 'RECEIVED' ? 'selected' : ''}>🟡 Recebido</option>
                             <option value="PREPARING" ${order.status === 'PREPARING' ? 'selected' : ''}>🟣 Em Preparação</option>
                             <option value="DELIVERING" ${order.status === 'DELIVERING' ? 'selected' : ''}>🔵 Saiu p/ Entrega</option>
@@ -5555,36 +6225,89 @@
                             <option value="CANCELLED" ${order.status === 'CANCELLED' ? 'selected' : ''}>🔴 Cancelado</option>
                         </select>
                     </div>
-                    <div style="font-size: 0.8rem; color: var(--gray-700); margin-bottom: 0.38rem;">
-                        📍 ${order.customerAddress}<br>
-                        ${order.customerReference ? `🎯 <span style="color: #6D28D9; font-weight: 600;">Ref: ${order.customerReference}</span><br>` : ''}
-                        📱 ${order.customerPhone} | 📅 ${order.date}<br>
-                        <span style="color: var(--primary); font-weight: 700;">💳 ${order.paymentMethod || 'Pix'}</span> | 
-                        <span style="color: #D97706; font-weight: 700;">⏱️ Previsão: ${order.deliveryTime || '30 - 45 min'}</span>
-                    </div>
+                </div>
+
+                <!-- LINHA DO TEMPO -->
+                <div style="margin-bottom: 1rem;">
                     ${renderOrderTimeline(order)}
-                    <div style="font-size: 0.8rem; color: var(--gray-800); margin-bottom: 0.5rem; background: #FAF5FF; padding: 6px 10px; border-radius: 6px; border: 1px solid #F3E8FF;">
-                        <strong>Itens:</strong><br>
-                        ${order.items.map(i => `• ${i.quantity}x ${i.name} ${i.details ? `<small style="color:#59176B;">(${i.details})</small>` : ''}`).join('<br>')}
+                </div>
+
+                <!-- DADOS DO CLIENTE & ENTREGA -->
+                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 0.85rem; margin-bottom: 1rem; font-size: 0.85rem;">
+                    <div style="font-weight: 800; color: #1E1B4B; margin-bottom: 0.4rem; font-size: 0.9rem;">
+                        👤 Dados do Cliente & Entrega
                     </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; font-weight: 700; flex-wrap: wrap; gap: 0.5rem;">
-                        <div style="display: flex; flex-direction: column; gap: 2px;">
-                            <span>Total: R$ ${order.total.toFixed(2).replace('.', ',')}</span>
-                            ${(order.couponCode || (order.discountValue && order.discountValue > 0) || (order.discount && order.discount > 0)) ? `
-                                <span style="color: #059669; font-weight: 700; font-size: 0.75rem; background: #ECFDF5; padding: 2px 6px; border-radius: 4px; border: 1px solid #A7F3D0; display: inline-block;">
-                                    🏷️ Cupom: ${order.couponCode || 'PROMO'} (-R$ ${(order.discountValue || order.discount || 0).toFixed(2).replace('.', ',')})
-                                </span>
-                            ` : ''}
+                    <div><strong>Nome:</strong> ${order.customerName || 'Não informado'}</div>
+                    <div><strong>Telefone:</strong> ${order.customerPhone || 'Não informado'}</div>
+                    <div><strong>Endereço:</strong> ${order.customerAddress || 'Não informado'}</div>
+                    ${order.customerReference ? `<div><strong style="color: #6D28D9;">Ponto de Referência:</strong> ${order.customerReference}</div>` : ''}
+                    <div><strong>Previsão de Entrega:</strong> ${order.deliveryTime || '30 - 45 min'}</div>
+                    <div><strong>Forma de Pagamento:</strong> ${order.paymentMethod || 'Pix'}</div>
+                    ${cleanPhone ? `
+                        <div style="margin-top: 0.6rem;">
+                            <a href="https://wa.me/55${cleanPhone}?text=${encodedWa}" target="_blank" class="btn-admin" style="background: #25D366; color: white; font-size: 0.82rem; font-weight: 800; padding: 0.45rem 0.9rem; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem;">
+                                💬 Iniciar Conversa no WhatsApp
+                            </a>
                         </div>
-                        <div style="display: flex; gap: 0.4rem; align-items: center;">
-                            <button onclick="triggerPrintOrder('${order.id}')" class="btn-print-order" title="Imprimir cupom de 58mm">
-                                🖨️ Imprimir (58mm)
-                            </button>
-                            <button onclick="deleteOrder('${order.id}')" style="background: none; border: none; cursor: pointer; font-size: 0.8rem; color: #DC2626; padding: 0.2rem 0.4rem;" title="Excluir pedido">🗑️</button>
-                        </div>
+                    ` : ''}
+                </div>
+
+                <!-- ITENS DO PEDIDO -->
+                <div style="background: #FAF5FF; border: 1px solid #E9D5FF; border-radius: 10px; padding: 0.85rem; margin-bottom: 1rem;">
+                    <div style="font-weight: 800; color: #59176B; margin-bottom: 0.5rem; font-size: 0.9rem; display: flex; justify-content: space-between;">
+                        <span>🥣 Itens do Pedido (${totalItemsCount} itens):</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        ${order.items.map(i => `
+                            <div style="background: #FFFFFF; border: 1px solid #F3E8FF; border-radius: 8px; padding: 0.6rem 0.75rem;">
+                                <div style="display: flex; justify-content: space-between; font-weight: 800; color: #1E1B4B; font-size: 0.88rem;">
+                                    <span>${i.quantity}x ${i.name}</span>
+                                    ${i.price ? `<span style="color: #4338CA;">R$ ${(i.price * (i.quantity || 1)).toFixed(2).replace('.', ',')}</span>` : ''}
+                                </div>
+                                ${i.details ? `<div style="font-size: 0.8rem; color: #6B21A8; margin-top: 3px; font-weight: 600;">🥣 ${i.details}</div>` : ''}
+                            </div>
+                        `).join('')}
                     </div>
                 </div>
-            `).join('');
+
+                <!-- TOTAIS & CUPOM -->
+                <div style="background: #FFFFFF; border: 1.5px solid #E2E8F0; border-radius: 10px; padding: 0.85rem; margin-bottom: 1.25rem;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 0.3rem;">
+                        <span>Subtotal Itens:</span>
+                        <strong>R$ ${(order.items || []).reduce((acc, i) => acc + ((i.price || 0) * (i.quantity || 1)), 0).toFixed(2).replace('.', ',')}</strong>
+                    </div>
+                    ${(order.couponCode || (order.discountValue && order.discountValue > 0) || (order.discount && order.discount > 0)) ? `
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #059669; font-weight: 700; margin-bottom: 0.3rem;">
+                            <span>Desconto Cupom (${order.couponCode || 'PROMO'}):</span>
+                            <span>-R$ ${(order.discountValue || order.discount || 0).toFixed(2).replace('.', ',')}</span>
+                        </div>
+                    ` : ''}
+                    <div style="display: flex; justify-content: space-between; font-size: 1.15rem; font-weight: 900; color: #1E1B4B; border-top: 1px solid #E2E8F0; padding-top: 0.5rem;">
+                        <span>Total a Receber:</span>
+                        <span style="color: #047857;">R$ ${order.total.toFixed(2).replace('.', ',')}</span>
+                    </div>
+                </div>
+
+                <!-- AÇÕES DO MODAL -->
+                <div style="display: flex; gap: 0.5rem; justify-content: flex-end; flex-wrap: wrap;">
+                    <button type="button" class="btn-admin" onclick="triggerPrintOrder('${order.id}')" style="background: #4F46E5; color: white; font-weight: 800; padding: 0.6rem 1.1rem; border-radius: 8px; display: flex; align-items: center; gap: 0.4rem;">
+                        🖨️ Imprimir Térmica (58mm)
+                    </button>
+                    <button type="button" class="btn-admin" onclick="deleteOrder('${order.id}'); closeAdminOrderDetailModal();" style="background: #FEE2E2; color: #DC2626; border: 1px solid #FCA5A5; font-weight: 700; padding: 0.6rem 0.9rem; border-radius: 8px;">
+                        🗑️ Excluir Pedido
+                    </button>
+                    <button type="button" class="btn-admin" onclick="closeAdminOrderDetailModal()" style="background: #E2E8F0; color: #334155; font-weight: 700; padding: 0.6rem 1rem; border-radius: 8px;">
+                        Fechar
+                    </button>
+                </div>
+            `;
+
+            modal.classList.add('active');
+        }
+
+        function closeAdminOrderDetailModal() {
+            const modal = document.getElementById('adminOrderDetailModal');
+            if (modal) modal.classList.remove('active');
         }
 
         function updateOrderStatus(orderId, newStatus) {
@@ -6766,7 +7489,249 @@
             showNotification('HTML exportado com sucesso! ✅', 'success');
         }
 
+        // ========== QR CODE & ACESSO RÁPIDO ==========
+        let currentQrScope = 'store'; // 'store' | 'portal'
+
+        function openQrCodeModal(scope = 'store') {
+            currentQrScope = scope;
+            const modal = document.getElementById('qrCodeModal');
+            if (!modal) return;
+            updateQrCodeModalUI();
+            modal.classList.add('active');
+        }
+
+        function closeQrCodeModal() {
+            const modal = document.getElementById('qrCodeModal');
+            if (modal) modal.classList.remove('active');
+        }
+
+        function switchQrScope(scope) {
+            currentQrScope = scope;
+            updateQrCodeModalUI();
+        }
+
+        function getActiveQrData() {
+            const activeComp = getActiveCompany();
+            if (currentQrScope === 'portal') {
+                return {
+                    title: 'Don Delivery • Plataforma Oficial',
+                    url: 'https://dondelivery.site',
+                    qrImageUrl: `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent('https://dondelivery.site')}`,
+                    storeName: 'Don Delivery'
+                };
+            } else {
+                const officialUrl = getCompanyOfficialUrl(activeComp);
+                return {
+                    title: activeComp.name || settings.restaurantName || 'Cardápio Digital',
+                    url: officialUrl,
+                    qrImageUrl: `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(officialUrl)}`,
+                    storeName: activeComp.name || settings.restaurantName
+                };
+            }
+        }
+
+        function updateQrCodeModalUI() {
+            const data = getActiveQrData();
+            const titleEl = document.getElementById('qrCodeTargetTitle');
+            const urlEl = document.getElementById('qrCodeTargetUrl');
+            const imgEl = document.getElementById('qrCodeImage');
+            const storeBtn = document.getElementById('qrScopeStoreBtn');
+            const portalBtn = document.getElementById('qrScopePortalBtn');
+
+            if (titleEl) titleEl.textContent = data.title;
+            if (urlEl) urlEl.textContent = data.url;
+            if (imgEl) imgEl.src = data.qrImageUrl;
+
+            if (storeBtn && portalBtn) {
+                if (currentQrScope === 'store') {
+                    storeBtn.style.background = '#4F46E5';
+                    storeBtn.style.color = '#FFFFFF';
+                    portalBtn.style.background = 'transparent';
+                    portalBtn.style.color = '#475569';
+                } else {
+                    portalBtn.style.background = '#4F46E5';
+                    portalBtn.style.color = '#FFFFFF';
+                    storeBtn.style.background = 'transparent';
+                    storeBtn.style.color = '#475569';
+                }
+            }
+        }
+
+        function copyCurrentQrLink() {
+            const data = getActiveQrData();
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(data.url).then(() => {
+                    showNotification(`Link copiado: ${data.url}`, 'success');
+                }).catch(() => {
+                    prompt('Copie o link abaixo:', data.url);
+                });
+            } else {
+                prompt('Copie o link abaixo:', data.url);
+            }
+        }
+
+        function shareCurrentQrWhatsApp() {
+            const data = getActiveQrData();
+            const msg = `🍕 Acesse nosso cardápio digital e faça seu pedido direto pelo celular: ${data.url}`;
+            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+
+        async function downloadQrCodeImage() {
+            const data = getActiveQrData();
+            try {
+                const response = await fetch(data.qrImageUrl);
+                const blob = await response.blob();
+                const blobUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                const filename = (currentQrScope === 'portal') ? 'qrcode-dondelivery.png' : `qrcode-${(data.storeName || 'loja').toLowerCase().replace(/[^a-z0-9]/g, '-')}.png`;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(blobUrl);
+                showNotification('QR Code baixado com sucesso! 📱📥', 'success');
+            } catch(err) {
+                window.open(data.qrImageUrl, '_blank');
+            }
+        }
+
+        function printTableTentSign() {
+            const data = getActiveQrData();
+            const printWindow = window.open('', '_blank');
+            if (!printWindow) {
+                showNotification('Permita pop-ups para imprimir a plaquinha de mesa.', 'warning');
+                return;
+            }
+
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html lang="pt-BR">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Plaquinha de Mesa - ${data.storeName}</title>
+                    <style>
+                        @page { size: A5 portrait; margin: 10mm; }
+                        body {
+                            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                            text-align: center;
+                            margin: 0;
+                            padding: 25px 20px;
+                            background: #FFFFFF;
+                            color: #1E1B4B;
+                        }
+                        .card {
+                            border: 3.5px solid #4F46E5;
+                            border-radius: 24px;
+                            padding: 30px 20px;
+                            max-width: 420px;
+                            margin: 0 auto;
+                            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+                        }
+                        .badge {
+                            display: inline-block;
+                            background: #4F46E5;
+                            color: #FFFFFF;
+                            padding: 6px 18px;
+                            border-radius: 20px;
+                            font-size: 13px;
+                            font-weight: 800;
+                            letter-spacing: 0.5px;
+                            text-transform: uppercase;
+                            margin-bottom: 12px;
+                        }
+                        h1 {
+                            font-size: 26px;
+                            margin: 5px 0 10px 0;
+                            color: #1E1B4B;
+                            font-weight: 900;
+                        }
+                        p.sub {
+                            font-size: 15px;
+                            color: #4B5563;
+                            margin: 0 0 20px 0;
+                            line-height: 1.4;
+                        }
+                        .qr-box {
+                            background: #F8FAFC;
+                            border: 2px dashed #818CF8;
+                            border-radius: 20px;
+                            padding: 16px;
+                            display: inline-block;
+                            margin-bottom: 16px;
+                        }
+                        .qr-box img {
+                            width: 250px;
+                            height: 250px;
+                            display: block;
+                        }
+                        .url {
+                            font-family: monospace;
+                            font-size: 14px;
+                            font-weight: bold;
+                            color: #4F46E5;
+                            word-break: break-all;
+                            margin-bottom: 15px;
+                            background: #EEF2FF;
+                            padding: 6px 12px;
+                            border-radius: 8px;
+                            display: inline-block;
+                        }
+                        .footer-text {
+                            font-size: 12px;
+                            color: #6B7280;
+                            border-top: 1px solid #E5E7EB;
+                            padding-top: 12px;
+                            font-weight: 600;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="card">
+                        <div class="badge">📱 CARDÁPIO DIGITAL</div>
+                        <h1>${data.storeName}</h1>
+                        <p class="sub">Aponte a câmera do seu celular para fazer seu pedido na mesa ou balcão!</p>
+                        <div class="qr-box">
+                            <img src="${data.qrImageUrl}" alt="QR Code">
+                        </div>
+                        <br>
+                        <div class="url">${data.url}</div>
+                        <div class="footer-text">
+                            Sem filas • Rápido e Seguro • Don Delivery
+                        </div>
+                    </div>
+                    <script>
+                        window.onload = function() {
+                            setTimeout(() => { window.print(); }, 400);
+                        };
+                    <\/script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
+
+        // ========== AQUISIÇÃO DO DON DELIVERY ==========
+        function openAcquireAppModal() {
+            const modal = document.getElementById('acquireAppModal');
+            if (modal) modal.classList.add('active');
+        }
+
+        function closeAcquireAppModal() {
+            const modal = document.getElementById('acquireAppModal');
+            if (modal) modal.classList.remove('active');
+        }
+
         // Expor todas as funções globais necessárias para eventos onclick do HTML
+        window.openQrCodeModal = openQrCodeModal;
+        window.closeQrCodeModal = closeQrCodeModal;
+        window.switchQrScope = switchQrScope;
+        window.copyCurrentQrLink = copyCurrentQrLink;
+        window.shareCurrentQrWhatsApp = shareCurrentQrWhatsApp;
+        window.downloadQrCodeImage = downloadQrCodeImage;
+        window.printTableTentSign = printTableTentSign;
+        window.openAcquireAppModal = openAcquireAppModal;
+        window.closeAcquireAppModal = closeAcquireAppModal;
         window.applyCartCoupon = applyCartCoupon;
         window.removeAppliedCoupon = removeAppliedCoupon;
         window.handleAdminCreateCoupon = handleAdminCreateCoupon;
@@ -6807,6 +7772,13 @@
         window.updateCashChangeValue = updateCashChangeValue;
         window.updateOrderStatus = updateOrderStatus;
         window.deleteOrder = deleteOrder;
+        window.handleAdminOrderSearch = handleAdminOrderSearch;
+        window.clearAdminOrderSearch = clearAdminOrderSearch;
+        window.filterAdminOrdersByStatus = filterAdminOrdersByStatus;
+        window.toggleAdminOrderExpand = toggleAdminOrderExpand;
+        window.openAdminOrderDetailModal = openAdminOrderDetailModal;
+        window.closeAdminOrderDetailModal = closeAdminOrderDetailModal;
+        window.renderAdminOrdersList = renderAdminOrdersList;
         window.openCustomerOrdersModal = openCustomerOrdersModal;
         window.closeCustomerOrdersModal = closeCustomerOrdersModal;
         window.saveCustomerData = saveCustomerData;
@@ -6817,6 +7789,19 @@
         window.checkout = checkout;
 
         // Funções do Painel Dev e Multi-Empresa
+        window.getActiveCompany = getActiveCompany;
+        window.getActiveCompanyPresetType = getActiveCompanyPresetType;
+        window.generateSlug = generateSlug;
+        window.sanitizeSlug = sanitizeSlug;
+        window.getCompanySlug = getCompanySlug;
+        window.getCompanyOfficialUrl = getCompanyOfficialUrl;
+        window.copyCompanyLink = copyCompanyLink;
+        window.copyActiveCompanyOfficialLink = copyActiveCompanyOfficialLink;
+        window.shareActiveCompanyWhatsApp = shareActiveCompanyWhatsApp;
+        window.handleSlugSanitize = handleSlugSanitize;
+        window.handleAdminNameSlugSync = handleAdminNameSlugSync;
+        window.handleAdminSlugInput = handleAdminSlugInput;
+        window.handleDevNewNameSlugSync = handleDevNewNameSlugSync;
         window.logoutDev = logoutDev;
         window.renderDevCustomerList = renderDevCustomerList;
         window.populateDevCustomerFilter = populateDevCustomerFilter;
