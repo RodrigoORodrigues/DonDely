@@ -607,10 +607,19 @@
                     // Atualizar conjunto de IDs conhecidos
                     knownOrderIds = new Set(serverOrders.map(o => o.id));
 
-                    // Atualizar array em memória se houver qualquer diferença
-                    const hasChanged = JSON.stringify(serverOrders) !== JSON.stringify(customerOrders);
+                    // Atualizar array em memória unindo pedidos locais com os do servidor
+                    let mergedOrders = [...serverOrders];
+                    customerOrders.forEach(localOrd => {
+                        if (localOrd && localOrd.id && !mergedOrders.some(so => String(so.id) === String(localOrd.id))) {
+                            if (!localOrd.companyId || localOrd.companyId === targetCompanyId) {
+                                mergedOrders.push(localOrd);
+                            }
+                        }
+                    });
+
+                    const hasChanged = JSON.stringify(mergedOrders) !== JSON.stringify(customerOrders);
                     if (hasChanged) {
-                        customerOrders = serverOrders;
+                        customerOrders = mergedOrders;
                         localStorage.setItem(`customerOrders_${targetCompanyId}`, JSON.stringify(customerOrders));
                         
                         // Atualizar vetor de empresas
@@ -6288,12 +6297,72 @@
             const container = document.getElementById('adminOrdersList');
             if (!container) return;
 
-            // 1. Filtrar estritamente pedidos pertencentes à empresa ativa
             const activeCompId = activeCompanyId || 'company-demo-don';
-            const companyOrdersList = customerOrders.filter(o => 
-                o.companyId === activeCompId || 
-                (!o.companyId && activeCompId === 'company-demo-don')
-            );
+            
+            // Unificar todos os pedidos pertinentes a esta empresa de todas as fontes disponíveis
+            let allCompanyOrders = [];
+
+            // A. De customerOrders em memória
+            (customerOrders || []).forEach(ord => {
+                if (!ord || !ord.id) return;
+                const matchesComp = ord.companyId === activeCompId || (!ord.companyId && (activeCompId === 'company-demo-don' || activeCompId === 'company-fb-default'));
+                if (matchesComp && !allCompanyOrders.some(o => String(o.id) === String(ord.id) || String(o.id).replace('#', '') === String(ord.id).replace('#', ''))) {
+                    allCompanyOrders.push(ord);
+                }
+            });
+
+            // B. De companies[activeCompId].orders
+            const activeCompObj = companies.find(c => c.id === activeCompId);
+            if (activeCompObj && Array.isArray(activeCompObj.orders)) {
+                activeCompObj.orders.forEach(ord => {
+                    if (!ord || !ord.id) return;
+                    const idx = allCompanyOrders.findIndex(o => String(o.id) === String(ord.id) || String(o.id).replace('#', '') === String(ord.id).replace('#', ''));
+                    if (idx >= 0) {
+                        allCompanyOrders[idx] = { ...allCompanyOrders[idx], ...ord };
+                    } else {
+                        allCompanyOrders.push(ord);
+                    }
+                });
+            }
+
+            // C. De localStorage ('customerOrders_' + activeCompId)
+            try {
+                const storedLocal = JSON.parse(localStorage.getItem(`customerOrders_${activeCompId}`) || '[]');
+                if (Array.isArray(storedLocal)) {
+                    storedLocal.forEach(ord => {
+                        if (!ord || !ord.id) return;
+                        const idx = allCompanyOrders.findIndex(o => String(o.id) === String(ord.id) || String(o.id).replace('#', '') === String(ord.id).replace('#', ''));
+                        if (idx >= 0) {
+                            allCompanyOrders[idx] = { ...allCompanyOrders[idx], ...ord };
+                        } else {
+                            allCompanyOrders.push(ord);
+                        }
+                    });
+                }
+            } catch(e) {}
+
+            // D. De localStorage ('all_placed_orders')
+            try {
+                const storedAll = JSON.parse(localStorage.getItem('all_placed_orders') || '[]');
+                if (Array.isArray(storedAll)) {
+                    storedAll.forEach(ord => {
+                        if (!ord || !ord.id) return;
+                        const matchesComp = ord.companyId === activeCompId || (!ord.companyId && (activeCompId === 'company-demo-don' || activeCompId === 'company-fb-default'));
+                        if (matchesComp) {
+                            const idx = allCompanyOrders.findIndex(o => String(o.id) === String(ord.id) || String(o.id).replace('#', '') === String(ord.id).replace('#', ''));
+                            if (idx >= 0) {
+                                allCompanyOrders[idx] = { ...allCompanyOrders[idx], ...ord };
+                            } else {
+                                allCompanyOrders.push(ord);
+                            }
+                        }
+                    });
+                }
+            } catch(e) {}
+
+            // Sincronizar customerOrders com a lista unificada
+            customerOrders = allCompanyOrders;
+            const companyOrdersList = allCompanyOrders;
 
             // 2. Atualizar contadores de status
             updateAdminOrderStatusCounts(companyOrdersList);
@@ -6475,7 +6544,21 @@
 
         // ========== MODAL DE DETALHES DO PEDIDO (ADMIN) ==========
         function openAdminOrderDetailModal(orderId) {
-            const order = customerOrders.find(o => o.id === orderId);
+            let order = customerOrders.find(o => String(o.id) === String(orderId) || String(o.id).replace('#', '') === String(orderId).replace('#', ''));
+            if (!order) {
+                for (const c of (companies || [])) {
+                    if (c.orders) {
+                        const found = c.orders.find(o => String(o.id) === String(orderId) || String(o.id).replace('#', '') === String(orderId).replace('#', ''));
+                        if (found) { order = found; break; }
+                    }
+                }
+            }
+            if (!order) {
+                try {
+                    const allPlaced = JSON.parse(localStorage.getItem('all_placed_orders') || '[]');
+                    order = allPlaced.find(o => String(o.id) === String(orderId) || String(o.id).replace('#', '') === String(orderId).replace('#', ''));
+                } catch(e) {}
+            }
             if (!order) return;
 
             const modal = document.getElementById('adminOrderDetailModal');
@@ -7159,7 +7242,21 @@
             if (typeof orderId === 'object') {
                 order = orderId;
             } else {
-                order = customerOrders.find(o => o.id === orderId);
+                order = customerOrders.find(o => String(o.id) === String(orderId) || String(o.id).replace('#', '') === String(orderId).replace('#', ''));
+                if (!order) {
+                    for (const c of (companies || [])) {
+                        if (c.orders) {
+                            const found = c.orders.find(o => String(o.id) === String(orderId) || String(o.id).replace('#', '') === String(orderId).replace('#', ''));
+                            if (found) { order = found; break; }
+                        }
+                    }
+                }
+                if (!order) {
+                    try {
+                        const allPlaced = JSON.parse(localStorage.getItem('all_placed_orders') || '[]');
+                        order = allPlaced.find(o => String(o.id) === String(orderId) || String(o.id).replace('#', '') === String(orderId).replace('#', ''));
+                    } catch(e) {}
+                }
             }
             if (!order) return;
 
