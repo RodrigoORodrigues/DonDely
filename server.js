@@ -170,7 +170,7 @@ function sanitizeNumber(val, defaultVal = 0, min = 0, max = 999999) {
 }
 
 // 8. Whitelist estrita e completa de campos de pedidos
-function sanitizeOrderPayload(input, fallbackCompanyId = 'company-fb-default') {
+function sanitizeOrderPayload(input, fallbackCompanyId = 'company-demo-don') {
     if (!input || typeof input !== 'object') return null;
 
     const id = sanitizeString(input.id || `#${Date.now().toString().slice(-4)}`, 30);
@@ -444,10 +444,10 @@ app.get('/api/orders', orderReadLimiter, validateCompanyHeader, async (req, res)
             // Filtrar pedidos deste cliente específico
             filtered = filtered.filter(o => o.customerPhone && o.customerPhone.replace(/\D/g, '') === customerPhone);
         } else if (companyId && companyId !== 'all') {
-            // 7. Isolamento por empresa com fallback para FB
+            // 7. Isolamento por empresa
             filtered = filtered.filter(o => 
                 o.companyId === companyId || 
-                (!o.companyId && (companyId === 'company-fb-default' || companyId === 'company-demo-don'))
+                (!o.companyId && companyId === 'company-demo-don')
             );
         }
 

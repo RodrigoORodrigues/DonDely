@@ -584,7 +584,7 @@
             if (isFetchingOrders) return;
             isFetchingOrders = true;
             try {
-                const targetCompanyId = activeCompanyId || 'company-fb-default';
+                const targetCompanyId = activeCompanyId || 'company-demo-don';
                 const res = await fetch(`/api/orders?company_id=${encodeURIComponent(targetCompanyId)}`, {
                     headers: {
                         'x-company-id': targetCompanyId
@@ -1625,7 +1625,7 @@
                 companies = [defaultDemoCompany, defaultFB];
                 localStorage.setItem('companies', JSON.stringify(companies));
             } else {
-                // Garantir integridade dos Slugs e garantir que a empresa de demonstração exista
+                // Garantir integridade dos Slugs e garantir que a empresa de demonstração e a FB existam
                 let hasDemo = companies.some(c => c.id === 'company-demo-don' || c.isDemo || c.slug === 'demo');
                 if (!hasDemo) {
                     companies.unshift(defaultDemoCompany);
@@ -1680,14 +1680,14 @@
                 activeCompanyId = targetCompany.id;
                 localStorage.setItem('activeCompanyId', activeCompanyId);
             } else {
-                // Se acessou link principal sem parâmetros e não há preferência recente:
+                // Se acessou link principal sem parâmetros:
                 const savedActiveId = localStorage.getItem('activeCompanyId');
                 if (savedActiveId && companies.some(c => c.id === savedActiveId)) {
                     activeCompanyId = savedActiveId;
                 } else {
                     // Padrão de apresentação no link principal: Loja Demonstração
                     const demoComp = companies.find(c => c.isDemo || c.slug === 'demo' || c.id === 'company-demo-don');
-                    activeCompanyId = demoComp ? demoComp.id : companies[0].id;
+                    activeCompanyId = demoComp ? demoComp.id : 'company-demo-don';
                     localStorage.setItem('activeCompanyId', activeCompanyId);
                 }
             }
@@ -3709,10 +3709,10 @@
                 } else if (isAdminLoggedIn) {
                     container.style.display = 'flex';
                     const activeComp = companies.find(c => c.id === activeCompanyId) || settings;
-                    const activeCompId = activeCompanyId || 'company-fb-default';
+                    const activeCompId = activeCompanyId || 'company-demo-don';
                     const currentOrders = customerOrders.filter(o => 
                         o.companyId === activeCompId || 
-                        (!o.companyId && activeCompId === 'company-fb-default')
+                        (!o.companyId && activeCompId === 'company-demo-don')
                     );
                     const receivedCount = currentOrders.filter(o => (o.status || 'RECEIVED') === 'RECEIVED').length;
                     const hasNewBadge = receivedCount > 0;
@@ -6041,9 +6041,15 @@
                 }
             });
 
-            // Filtrar pedidos deste cliente pelo número de telefone
+            // Filtrar pedidos deste cliente pelo número de telefone (limpeza de caracteres não numéricos)
             const phone = (loggedCustomer && loggedCustomer.phone) || (customerData && customerData.phone);
-            const myOrders = allCustomerOrders.filter(o => o.customerPhone === phone);
+            const cleanPhone = phone ? String(phone).replace(/\D/g, '') : '';
+            const myOrders = allCustomerOrders.filter(o => {
+                if (cleanPhone && o.customerPhone) {
+                    return String(o.customerPhone).replace(/\D/g, '') === cleanPhone;
+                }
+                return true;
+            });
 
             if (countBadge) countBadge.textContent = `${myOrders.length} Pedido(s)`;
 
@@ -6216,10 +6222,10 @@
             if (!container) return;
 
             // 1. Filtrar estritamente pedidos pertencentes à empresa ativa
-            const activeCompId = activeCompanyId || 'company-fb-default';
+            const activeCompId = activeCompanyId || 'company-demo-don';
             const companyOrdersList = customerOrders.filter(o => 
                 o.companyId === activeCompId || 
-                (!o.companyId && activeCompId === 'company-fb-default')
+                (!o.companyId && activeCompId === 'company-demo-don')
             );
 
             // 2. Atualizar contadores de status
@@ -7400,8 +7406,8 @@
 
             // Criar registro de pedido para o histórico do cliente e admin
             const activeComp = (companies && companies.find(c => c.id === activeCompanyId)) || settings;
-            const currentCompId = activeCompanyId || 'company-fb-default';
-            const currentCompName = (activeComp && activeComp.name) || settings.restaurantName || 'Açaí na Quentinha do FB';
+            const currentCompId = activeCompanyId || 'company-demo-don';
+            const currentCompName = (activeComp && activeComp.name) || settings.restaurantName || 'Don Delivery';
             const currentCompWa = (activeComp && activeComp.whatsappNumber) || settings.whatsappNumber;
 
             const orderId = '#' + Math.floor(1000 + Math.random() * 9000);
