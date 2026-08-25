@@ -547,10 +547,19 @@
                     // Atualizar conjunto de IDs conhecidos
                     knownOrderIds = new Set(serverOrders.map(o => o.id));
 
-                    // Atualizar array em memória se houver diferença
-                    if (JSON.stringify(serverOrders) !== JSON.stringify(customerOrders)) {
+                    // Atualizar array em memória se houver qualquer diferença
+                    const hasChanged = JSON.stringify(serverOrders) !== JSON.stringify(customerOrders);
+                    if (hasChanged) {
                         customerOrders = serverOrders;
                         localStorage.setItem(`customerOrders_${targetCompanyId}`, JSON.stringify(customerOrders));
+                        
+                        // Atualizar vetor de empresas
+                        let activeComp = companies.find(c => c.id === targetCompanyId);
+                        if (activeComp) {
+                            activeComp.orders = customerOrders;
+                            localStorage.setItem('companies', JSON.stringify(companies));
+                        }
+
                         renderAdminOrdersList();
                         renderCustomerOrdersList();
                     }
@@ -1717,6 +1726,7 @@
 
             const savedOrders = localStorage.getItem(`customerOrders_${activeCompanyId}`);
             customerOrders = savedOrders ? JSON.parse(savedOrders) : (activeComp.orders || []);
+            knownOrderIds = new Set((customerOrders || []).map(o => o.id));
 
             const savedCustomer = localStorage.getItem('customerData');
             customerData = savedCustomer ? JSON.parse(savedCustomer) : null;
@@ -1788,6 +1798,7 @@
             localStorage.setItem('activeCompanyId', activeCompanyId);
             loadData();
             renderAll();
+            fetchOrdersFromServer(true);
             showNotification(`Empresa alternada para: ${settings.restaurantName} 🏪`, 'success');
         }
 

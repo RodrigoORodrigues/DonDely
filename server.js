@@ -103,9 +103,10 @@ function botProtectionMiddleware(req, res, next) {
 
 app.use(botProtectionMiddleware);
 
-const generalLimiter = createRateLimiter(180, 60000, 'Geral');
-const authLimiter = createRateLimiter(15, 60000, 'Autenticação');
-const orderLimiter = createRateLimiter(35, 60000, 'Pedidos');
+const generalLimiter = createRateLimiter(300, 60000, 'Geral');
+const authLimiter = createRateLimiter(60, 60000, 'Autenticação');
+const orderReadLimiter = createRateLimiter(600, 60000, 'Consulta Pedidos');
+const orderWriteLimiter = createRateLimiter(120, 60000, 'Envio Pedidos');
 
 // ============================================================================
 // PRECAUÇÃO #5 & #10: CRIPTOGRAFIA DE DADOS, HASH SEGURO E ASSINATURA HMAC
@@ -168,37 +169,44 @@ function sanitizeNumber(val, defaultVal = 0, min = 0, max = 999999) {
     return Math.max(min, Math.min(max, num));
 }
 
-// 8. Whitelist estrita de campos de pedidos (Mass Assignment Protection)
+// 8. Whitelist estrita e completa de campos de pedidos
 function sanitizeOrderPayload(input, fallbackCompanyId = 'company-fb-default') {
     if (!input || typeof input !== 'object') return null;
 
     const id = sanitizeString(input.id || `#${Date.now().toString().slice(-4)}`, 30);
     const companyId = sanitizeString(input.companyId || fallbackCompanyId, 60);
     const companyName = sanitizeString(input.companyName || '', 100);
+    const companyWhatsapp = sanitizeString(input.companyWhatsapp || '', 30);
     const customerName = sanitizeString(input.customerName || 'Cliente', 100);
     const customerPhone = sanitizeString(input.customerPhone || '', 30);
     const customerAddress = sanitizeString(input.customerAddress || '', 255);
     const customerNeighborhood = sanitizeString(input.customerNeighborhood || '', 100);
-    const paymentMethod = sanitizeString(input.paymentMethod || 'pix', 30);
+    const customerNeighborhoodZone = sanitizeString(input.customerNeighborhoodZone || '', 100);
+    const customerReference = sanitizeString(input.customerReference || '', 150);
+    const deliveryTime = sanitizeString(input.deliveryTime || '30 - 45 min', 50);
+    const paymentMethod = sanitizeString(input.paymentMethod || 'Pix', 60);
     const couponCode = sanitizeString(input.couponCode || '', 30);
+    const couponDiscount = sanitizeNumber(input.couponDiscount, 0);
+    const discountValue = sanitizeNumber(input.discountValue || input.discount, 0);
+    const discount = discountValue;
     const observations = sanitizeString(input.observations || '', 500);
+    const date = sanitizeString(input.date || new Date().toLocaleString('pt-BR'), 50);
     const status = ['RECEIVED', 'PREPARING', 'DELIVERING', 'COMPLETED', 'CANCELLED'].includes(input.status)
         ? input.status
         : 'RECEIVED';
 
     const subtotal = sanitizeNumber(input.subtotal, 0);
     const deliveryFee = sanitizeNumber(input.deliveryFee, 0);
-    const discount = sanitizeNumber(input.discount, 0);
-    const total = sanitizeNumber(input.total, subtotal + deliveryFee - discount);
+    const total = sanitizeNumber(input.total, Math.max(0, subtotal + deliveryFee - discount));
     const cashChangeFor = input.cashChangeFor ? sanitizeNumber(input.cashChangeFor, 0) : null;
 
-    // Sanitizar itens
+    // Sanitizar itens preservando details e opções
     const items = Array.isArray(input.items) ? input.items.map(item => ({
         id: item.id ? String(item.id).slice(0, 50) : undefined,
         name: sanitizeString(item.name || 'Item', 120),
         price: sanitizeNumber(item.price, 0),
         quantity: Math.max(1, Math.min(99, parseInt(item.quantity, 10) || 1)),
-        details: sanitizeString(item.details || '', 300),
+        details: sanitizeString(item.details || '', 500),
         image: sanitizeString(item.image || '', 500)
     })) : [];
 
@@ -206,21 +214,29 @@ function sanitizeOrderPayload(input, fallbackCompanyId = 'company-fb-default') {
         id,
         companyId,
         companyName,
+        companyWhatsapp,
         customerName,
         customerPhone,
         customerAddress,
         customerNeighborhood,
+        customerNeighborhoodZone,
+        customerReference,
+        deliveryTime,
         paymentMethod,
+        date,
         items,
         subtotal,
         deliveryFee,
         discount,
-        total,
+        discountValue,
         couponCode,
+        couponDiscount,
+        total,
         cashChangeFor,
         observations,
         status,
-        created_at: input.created_at || new Date().toISOString()
+        created_at: input.created_at || new Date().toISOString(),
+        updated_at: input.updated_at || new Date().toISOString()
     };
 }
 
@@ -416,7 +432,7 @@ app.post('/api/auth/login', authLimiter, (req, res) => {
 // ============================================================================
 
 // 1. Obter pedidos (filtrados por empresa ou por telefone do cliente)
-app.get('/api/orders', orderLimiter, validateCompanyHeader, async (req, res) => {
+app.get('/api/orders', orderReadLimiter, validateCompanyHeader, async (req, res) => {
     try {
         const { companyId } = req;
         const customerPhone = sanitizeString(req.query.phone || '', 30).replace(/\D/g, '');
@@ -428,10 +444,10 @@ app.get('/api/orders', orderLimiter, validateCompanyHeader, async (req, res) => 
             // Filtrar pedidos deste cliente específico
             filtered = filtered.filter(o => o.customerPhone && o.customerPhone.replace(/\D/g, '') === customerPhone);
         } else if (companyId && companyId !== 'all') {
-            // 7. Isolamento rigoroso por empresa
+            // 7. Isolamento por empresa com fallback para FB
             filtered = filtered.filter(o => 
                 o.companyId === companyId || 
-                (!o.companyId && companyId === 'company-fb-default')
+                (!o.companyId && (companyId === 'company-fb-default' || companyId === 'company-demo-don'))
             );
         }
 
@@ -467,7 +483,7 @@ app.get('/api/supabase/orders', validateCompanyHeader, (req, res) => {
 });
 
 // 2. Criar novo Pedido (com sanitização e bloqueio de mass assignment)
-app.post('/api/orders', orderLimiter, validateCompanyHeader, async (req, res) => {
+app.post('/api/orders', orderWriteLimiter, validateCompanyHeader, async (req, res) => {
     try {
         const sanitizedOrder = sanitizeOrderPayload(req.body, req.companyId);
 
@@ -507,7 +523,7 @@ app.post('/api/supabase/orders', validateCompanyHeader, (req, res) => {
 });
 
 // 3. Atualizar Status do Pedido
-app.patch('/api/orders/:id/status', orderLimiter, validateCompanyHeader, async (req, res) => {
+app.patch('/api/orders/:id/status', orderWriteLimiter, validateCompanyHeader, async (req, res) => {
     try {
         const rawId = sanitizeString(req.params.id, 50);
         const rawStatus = sanitizeString(req.body.status, 30);
@@ -548,7 +564,7 @@ app.patch('/api/supabase/orders/:id/status', validateCompanyHeader, (req, res) =
 });
 
 // 4. Excluir Pedido
-app.delete('/api/orders/:id', orderLimiter, validateCompanyHeader, async (req, res) => {
+app.delete('/api/orders/:id', orderWriteLimiter, validateCompanyHeader, async (req, res) => {
     try {
         const rawId = sanitizeString(req.params.id, 50);
         let allOrders = readJsonFile(ORDERS_FILE, []);
