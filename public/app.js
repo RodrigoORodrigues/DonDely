@@ -477,6 +477,90 @@
         let loggedCustomer = null;
         let customerAccounts = [];
         let customerOrders = [];
+        let isFetchingOrders = false;
+        let knownOrderIds = new Set();
+
+        // Alerta sonoro agradável para novos pedidos recebidos no painel da empresa
+        function playNewOrderSound() {
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtx) return;
+                const ctx = new AudioCtx();
+                if (ctx.state === 'suspended') {
+                    ctx.resume();
+                }
+                const now = ctx.currentTime;
+                // Tom duplo suave de notificação de pedido
+                const osc1 = ctx.createOscillator();
+                const gain1 = ctx.createGain();
+                osc1.type = 'sine';
+                osc1.frequency.setValueAtTime(587.33, now); // Ré (D5)
+                gain1.gain.setValueAtTime(0.3, now);
+                gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                osc1.connect(gain1);
+                gain1.connect(ctx.destination);
+                osc1.start(now);
+                osc1.stop(now + 0.35);
+
+                const osc2 = ctx.createOscillator();
+                const gain2 = ctx.createGain();
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(880, now + 0.18); // Lá (A5)
+                gain2.gain.setValueAtTime(0.35, now + 0.18);
+                gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+                osc2.connect(gain2);
+                gain2.connect(ctx.destination);
+                osc2.start(now + 0.18);
+                osc2.stop(now + 0.65);
+            } catch (e) {
+                // AudioContext não disponível ou restrito pelo navegador
+            }
+        }
+
+        // Sincronização em tempo real de pedidos com o servidor central
+        async function fetchOrdersFromServer(silent = true) {
+            if (isFetchingOrders) return;
+            isFetchingOrders = true;
+            try {
+                const targetCompanyId = activeCompanyId || 'company-fb-default';
+                const res = await fetch(`/api/orders?company_id=${encodeURIComponent(targetCompanyId)}`, {
+                    headers: {
+                        'x-company-id': targetCompanyId
+                    }
+                });
+                if (!res.ok) throw new Error('Falha na resposta do servidor de pedidos');
+                const json = await res.json();
+                if (json && json.success && Array.isArray(json.data)) {
+                    const serverOrders = json.data;
+
+                    // Detectar se há novos pedidos que chegaram no servidor
+                    if (knownOrderIds.size > 0) {
+                        const newArrivals = serverOrders.filter(o => !knownOrderIds.has(o.id));
+                        if (newArrivals.length > 0) {
+                            playNewOrderSound();
+                            const top = newArrivals[0];
+                            const valFormatted = Number(top.total || 0).toFixed(2).replace('.', ',');
+                            showNotification(`🔔 Novo Pedido Recebido: ${top.id} (${top.customerName || 'Cliente'}) - R$ ${valFormatted}!`, 'success');
+                        }
+                    }
+
+                    // Atualizar conjunto de IDs conhecidos
+                    knownOrderIds = new Set(serverOrders.map(o => o.id));
+
+                    // Atualizar array em memória se houver diferença
+                    if (JSON.stringify(serverOrders) !== JSON.stringify(customerOrders)) {
+                        customerOrders = serverOrders;
+                        localStorage.setItem(`customerOrders_${targetCompanyId}`, JSON.stringify(customerOrders));
+                        renderAdminOrdersList();
+                        renderCustomerOrdersList();
+                    }
+                }
+            } catch (err) {
+                if (!silent) console.warn('Aviso sincronização pedidos:', err.message);
+            } finally {
+                isFetchingOrders = false;
+            }
+        }
 
         // Customizador de Açaí
         let activeCustomizingProduct = null;
@@ -535,6 +619,8 @@
             updateAdminHeaderUI();
             renderPresetCatalog();
             attachEventListeners();
+            // Buscar pedidos mais recentes no servidor central
+            fetchOrdersFromServer(true);
         }
 
         // ========== APLICADOR DESSA PALETA DE CORES DINÂMICA ==========
@@ -3332,6 +3418,7 @@
             cart.push(cartItem);
             localStorage.setItem('cart', JSON.stringify(cart));
             updateCartUI();
+            triggerCartShake();
 
             closeAcaiCustomizer();
             showNotification('Item customizado adicionado ao carrinho!', 'success');
@@ -4957,6 +5044,17 @@
             }, 3000);
         }
 
+        function triggerCartShake() {
+            const btn = document.getElementById('cartBtn');
+            if (!btn) return;
+            btn.classList.remove('cart-shake');
+            void btn.offsetWidth; // Forçar reflow para reiniciar animação
+            btn.classList.add('cart-shake');
+            setTimeout(() => {
+                btn.classList.remove('cart-shake');
+            }, 650);
+        }
+
         // ========== GERENCIAR CARRINHO ==========
         function addToCart(productId) {
             const product = products.find(p => p.id === productId);
@@ -4984,6 +5082,7 @@
 
             localStorage.setItem('cart', JSON.stringify(cart));
             updateCartUI();
+            triggerCartShake();
             
             cartCount.style.animation = 'none';
             setTimeout(() => {
@@ -5439,18 +5538,6 @@
                 }
             }
 
-            // SEÇÃO 3: FERRAMENTAS & ACESSO
-            itemsHtml += `<div class="mobile-dropdown-divider"></div>`;
-            itemsHtml += `<div class="mobile-dropdown-header">Recursos & Acesso</div>`;
-            itemsHtml += `
-                <button type="button" class="mobile-dropdown-item" onclick="closeMobileHeaderMenu(); openQrCodeModal();" style="color: #4F46E5; font-weight: 700;">
-                    📱 QR Code & Mesas
-                </button>
-                <button type="button" class="mobile-dropdown-item" onclick="closeMobileHeaderMenu(); openDevPasswordModal();" style="color: #059669; font-weight: 600;">
-                    🛠️ Painel Master / Donfim
-                </button>
-            `;
-
             dropdown.innerHTML = itemsHtml;
         }
 
@@ -5567,12 +5654,34 @@
             }
         }
 
+        // Sanitização contra XSS (Prevenção de injeção no DOM)
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
         function handleCustomerLogin(e) {
             e.preventDefault();
             const phone = document.getElementById('loginPhone').value.trim();
             const password = document.getElementById('loginPassword').value.trim();
 
             const account = customerAccounts.find(acc => acc.phone === phone && acc.password === password);
+
+            // Sincronizar login com servidor seguro
+            fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone, password })
+            }).then(r => r.json()).then(res => {
+                if (res && res.success && res.token) {
+                    sessionStorage.setItem('customerAuthToken', res.token);
+                }
+            }).catch(() => {});
 
             if (account) {
                 loggedCustomer = account;
@@ -5594,6 +5703,9 @@
                 updateCustomerHeaderUI();
                 updateCheckoutButton();
                 showNotification(`Bem-vindo(a) de volta, ${account.name}! 👋`, 'success');
+                if (typeof fetchOrdersFromServer === 'function') {
+                    fetchOrdersFromServer(true);
+                }
             } else {
                 showNotification('Telefone ou senha incorretos! Se não possui conta, faça seu cadastro na aba Cadastrar.', 'danger');
             }
@@ -5608,6 +5720,10 @@
             const reference = document.getElementById('authRegisterReference')?.value.trim() || '';
             const phone = document.getElementById('authRegisterPhone').value.trim();
             const password = document.getElementById('authRegisterPassword').value.trim();
+
+            let nName = '';
+            let nZone = '';
+            let nZoneName = '';
 
             if (!nId) {
                 showNotification('Por favor, selecione seu Bairro / Região de entrega!', 'warning');
@@ -5657,6 +5773,24 @@
             };
             customerAccounts.push(newAccount);
             localStorage.setItem('customerAccounts', JSON.stringify(customerAccounts));
+
+            // Sincronizar cadastro com backend seguro
+            fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name,
+                    phone,
+                    password,
+                    address,
+                    neighborhood: nName,
+                    reference
+                })
+            }).then(r => r.json()).then(res => {
+                if (res && res.success && res.token) {
+                    sessionStorage.setItem('customerAuthToken', res.token);
+                }
+            }).catch(() => {});
 
             // Logar automaticamente
             loggedCustomer = newAccount;
@@ -6314,6 +6448,19 @@
             renderCustomerOrdersList();
             renderAdminOrdersList();
             showNotification(`Status do pedido ${orderId} atualizado!`, 'success');
+
+            // Sincronizar atualização de status com o servidor da empresa
+            const targetCompanyId = activeCompanyId || 'company-fb-default';
+            fetch(`/api/orders/${encodeURIComponent(orderId)}/status`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-company-id': targetCompanyId
+                },
+                body: JSON.stringify({ status: newStatus })
+            }).catch(err => {
+                console.warn('Falha ao sincronizar status do pedido no servidor:', err.message);
+            });
         }
 
         async function deleteOrder(orderId) {
@@ -6326,10 +6473,22 @@
             });
             if (!confirmed) return;
             customerOrders = customerOrders.filter(o => o.id !== orderId);
+            if (knownOrderIds) knownOrderIds.delete(orderId);
             saveData();
             renderCustomerOrdersList();
             renderAdminOrdersList();
             showNotification('Pedido removido do histórico.', 'info');
+
+            // Sincronizar remoção com o servidor da empresa
+            const targetCompanyId = activeCompanyId || 'company-fb-default';
+            fetch(`/api/orders/${encodeURIComponent(orderId)}`, {
+                method: 'DELETE',
+                headers: {
+                    'x-company-id': targetCompanyId
+                }
+            }).catch(err => {
+                console.warn('Falha ao excluir pedido no servidor:', err.message);
+            });
         }
 
         // ========== IMPRESSORA TÉRMICA (MTI-773 / 58MM / BLUETOOTH / USB) ==========
@@ -7194,7 +7353,24 @@
             };
 
             customerOrders.unshift(newOrder);
+            if (knownOrderIds) knownOrderIds.add(newOrder.id);
             saveData();
+
+            // Enviar pedido instantaneamente para a API central da empresa
+            fetch('/api/orders', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-company-id': currentCompId
+                },
+                body: JSON.stringify(newOrder)
+            }).then(r => r.json()).then(res => {
+                if (res && res.success) {
+                    console.log('✅ Pedido salvo no servidor com sucesso:', res.data ? res.data.id : newOrder.id);
+                }
+            }).catch(err => {
+                console.warn('ℹ️ Pedido salvo localmente (servidor offline):', err.message);
+            });
 
             // Garantir que a conta esteja registrada
             if (!loggedCustomer) {
@@ -7407,28 +7583,22 @@
 
             // Sincronização em tempo real de pedidos entre abas/janelas
             window.addEventListener('storage', (e) => {
-                if (e.key === 'customerOrders') {
+                const targetKey = `customerOrders_${activeCompanyId || 'company-fb-default'}`;
+                if (e.key === 'customerOrders' || e.key === targetKey) {
                     try {
-                        customerOrders = JSON.parse(e.newValue || '[]');
-                        renderCustomerOrdersList();
-                        renderAdminOrdersList();
+                        const parsed = JSON.parse(e.newValue || '[]');
+                        if (Array.isArray(parsed)) {
+                            customerOrders = parsed;
+                            renderCustomerOrdersList();
+                            renderAdminOrdersList();
+                        }
                     } catch(err){}
                 }
             });
 
-            // Polling para reatualizar lista de pedidos automaticamente a cada 2.5 segundos
+            // Polling para sincronizar pedidos em tempo real diretamente do servidor central a cada 2.5s
             setInterval(() => {
-                const freshStr = localStorage.getItem('customerOrders');
-                if (freshStr) {
-                    try {
-                        const freshOrders = JSON.parse(freshStr);
-                        if (JSON.stringify(freshOrders) !== JSON.stringify(customerOrders)) {
-                            customerOrders = freshOrders;
-                            renderCustomerOrdersList();
-                            renderAdminOrdersList();
-                        }
-                    } catch(e){}
-                }
+                fetchOrdersFromServer(true);
             }, 2500);
         }
 
@@ -7768,6 +7938,8 @@
         window.updateCashChangeValue = updateCashChangeValue;
         window.updateOrderStatus = updateOrderStatus;
         window.deleteOrder = deleteOrder;
+        window.fetchOrdersFromServer = fetchOrdersFromServer;
+        window.playNewOrderSound = playNewOrderSound;
         window.handleAdminOrderSearch = handleAdminOrderSearch;
         window.clearAdminOrderSearch = clearAdminOrderSearch;
         window.filterAdminOrdersByStatus = filterAdminOrdersByStatus;
@@ -7847,6 +8019,7 @@
         window.openAcaiCustomizer = openAcaiCustomizer;
         window.closeAcaiCustomizer = closeAcaiCustomizer;
         window.confirmAcaiCustomization = confirmAcaiCustomization;
+        window.triggerCartShake = triggerCartShake;
         window.goToPromoSlide = goToPromoSlide;
         window.applyPresetTheme = applyPresetTheme;
         window.connectBluetoothPrinter = connectBluetoothPrinter;

@@ -620,10 +620,17 @@ app.post('/api/supabase/sync-company', generalLimiter, validateCompanyHeader, as
     }
 });
 
-// Servir arquivos estáticos do frontend
+// Servir arquivos estáticos do frontend com controle de cache em tempo real
 app.use(express.static(__dirname, {
-    maxAge: '1d',
-    etag: true
+    maxAge: 0,
+    etag: false,
+    setHeaders: (res, path) => {
+        if (path.endsWith('.html') || path.endsWith('.js') || path.endsWith('.css')) {
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
+        }
+    }
 }));
 
 // Fallback seguro para index.html (SPA)

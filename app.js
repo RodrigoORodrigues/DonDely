@@ -5538,18 +5538,6 @@
                 }
             }
 
-            // SEÇÃO 3: FERRAMENTAS & ACESSO
-            itemsHtml += `<div class="mobile-dropdown-divider"></div>`;
-            itemsHtml += `<div class="mobile-dropdown-header">Recursos & Acesso</div>`;
-            itemsHtml += `
-                <button type="button" class="mobile-dropdown-item" onclick="closeMobileHeaderMenu(); openQrCodeModal();" style="color: #4F46E5; font-weight: 700;">
-                    📱 QR Code & Mesas
-                </button>
-                <button type="button" class="mobile-dropdown-item" onclick="closeMobileHeaderMenu(); openDevPasswordModal();" style="color: #059669; font-weight: 600;">
-                    🛠️ Painel Master / Donfim
-                </button>
-            `;
-
             dropdown.innerHTML = itemsHtml;
         }
 
