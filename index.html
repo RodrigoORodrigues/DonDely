@@ -818,6 +818,163 @@
             box-shadow: 0 4px 14px rgba(89, 23, 107, 0.35);
         }
 
+        /* SINO E NOTIFICAÇÃO NO HEADER ADMIN */
+        .admin-header-bell-btn {
+            background: #FEE2E2;
+            color: #DC2626;
+            border: 1.5px solid #FCA5A5;
+            padding: 0.35rem 0.65rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 800;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .admin-header-bell-btn.has-new {
+            background: #EF4444;
+            color: #FFFFFF;
+            border-color: #DC2626;
+            animation: bellRingPulse 1.2s infinite;
+        }
+
+        @keyframes bellRingPulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            50% { transform: scale(1.08); box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        /* BANNER FLUTUANTE DE NOVO PEDIDO */
+        .new-order-alert-banner {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            max-width: 440px;
+            width: calc(100vw - 40px);
+            background: linear-gradient(135deg, #1E1B4B, #312E81);
+            color: #FFFFFF;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.4), 0 0 0 2px #4F46E5;
+            padding: 1rem 1.1rem;
+            cursor: pointer;
+            animation: slideInDownAlert 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .new-order-alert-banner:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 35px rgba(15, 23, 42, 0.5), 0 0 0 2px #6366F1;
+        }
+
+        @keyframes slideInDownAlert {
+            from { transform: translateY(-40px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .new-order-alert-content {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+        }
+
+        .new-order-bell-pulse {
+            width: 44px;
+            height: 44px;
+            background: #4F46E5;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            position: relative;
+            flex-shrink: 0;
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.6);
+        }
+
+        .new-order-bell-pulse .bell-icon {
+            display: inline-block;
+            animation: bellShake 1s infinite alternate;
+        }
+
+        @keyframes bellShake {
+            0% { transform: rotate(-15deg); }
+            100% { transform: rotate(15deg); }
+        }
+
+        .new-order-text-group {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .new-order-title {
+            font-size: 0.95rem;
+            font-weight: 900;
+            color: #FEF08A;
+            letter-spacing: 0.3px;
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .new-order-subtitle {
+            font-size: 0.82rem;
+            color: #E2E8F0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-weight: 500;
+        }
+
+        .new-order-actions-group {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            flex-shrink: 0;
+        }
+
+        .btn-new-order-view {
+            background: #10B981;
+            color: white;
+            border: none;
+            padding: 0.45rem 0.8rem;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.15s;
+        }
+
+        .btn-new-order-view:hover {
+            background: #059669;
+        }
+
+        .btn-new-order-dismiss {
+            background: rgba(255,255,255,0.15);
+            color: #CBD5E1;
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .btn-new-order-dismiss:hover {
+            background: rgba(255,255,255,0.3);
+            color: #FFFFFF;
+        }
+
         /* BOTÃO AGRUPADO MOBILE & DROPDOWN */
         .mobile-header-menu-container {
             display: none;
@@ -6532,6 +6689,24 @@
             <div class="custom-confirm-actions">
                 <button type="button" class="btn-confirm-cancel" id="customConfirmCancelBtn" onclick="closeCustomConfirm(false)">Cancelar</button>
                 <button type="button" class="btn-confirm-danger" id="customConfirmOkBtn" onclick="closeCustomConfirm(true)">Sim, Excluir</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- BANNER E TOAST DE ALERTA DE NOVO PEDIDO COM SINO E SOM -->
+    <div id="newOrderAlertBanner" class="new-order-alert-banner" style="display: none;" onclick="handleOpenNewOrderFromBanner(event)">
+        <div class="new-order-alert-content">
+            <div class="new-order-bell-pulse">
+                <span class="bell-icon">🔔</span>
+                <span class="bell-wave"></span>
+            </div>
+            <div class="new-order-text-group">
+                <div class="new-order-title" id="newOrderAlertTitle">🔔 NOVO PEDIDO RECEBIDO!</div>
+                <div class="new-order-subtitle" id="newOrderAlertSubtitle">Pedido #1001 - Cliente - R$ 0,00</div>
+            </div>
+            <div class="new-order-actions-group">
+                <button type="button" class="btn-new-order-view" id="newOrderAlertViewBtn">⚙️ Ver no Painel</button>
+                <button type="button" class="btn-new-order-dismiss" onclick="closeNewOrderAlertBanner(event)" title="Fechar alerta">✕</button>
             </div>
         </div>
     </div>

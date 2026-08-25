@@ -480,7 +480,7 @@
         let isFetchingOrders = false;
         let knownOrderIds = new Set();
 
-        // Alerta sonoro agradável para novos pedidos recebidos no painel da empresa
+        // Alerta sonoro agradável e nítido (chime) para novos pedidos recebidos no painel da empresa
         function playNewOrderSound() {
             try {
                 const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -490,30 +490,92 @@
                     ctx.resume();
                 }
                 const now = ctx.currentTime;
-                // Tom duplo suave de notificação de pedido
-                const osc1 = ctx.createOscillator();
-                const gain1 = ctx.createGain();
-                osc1.type = 'sine';
-                osc1.frequency.setValueAtTime(587.33, now); // Ré (D5)
-                gain1.gain.setValueAtTime(0.3, now);
-                gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-                osc1.connect(gain1);
-                gain1.connect(ctx.destination);
-                osc1.start(now);
-                osc1.stop(now + 0.35);
+                
+                // Triplo tom harmônico de campainha de pedidos (Dó - Mi - Sol)
+                const playTone = (freq, startTime, duration, vol) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, startTime);
+                    gain.gain.setValueAtTime(vol, startTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(startTime);
+                    osc.stop(startTime + duration);
+                };
 
-                const osc2 = ctx.createOscillator();
-                const gain2 = ctx.createGain();
-                osc2.type = 'sine';
-                osc2.frequency.setValueAtTime(880, now + 0.18); // Lá (A5)
-                gain2.gain.setValueAtTime(0.35, now + 0.18);
-                gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
-                osc2.connect(gain2);
-                gain2.connect(ctx.destination);
-                osc2.start(now + 0.18);
-                osc2.stop(now + 0.65);
+                playTone(523.25, now, 0.45, 0.4);        // C5
+                playTone(659.25, now + 0.15, 0.45, 0.45); // E5
+                playTone(783.99, now + 0.30, 0.70, 0.5);  // G5
+                playTone(1046.50, now + 0.45, 0.90, 0.55); // C6
             } catch (e) {
-                // AudioContext não disponível ou restrito pelo navegador
+                // AudioContext não disponível ou restrito
+            }
+        }
+
+        // Exibir Banner Flutuante de Alerta de Novo Pedido
+        let latestReceivedOrder = null;
+        let alertBannerTimeout = null;
+
+        function showNewOrderAlert(order) {
+            if (!order) return;
+            latestReceivedOrder = order;
+            playNewOrderSound();
+
+            const banner = document.getElementById('newOrderAlertBanner');
+            const titleEl = document.getElementById('newOrderAlertTitle');
+            const subEl = document.getElementById('newOrderAlertSubtitle');
+
+            const valFormatted = Number(order.total || 0).toFixed(2).replace('.', ',');
+            const storeName = order.companyName || settings.restaurantName || 'Loja';
+
+            if (titleEl) {
+                titleEl.innerHTML = `🔔 NOVO PEDIDO RECEBIDO! (${order.id})`;
+            }
+            if (subEl) {
+                subEl.innerHTML = `👤 ${order.customerName || 'Cliente'} • <strong>R$ ${valFormatted}</strong> • 🏬 ${storeName}`;
+            }
+
+            if (banner) {
+                banner.style.display = 'block';
+                if (alertBannerTimeout) clearTimeout(alertBannerTimeout);
+                alertBannerTimeout = setTimeout(() => {
+                    banner.style.display = 'none';
+                }, 12000);
+            }
+
+            // Atualizar sino no header se o admin estiver logado
+            updateAdminHeaderUI();
+        }
+
+        function closeNewOrderAlertBanner(event) {
+            if (event) event.stopPropagation();
+            const banner = document.getElementById('newOrderAlertBanner');
+            if (banner) banner.style.display = 'none';
+        }
+
+        function handleOpenNewOrderFromBanner(event) {
+            if (event) event.stopPropagation();
+            closeNewOrderAlertBanner();
+            
+            // Se o painel não estiver aberto, abre o painel admin
+            if (adminPanel && !adminPanel.classList.contains('active')) {
+                if (adminPanel) adminPanel.classList.add('active');
+                if (adminOverlay) adminOverlay.classList.add('active');
+            }
+
+            // Rolar suavemente até a seção de pedidos do painel de administração
+            const ordersSection = document.getElementById('adminOrdersSection');
+            if (ordersSection) {
+                ordersSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+
+            // Se tiver pedido específico, abrir os detalhes do modal
+            if (latestReceivedOrder && latestReceivedOrder.id) {
+                setTimeout(() => {
+                    openAdminOrderDetailModal(latestReceivedOrder.id);
+                }, 300);
             }
         }
 
@@ -537,10 +599,8 @@
                     if (knownOrderIds.size > 0) {
                         const newArrivals = serverOrders.filter(o => !knownOrderIds.has(o.id));
                         if (newArrivals.length > 0) {
-                            playNewOrderSound();
                             const top = newArrivals[0];
-                            const valFormatted = Number(top.total || 0).toFixed(2).replace('.', ',');
-                            showNotification(`🔔 Novo Pedido Recebido: ${top.id} (${top.customerName || 'Cliente'}) - R$ ${valFormatted}!`, 'success');
+                            showNewOrderAlert(top);
                         }
                     }
 
@@ -3649,11 +3709,22 @@
                 } else if (isAdminLoggedIn) {
                     container.style.display = 'flex';
                     const activeComp = companies.find(c => c.id === activeCompanyId) || settings;
+                    const activeCompId = activeCompanyId || 'company-fb-default';
+                    const currentOrders = customerOrders.filter(o => 
+                        o.companyId === activeCompId || 
+                        (!o.companyId && activeCompId === 'company-fb-default')
+                    );
+                    const receivedCount = currentOrders.filter(o => (o.status || 'RECEIVED') === 'RECEIVED').length;
+                    const hasNewBadge = receivedCount > 0;
+
                     container.innerHTML = `
                         <div class="admin-header-pill-group">
                             <span class="admin-logged-store-badge" title="${activeComp.name || settings.restaurantName}">
                                 🏬 <strong>${activeComp.name || settings.restaurantName}</strong>
                             </span>
+                            <button class="admin-header-bell-btn ${hasNewBadge ? 'has-new' : ''}" onclick="adminPanel.classList.add('active'); adminOverlay.classList.add('active'); filterAdminOrdersByStatus('RECEIVED');" title="${receivedCount} pedido(s) aguardando atendimento">
+                                🔔 ${receivedCount > 0 ? `<strong>${receivedCount}</strong>` : ''}
+                            </button>
                             <button class="btn-admin-header-panel" onclick="adminPanel.classList.add('active'); adminOverlay.classList.add('active'); renderPresetCatalog();" title="Abrir Painel Administrativo">
                                 ⚙️ Painel
                             </button>
@@ -7461,15 +7532,8 @@
             renderCustomerOrdersList();
 
             showNotification(`Pedido ${orderId} enviado para o WhatsApp! Acompanhe o status na Área do Cliente. 📦`, 'success');
-            
-            // Auto-imprimir se configurado
-            if (printerSettings && printerSettings.autoPrint !== false) {
-                setTimeout(() => {
-                    triggerPrintOrder(newOrder);
-                }, 300);
-            }
 
-            // Abrir modal da Área do Cliente para acompanhamento
+            // Abrir modal da Área do Cliente para acompanhamento do status em tempo real
             setTimeout(() => {
                 openCustomerOrdersModal();
             }, 600);
