@@ -3418,6 +3418,7 @@
             cart.push(cartItem);
             localStorage.setItem('cart', JSON.stringify(cart));
             updateCartUI();
+            triggerCartShake();
 
             closeAcaiCustomizer();
             showNotification('Item customizado adicionado ao carrinho!', 'success');
@@ -5043,6 +5044,17 @@
             }, 3000);
         }
 
+        function triggerCartShake() {
+            const btn = document.getElementById('cartBtn');
+            if (!btn) return;
+            btn.classList.remove('cart-shake');
+            void btn.offsetWidth; // Forçar reflow para reiniciar animação
+            btn.classList.add('cart-shake');
+            setTimeout(() => {
+                btn.classList.remove('cart-shake');
+            }, 650);
+        }
+
         // ========== GERENCIAR CARRINHO ==========
         function addToCart(productId) {
             const product = products.find(p => p.id === productId);
@@ -5070,6 +5082,7 @@
 
             localStorage.setItem('cart', JSON.stringify(cart));
             updateCartUI();
+            triggerCartShake();
             
             cartCount.style.animation = 'none';
             setTimeout(() => {
@@ -5653,12 +5666,34 @@
             }
         }
 
+        // Sanitização contra XSS (Prevenção de injeção no DOM)
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
         function handleCustomerLogin(e) {
             e.preventDefault();
             const phone = document.getElementById('loginPhone').value.trim();
             const password = document.getElementById('loginPassword').value.trim();
 
             const account = customerAccounts.find(acc => acc.phone === phone && acc.password === password);
+
+            // Sincronizar login com servidor seguro
+            fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone, password })
+            }).then(r => r.json()).then(res => {
+                if (res && res.success && res.token) {
+                    sessionStorage.setItem('customerAuthToken', res.token);
+                }
+            }).catch(() => {});
 
             if (account) {
                 loggedCustomer = account;
@@ -5680,6 +5715,9 @@
                 updateCustomerHeaderUI();
                 updateCheckoutButton();
                 showNotification(`Bem-vindo(a) de volta, ${account.name}! 👋`, 'success');
+                if (typeof fetchOrdersFromServer === 'function') {
+                    fetchOrdersFromServer(true);
+                }
             } else {
                 showNotification('Telefone ou senha incorretos! Se não possui conta, faça seu cadastro na aba Cadastrar.', 'danger');
             }
@@ -5694,6 +5732,10 @@
             const reference = document.getElementById('authRegisterReference')?.value.trim() || '';
             const phone = document.getElementById('authRegisterPhone').value.trim();
             const password = document.getElementById('authRegisterPassword').value.trim();
+
+            let nName = '';
+            let nZone = '';
+            let nZoneName = '';
 
             if (!nId) {
                 showNotification('Por favor, selecione seu Bairro / Região de entrega!', 'warning');
@@ -5743,6 +5785,24 @@
             };
             customerAccounts.push(newAccount);
             localStorage.setItem('customerAccounts', JSON.stringify(customerAccounts));
+
+            // Sincronizar cadastro com backend seguro
+            fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name,
+                    phone,
+                    password,
+                    address,
+                    neighborhood: nName,
+                    reference
+                })
+            }).then(r => r.json()).then(res => {
+                if (res && res.success && res.token) {
+                    sessionStorage.setItem('customerAuthToken', res.token);
+                }
+            }).catch(() => {});
 
             // Logar automaticamente
             loggedCustomer = newAccount;
@@ -7971,6 +8031,7 @@
         window.openAcaiCustomizer = openAcaiCustomizer;
         window.closeAcaiCustomizer = closeAcaiCustomizer;
         window.confirmAcaiCustomization = confirmAcaiCustomization;
+        window.triggerCartShake = triggerCartShake;
         window.goToPromoSlide = goToPromoSlide;
         window.applyPresetTheme = applyPresetTheme;
         window.connectBluetoothPrinter = connectBluetoothPrinter;

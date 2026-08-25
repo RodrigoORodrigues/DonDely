@@ -1,0 +1,13 @@
+[
+  {
+    "id": "cust_1787634136021_b76a507c",
+    "name": "Usuario Seguro",
+    "phone": "21977776666",
+    "passwordHash": "e338d01c76489ce56065f4728b4af891ed01f07f92bc2e67dce30cf94ddb77d2",
+    "salt": "3820ac1af377c934ad879901f38d3470",
+    "address": "Rua Segura, 10",
+    "neighborhood": "",
+    "reference": "",
+    "created_at": "2026-08-25T05:02:16.021Z"
+  }
+]

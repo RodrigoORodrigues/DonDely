@@ -665,6 +665,38 @@
             font-size: 1.25rem;
             transition: all 0.2s ease;
             flex-shrink: 0;
+            will-change: transform;
+        }
+
+        .cart-btn.cart-shake {
+            animation: cartShake 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+        }
+
+        @keyframes cartShake {
+            0% {
+                transform: scale(1) rotate(0deg);
+            }
+            15% {
+                transform: scale(1.22) rotate(-12deg);
+                box-shadow: 0 0 18px rgba(139, 92, 246, 0.65);
+                border-color: var(--primary);
+            }
+            30% {
+                transform: scale(1.24) rotate(10deg);
+            }
+            45% {
+                transform: scale(1.15) rotate(-8deg);
+            }
+            60% {
+                transform: scale(1.08) rotate(5deg);
+            }
+            75% {
+                transform: scale(1.03) rotate(-2deg);
+            }
+            100% {
+                transform: scale(1) rotate(0deg);
+                box-shadow: 0 4px 12px rgba(89, 23, 107, 0.22);
+            }
         }
 
         .cart-btn:hover {
