@@ -1,1 +1,39 @@
-[]
+[
+  {
+    "id": "#9999",
+    "companyId": "company-demo-don",
+    "companyName": "Don Delivery Demonstração",
+    "companyWhatsapp": "",
+    "customerName": "Realtime Tester",
+    "customerPhone": "11999998888",
+    "customerAddress": "",
+    "customerNeighborhood": "",
+    "customerNeighborhoodZone": "",
+    "customerReference": "",
+    "deliveryTime": "30 - 45 min",
+    "paymentMethod": "Pix",
+    "date": "25/08/2026, 18:47:16",
+    "items": [
+      {
+        "id": "1",
+        "name": "Açaí Realtime",
+        "price": 25,
+        "quantity": 1,
+        "details": "",
+        "image": ""
+      }
+    ],
+    "subtotal": 0,
+    "deliveryFee": 0,
+    "discount": 0,
+    "discountValue": 0,
+    "couponCode": "",
+    "couponDiscount": 0,
+    "total": 25,
+    "cashChangeFor": null,
+    "observations": "",
+    "status": "PREPARING",
+    "created_at": "2026-08-25T18:47:16.710Z",
+    "updated_at": "2026-08-25T18:47:16.991Z"
+  }
+]

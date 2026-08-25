@@ -346,6 +346,80 @@ app.get('/api/supabase/status', generalLimiter, (req, res) => {
     });
 });
 
+// Configuração segura do cliente Supabase para o frontend (apenas URL base e Chave Anon pública)
+app.get('/api/supabase/config', generalLimiter, (req, res) => {
+    const rawUrl = process.env.SUPABASE_URL || '';
+    const cleanUrl = rawUrl.replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '');
+    res.json({
+        supabaseUrl: cleanUrl,
+        supabaseAnonKey: process.env.SUPABASE_ANON_KEY || ''
+    });
+});
+
+// ============================================================================
+// SISTEMA REALTIME: TRANSMISSÃO INSTANTÂNEA DE PEDIDOS PARA OS PAINÉIS
+// ============================================================================
+const realtimeOrderClients = new Set();
+
+function broadcastRealtimeOrder(eventType, orderData) {
+    if (!orderData) return;
+    const payload = JSON.stringify({
+        eventType, // 'INSERT', 'UPDATE', 'DELETE'
+        data: orderData,
+        timestamp: new Date().toISOString()
+    });
+
+    realtimeOrderClients.forEach(client => {
+        try {
+            client.res.write(`data: ${payload}\n\n`);
+        } catch (e) {
+            realtimeOrderClients.delete(client);
+        }
+    });
+
+    if (supabase) {
+        try {
+            const channel = supabase.channel('orders-realtime-broadcast');
+            channel.send({
+                type: 'broadcast',
+                event: 'order_event',
+                payload: { eventType, data: orderData }
+            }).catch(() => {});
+        } catch (e) {}
+    }
+}
+
+app.get('/api/orders/stream', (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    if (typeof res.flushHeaders === 'function') res.flushHeaders();
+
+    const client = { id: Date.now() + Math.random(), res, companyId: req.query.company_id || '' };
+    realtimeOrderClients.add(client);
+
+    res.write(`data: ${JSON.stringify({ eventType: 'CONNECTED', timestamp: new Date().toISOString() })}\n\n`);
+
+    const heartbeat = setInterval(() => {
+        try {
+            res.write(`: heartbeat\n\n`);
+        } catch (err) {
+            clearInterval(heartbeat);
+            realtimeOrderClients.delete(client);
+        }
+    }, 20000);
+
+    req.on('close', () => {
+        clearInterval(heartbeat);
+        realtimeOrderClients.delete(client);
+    });
+});
+
+app.get('/api/realtime/orders', (req, res) => {
+    req.url = '/api/orders/stream';
+    app._router.handle(req, res);
+});
+
 // ============================================================================
 // PRECAUÇÃO #6 & #10: AUTENTICAÇÃO SEGURA SERVER-SIDE (CLIENTES & EMPRESA)
 // ============================================================================
@@ -516,6 +590,9 @@ app.post('/api/orders', orderWriteLimiter, validateCompanyHeader, async (req, re
             }
         }
 
+        // Transmissão Realtime imediata para todos os painéis e clientes conectados
+        broadcastRealtimeOrder('INSERT', sanitizedOrder);
+
         res.status(201).json({ success: true, data: sanitizedOrder });
     } catch (err) {
         res.status(500).json({ success: false, error: 'Erro ao registrar pedido.' });
@@ -570,6 +647,9 @@ app.patch('/api/orders/:id/status', orderWriteLimiter, validateCompanyHeader, as
             }
         }
 
+        // Transmissão Realtime da atualização de status
+        broadcastRealtimeOrder('UPDATE', order);
+
         console.log(`🔄 [STATUS ATUALIZADO] Pedido: ${order.id} ➔ ${rawStatus}`);
         res.json({ success: true, data: order });
     } catch (err) {
@@ -600,6 +680,9 @@ app.delete('/api/orders/:id', orderWriteLimiter, validateCompanyHeader, async (r
                 console.warn('[Segurança] Falha ao excluir do Supabase:', supaErr.message);
             }
         }
+
+        // Transmissão Realtime da exclusão
+        broadcastRealtimeOrder('DELETE', { id: rawId });
 
         res.json({ success: true, message: 'Pedido excluído com sucesso.' });
     } catch (err) {

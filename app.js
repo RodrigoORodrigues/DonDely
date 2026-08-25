@@ -579,6 +579,279 @@
             }
         }
 
+        // ============================================================================
+        // CANAL REALTIME SUPABASE PARA A TABELA 'orders' & SINCRONIZAÇÃO INSTANTÂNEA
+        // ============================================================================
+        let supabaseRealtimeClient = null;
+        let supabaseRealtimeChannel = null;
+        let sseOrderStream = null;
+
+        function normalizeOrderData(ord) {
+            if (!ord || typeof ord !== 'object') return null;
+            let items = ord.items;
+            if (typeof items === 'string') {
+                try { items = JSON.parse(items); } catch(e) { items = []; }
+            }
+            if (!Array.isArray(items)) items = [];
+            
+            const rawId = String(ord.id || '');
+            const id = rawId.startsWith('#') ? rawId : (rawId ? `#${rawId}` : `#${Date.now().toString().slice(-4)}`);
+            const companyId = ord.company_id || ord.companyId || activeCompanyId || 'company-demo-don';
+            const companyName = ord.company_name || ord.companyName || '';
+            const customerName = ord.customer_name || ord.customerName || 'Cliente';
+            const customerPhone = ord.customer_phone || ord.customerPhone || '';
+            const customerAddress = ord.customer_address || ord.customerAddress || '';
+            const customerNeighborhood = ord.customer_neighborhood || ord.customerNeighborhood || '';
+            const customerReference = ord.customer_reference || ord.customerReference || '';
+            const deliveryTime = ord.delivery_time || ord.deliveryTime || '30 - 45 min';
+            const paymentMethod = ord.payment_method || ord.paymentMethod || 'Pix';
+            const observations = ord.observations || '';
+            const status = ['RECEIVED', 'PREPARING', 'DELIVERING', 'COMPLETED', 'CANCELLED'].includes(ord.status)
+                ? ord.status
+                : 'RECEIVED';
+            const total = Number(ord.total) || 0;
+            const subtotal = Number(ord.subtotal) || 0;
+            const deliveryFee = Number(ord.delivery_fee || ord.deliveryFee) || 0;
+            const discount = Number(ord.discount_value || ord.discount) || 0;
+            const date = ord.date || (ord.created_at ? new Date(ord.created_at).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR'));
+
+            return {
+                ...ord,
+                id,
+                companyId,
+                companyName,
+                customerName,
+                customerPhone,
+                customerAddress,
+                customerNeighborhood,
+                customerReference,
+                deliveryTime,
+                paymentMethod,
+                observations,
+                items,
+                total,
+                subtotal,
+                deliveryFee,
+                discount,
+                status,
+                date,
+                created_at: ord.created_at || new Date().toISOString(),
+                updated_at: ord.updated_at || new Date().toISOString()
+            };
+        }
+
+        function handleOrderRealtimeChange(eventType, rawOrder) {
+            if (!rawOrder) return;
+            const order = normalizeOrderData(rawOrder);
+            if (!order || !order.id) return;
+
+            const activeCompId = activeCompanyId || 'company-demo-don';
+            const matchesActiveCompany = order.companyId === activeCompId || 
+                (!order.companyId && (activeCompId === 'company-demo-don' || activeCompId === 'company-fb-default'));
+
+            console.log(`📡 [Realtime Event] ${eventType} para pedido ${order.id} | Loja: ${order.companyId}`);
+
+            if (eventType === 'INSERT') {
+                const existingIdx = customerOrders.findIndex(o => 
+                    String(o.id) === String(order.id) || 
+                    String(o.id).replace('#', '') === String(order.id).replace('#', '')
+                );
+
+                if (existingIdx >= 0) {
+                    customerOrders[existingIdx] = { ...customerOrders[existingIdx], ...order };
+                } else {
+                    customerOrders.unshift(order);
+                    if (knownOrderIds) knownOrderIds.add(order.id);
+
+                    // Se for para a empresa ativa, tocar som e exibir alerta de novo pedido
+                    if (matchesActiveCompany) {
+                        showNewOrderAlert(order);
+                    }
+                }
+
+                // Atualizar vetor de empresas em memória
+                companies.forEach(comp => {
+                    if (comp.id === order.companyId) {
+                        if (!comp.orders) comp.orders = [];
+                        const cIdx = comp.orders.findIndex(o => String(o.id) === String(order.id) || String(o.id).replace('#', '') === String(order.id).replace('#', ''));
+                        if (cIdx >= 0) comp.orders[cIdx] = { ...comp.orders[cIdx], ...order };
+                        else comp.orders.unshift(order);
+                    }
+                });
+
+                // Atualizar histórico de pedidos local
+                try {
+                    let allPlaced = JSON.parse(localStorage.getItem('all_placed_orders') || '[]');
+                    const pIdx = allPlaced.findIndex(o => String(o.id) === String(order.id) || String(o.id).replace('#', '') === String(order.id).replace('#', ''));
+                    if (pIdx >= 0) allPlaced[pIdx] = { ...allPlaced[pIdx], ...order };
+                    else allPlaced.unshift(order);
+                    localStorage.setItem('all_placed_orders', JSON.stringify(allPlaced));
+                } catch(e) {}
+
+            } else if (eventType === 'UPDATE') {
+                let foundInList = false;
+                customerOrders.forEach((o, idx) => {
+                    if (String(o.id) === String(order.id) || String(o.id).replace('#', '') === String(order.id).replace('#', '')) {
+                        customerOrders[idx] = { ...customerOrders[idx], ...order };
+                        foundInList = true;
+                    }
+                });
+                if (!foundInList && matchesActiveCompany) {
+                    customerOrders.unshift(order);
+                }
+
+                companies.forEach(comp => {
+                    if (comp.orders) {
+                        comp.orders.forEach((o, idx) => {
+                            if (String(o.id) === String(order.id) || String(o.id).replace('#', '') === String(order.id).replace('#', '')) {
+                                comp.orders[idx] = { ...comp.orders[idx], ...order };
+                            }
+                        });
+                    }
+                });
+
+                try {
+                    let allPlaced = JSON.parse(localStorage.getItem('all_placed_orders') || '[]');
+                    allPlaced.forEach((o, idx) => {
+                        if (String(o.id) === String(order.id) || String(o.id).replace('#', '') === String(order.id).replace('#', '')) {
+                            allPlaced[idx] = { ...allPlaced[idx], ...order };
+                        }
+                    });
+                    localStorage.setItem('all_placed_orders', JSON.stringify(allPlaced));
+                } catch(e) {}
+
+                // Se o modal de detalhes do admin estiver aberto para este pedido, re-renderizar
+                const modal = document.getElementById('adminOrderDetailModal');
+                if (modal && modal.classList.contains('active')) {
+                    const activeModalId = modal.getAttribute('data-order-id');
+                    if (activeModalId && (String(activeModalId) === String(order.id) || String(activeModalId).replace('#', '') === String(order.id).replace('#', ''))) {
+                        openAdminOrderDetailModal(order.id);
+                    }
+                }
+
+            } else if (eventType === 'DELETE') {
+                customerOrders = customerOrders.filter(o => 
+                    String(o.id) !== String(order.id) && 
+                    String(o.id).replace('#', '') !== String(order.id).replace('#', '')
+                );
+                companies.forEach(comp => {
+                    if (comp.orders) {
+                        comp.orders = comp.orders.filter(o => 
+                            String(o.id) !== String(order.id) && 
+                            String(o.id).replace('#', '') !== String(order.id).replace('#', '')
+                        );
+                    }
+                });
+                try {
+                    let allPlaced = JSON.parse(localStorage.getItem('all_placed_orders') || '[]');
+                    allPlaced = allPlaced.filter(o => 
+                        String(o.id) !== String(order.id) && 
+                        String(o.id).replace('#', '') !== String(order.id).replace('#', '')
+                    );
+                    localStorage.setItem('all_placed_orders', JSON.stringify(allPlaced));
+                } catch(e) {}
+            }
+
+            saveData();
+
+            // 1. Atualizar o painel da empresa (.admin-orders-scroll-container / #adminOrdersList)
+            renderAdminOrdersList();
+
+            // 2. Atualizar a visualização do cliente ('Meus Pedidos' / #customerOrdersList)
+            renderCustomerOrdersList();
+        }
+
+        async function initSupabaseRealtimeOrders() {
+            let supaUrl = '';
+            let supaAnonKey = '';
+
+            try {
+                const res = await fetch('/api/supabase/config');
+                if (res.ok) {
+                    const cfg = await res.json();
+                    supaUrl = (cfg.supabaseUrl || '').replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '');
+                    supaAnonKey = cfg.supabaseAnonKey || '';
+                }
+            } catch(e) {}
+
+            // 1. Configurar Supabase JS Client Realtime se as credenciais existirem
+            if (window.supabase && typeof window.supabase.createClient === 'function' && supaUrl && supaAnonKey) {
+                try {
+                    if (supabaseRealtimeChannel) {
+                        try { supabaseRealtimeChannel.unsubscribe(); } catch(e) {}
+                    }
+
+                    supabaseRealtimeClient = window.supabase.createClient(supaUrl, supaAnonKey, {
+                        realtime: {
+                            params: {
+                                eventsPerSecond: 10
+                            }
+                        }
+                    });
+
+                    supabaseRealtimeChannel = supabaseRealtimeClient
+                        .channel('orders-realtime-channel')
+                        .on(
+                            'postgres_changes',
+                            { event: '*', schema: 'public', table: 'orders' },
+                            (payload) => {
+                                console.log('📡 [Supabase Postgres Realtime]', payload.eventType, payload.new || payload.old);
+                                handleOrderRealtimeChange(payload.eventType, payload.new || payload.old);
+                            }
+                        )
+                        .on(
+                            'broadcast',
+                            { event: 'order_event' },
+                            (payload) => {
+                                if (payload && payload.payload) {
+                                    handleOrderRealtimeChange(payload.payload.eventType, payload.payload.data);
+                                }
+                            }
+                        )
+                        .subscribe((status) => {
+                            console.log('⚡ [Supabase Realtime Orders Channel]:', status);
+                        });
+                } catch(supaErr) {
+                    console.warn('ℹ️ Supabase Realtime channel:', supaErr.message);
+                }
+            }
+
+            // 2. Conectar stream SSE como canal complementar em tempo real
+            connectOrdersRealtimeStream();
+        }
+
+        function connectOrdersRealtimeStream() {
+            if (typeof EventSource === 'undefined') return;
+            if (sseOrderStream) {
+                try { sseOrderStream.close(); } catch(e) {}
+            }
+
+            try {
+                const compId = activeCompanyId || 'company-demo-don';
+                sseOrderStream = new EventSource(`/api/orders/stream?company_id=${encodeURIComponent(compId)}`);
+
+                sseOrderStream.onmessage = (event) => {
+                    try {
+                        if (!event.data) return;
+                        const msg = JSON.parse(event.data);
+                        if (msg.eventType === 'CONNECTED') {
+                            console.log('⚡ [Stream Realtime Conectado com Sucesso]');
+                            return;
+                        }
+                        if (msg.eventType && msg.data) {
+                            handleOrderRealtimeChange(msg.eventType, msg.data);
+                        }
+                    } catch(err) {
+                        console.warn('Erro ao decodificar stream realtime:', err);
+                    }
+                };
+
+                sseOrderStream.onerror = () => {
+                    // O EventSource reconecta automaticamente
+                };
+            } catch(e) {}
+        }
+
         // Sincronização em tempo real de pedidos com o servidor central
         async function fetchOrdersFromServer(silent = true) {
             if (isFetchingOrders) return;
@@ -699,6 +972,8 @@
             attachEventListeners();
             // Buscar pedidos mais recentes no servidor central
             fetchOrdersFromServer(true);
+            // Iniciar canal Supabase Realtime para a tabela orders
+            initSupabaseRealtimeOrders();
         }
 
         // ========== APLICADOR DESSA PALETA DE CORES DINÂMICA ==========
@@ -1868,6 +2143,7 @@
             loadData();
             renderAll();
             fetchOrdersFromServer(true);
+            connectOrdersRealtimeStream();
             showNotification(`Empresa alternada para: ${settings.restaurantName} 🏪`, 'success');
         }
 
@@ -8287,6 +8563,9 @@
         window.renderAdminOrdersList = renderAdminOrdersList;
         window.openCustomerOrdersModal = openCustomerOrdersModal;
         window.closeCustomerOrdersModal = closeCustomerOrdersModal;
+        window.initSupabaseRealtimeOrders = initSupabaseRealtimeOrders;
+        window.handleOrderRealtimeChange = handleOrderRealtimeChange;
+        window.connectOrdersRealtimeStream = connectOrdersRealtimeStream;
         window.saveCustomerData = saveCustomerData;
         window.editCustomerData = editCustomerData;
         window.renderCustomerForm = renderCustomerForm;
