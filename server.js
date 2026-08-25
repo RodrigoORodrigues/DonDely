@@ -319,7 +319,7 @@ if (supabaseUrl && supabaseKey) {
 // ============================================================================
 const validateCompanyHeader = (req, res, next) => {
     const rawCompanyId = req.headers['x-company-id'] || req.query.company_id || req.query.companyId || (req.body && (req.body.companyId || req.body.company_id));
-    req.companyId = sanitizeString(rawCompanyId || 'company-fb-default', 60);
+    req.companyId = rawCompanyId ? sanitizeString(rawCompanyId, 60) : '';
     next();
 };
 
@@ -441,13 +441,13 @@ app.get('/api/orders', orderReadLimiter, validateCompanyHeader, async (req, res)
         let filtered = allOrders;
 
         if (customerPhone) {
-            // Filtrar pedidos deste cliente específico
+            // Filtrar pedidos deste cliente específico (em qualquer loja)
             filtered = filtered.filter(o => o.customerPhone && o.customerPhone.replace(/\D/g, '') === customerPhone);
         } else if (companyId && companyId !== 'all') {
-            // 7. Isolamento por empresa
+            // Isolamento por empresa
             filtered = filtered.filter(o => 
                 o.companyId === companyId || 
-                (!o.companyId && companyId === 'company-demo-don')
+                (!o.companyId && (companyId === 'company-demo-don' || companyId === 'company-fb-default'))
             );
         }
 
@@ -485,16 +485,21 @@ app.get('/api/supabase/orders', validateCompanyHeader, (req, res) => {
 // 2. Criar novo Pedido (com sanitização e bloqueio de mass assignment)
 app.post('/api/orders', orderWriteLimiter, validateCompanyHeader, async (req, res) => {
     try {
-        const sanitizedOrder = sanitizeOrderPayload(req.body, req.companyId);
+        const fallbackComp = req.companyId || 'company-demo-don';
+        const sanitizedOrder = sanitizeOrderPayload(req.body, fallbackComp);
 
         if (!sanitizedOrder || !sanitizedOrder.id || sanitizedOrder.items.length === 0) {
             return res.status(400).json({ success: false, error: 'Dados do pedido inválidos ou carrinho vazio.' });
         }
 
         const allOrders = readJsonFile(ORDERS_FILE, []);
-        const existingIdx = allOrders.findIndex(o => o.id === sanitizedOrder.id);
+        const existingIdx = allOrders.findIndex(o => 
+            String(o.id) === String(sanitizedOrder.id) || 
+            String(o.id).replace('#', '') === String(sanitizedOrder.id).replace('#', '')
+        );
+
         if (existingIdx >= 0) {
-            allOrders[existingIdx] = { ...allOrders[existingIdx], ...sanitizedOrder };
+            allOrders[existingIdx] = { ...allOrders[existingIdx], ...sanitizedOrder, updated_at: new Date().toISOString() };
         } else {
             allOrders.unshift(sanitizedOrder);
         }
@@ -525,7 +530,7 @@ app.post('/api/supabase/orders', validateCompanyHeader, (req, res) => {
 // 3. Atualizar Status do Pedido
 app.patch('/api/orders/:id/status', orderWriteLimiter, validateCompanyHeader, async (req, res) => {
     try {
-        const rawId = sanitizeString(req.params.id, 50);
+        const rawId = decodeURIComponent(sanitizeString(req.params.id, 50));
         const rawStatus = sanitizeString(req.body.status, 30);
 
         if (!['RECEIVED', 'PREPARING', 'DELIVERING', 'COMPLETED', 'CANCELLED'].includes(rawStatus)) {
@@ -533,11 +538,24 @@ app.patch('/api/orders/:id/status', orderWriteLimiter, validateCompanyHeader, as
         }
 
         const allOrders = readJsonFile(ORDERS_FILE, []);
-        const order = allOrders.find(o => String(o.id) === String(rawId));
+        let order = allOrders.find(o => 
+            String(o.id) === String(rawId) || 
+            String(o.id).replace('#', '') === String(rawId).replace('#', '')
+        );
 
         if (order) {
             order.status = rawStatus;
             order.updated_at = new Date().toISOString();
+            writeJsonFile(ORDERS_FILE, allOrders);
+        } else {
+            // Se o pedido não estiver na lista (ex: salvo antes da limpeza), registrar entrada com status
+            order = {
+                id: rawId.startsWith('#') ? rawId : `#${rawId}`,
+                companyId: req.companyId || 'company-demo-don',
+                status: rawStatus,
+                updated_at: new Date().toISOString()
+            };
+            allOrders.unshift(order);
             writeJsonFile(ORDERS_FILE, allOrders);
         }
 
@@ -546,13 +564,14 @@ app.patch('/api/orders/:id/status', orderWriteLimiter, validateCompanyHeader, as
                 await supabase
                     .from('orders')
                     .update({ status: rawStatus, updated_at: new Date().toISOString() })
-                    .eq('id', rawId);
+                    .eq('id', order.id);
             } catch (supaErr) {
                 console.warn('[Segurança] Falha ao atualizar status no Supabase:', supaErr.message);
             }
         }
 
-        res.json({ success: true, data: order || { id: rawId, status: rawStatus } });
+        console.log(`🔄 [STATUS ATUALIZADO] Pedido: ${order.id} ➔ ${rawStatus}`);
+        res.json({ success: true, data: order });
     } catch (err) {
         res.status(500).json({ success: false, error: 'Erro ao atualizar status do pedido.' });
     }
@@ -566,9 +585,12 @@ app.patch('/api/supabase/orders/:id/status', validateCompanyHeader, (req, res) =
 // 4. Excluir Pedido
 app.delete('/api/orders/:id', orderWriteLimiter, validateCompanyHeader, async (req, res) => {
     try {
-        const rawId = sanitizeString(req.params.id, 50);
+        const rawId = decodeURIComponent(sanitizeString(req.params.id, 50));
         let allOrders = readJsonFile(ORDERS_FILE, []);
-        allOrders = allOrders.filter(o => String(o.id) !== String(rawId));
+        allOrders = allOrders.filter(o => 
+            String(o.id) !== String(rawId) && 
+            String(o.id).replace('#', '') !== String(rawId).replace('#', '')
+        );
         writeJsonFile(ORDERS_FILE, allOrders);
 
         if (supabase) {

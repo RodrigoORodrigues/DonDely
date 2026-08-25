@@ -5910,42 +5910,84 @@
         }
 
         // ========== ACOMPANHAMENTO DE PEDIDOS ==========
-        function openCustomerOrdersModal() {
-            if (!loggedCustomer) {
-                openCustomerAuthModal('login');
-                return;
-            }
+        async function openCustomerOrdersModal() {
             renderCustomerProfileCard();
             renderCustomerOrdersList();
-            document.getElementById('customerOrdersModal').classList.add('active');
+            const modal = document.getElementById('customerOrdersModal');
+            if (modal) modal.classList.add('active');
+
+            // Sincronizar pedidos do cliente em tempo real com o servidor
+            const phone = (loggedCustomer && loggedCustomer.phone) || (customerData && customerData.phone);
+            const cleanPhone = phone ? String(phone).replace(/\D/g, '') : '';
+            if (cleanPhone) {
+                try {
+                    const res = await fetch(`/api/orders?phone=${encodeURIComponent(cleanPhone)}`);
+                    const json = await res.json();
+                    if (json && json.success && Array.isArray(json.data)) {
+                        json.data.forEach(srvOrder => {
+                            const idx = customerOrders.findIndex(o => String(o.id) === String(srvOrder.id));
+                            if (idx >= 0) {
+                                customerOrders[idx] = { ...customerOrders[idx], ...srvOrder };
+                            } else {
+                                customerOrders.unshift(srvOrder);
+                            }
+                        });
+                        saveData();
+                        renderCustomerOrdersList();
+                    }
+                } catch(e) {}
+            }
         }
 
         function closeCustomerOrdersModal() {
-            document.getElementById('customerOrdersModal').classList.remove('active');
+            const modal = document.getElementById('customerOrdersModal');
+            if (modal) modal.classList.remove('active');
         }
 
         function renderCustomerProfileCard() {
             const container = document.getElementById('customerProfileCardContainer');
-            if (!container || !loggedCustomer) return;
+            if (!container) return;
 
-            const deliveryInfo = getActiveDeliveryInfo();
-            const bName = loggedCustomer.neighborhood || deliveryInfo.neighborhoodName || '';
-            const zName = loggedCustomer.neighborhoodZone || deliveryInfo.neighborhoodZoneName || '';
+            if (loggedCustomer) {
+                const deliveryInfo = getActiveDeliveryInfo();
+                const bName = loggedCustomer.neighborhood || deliveryInfo.neighborhoodName || '';
+                const zName = loggedCustomer.neighborhoodZone || deliveryInfo.neighborhoodZoneName || '';
 
-            container.innerHTML = `
-                <div class="customer-profile-card">
-                    <div class="customer-profile-header">
-                        <div class="customer-profile-name">👤 ${loggedCustomer.name}</div>
-                        <button class="btn-edit-customer" onclick="logoutCustomer()" style="color: #DC2626; border-color: #FCA5A5;">🚪 Sair</button>
+                container.innerHTML = `
+                    <div class="customer-profile-card">
+                        <div class="customer-profile-header">
+                            <div class="customer-profile-name">👤 ${loggedCustomer.name}</div>
+                            <button class="btn-edit-customer" onclick="logoutCustomer()" style="color: #DC2626; border-color: #FCA5A5;">🚪 Sair</button>
+                        </div>
+                        <div class="customer-profile-detail">
+                            ${bName ? `🛵 <strong>Bairro de Entrega:</strong> ${bName} ${zName ? `<span style="font-size: 0.75rem; background: #E0E7FF; color: #3730A3; padding: 0.1rem 0.35rem; border-radius: 4px; font-weight: 700; margin-left: 4px;">${zName}</span>` : ''}<br>` : ''}
+                            📍 <strong>Endereço de Entrega:</strong> ${loggedCustomer.address || 'Endereço salvo'}<br>
+                            ${loggedCustomer.reference ? `🎯 <strong>Ponto de Referência:</strong> ${loggedCustomer.reference}<br>` : ''}
+                            📱 <strong>Telefone:</strong> ${loggedCustomer.phone}
+                        </div>
                     </div>
-                    <div class="customer-profile-detail">
-                        ${bName ? `🛵 <strong>Bairro de Entrega:</strong> ${bName} ${zName ? `<span style="font-size: 0.75rem; background: #E0E7FF; color: #3730A3; padding: 0.1rem 0.35rem; border-radius: 4px; font-weight: 700; margin-left: 4px;">${zName}</span>` : ''}<br>` : ''}
-                        📍 <strong>Endereço de Entrega:</strong> ${loggedCustomer.address}<br>
-                        ${loggedCustomer.reference ? `🎯 <strong>Ponto de Referência:</strong> ${loggedCustomer.reference}<br>` : ''}
-                        📱 <strong>Telefone:</strong> ${loggedCustomer.phone}
+                `;
+            } else if (customerData && customerData.name) {
+                container.innerHTML = `
+                    <div class="customer-profile-card">
+                        <div class="customer-profile-header">
+                            <div class="customer-profile-name">👤 ${customerData.name}</div>
+                            <button class="btn-edit-customer" onclick="openCustomerAuthModal('login')" style="color: var(--primary); border-color: var(--primary);">🔑 Entrar / Criar Conta</button>
+                        </div>
+                        <div class="customer-profile-detail">
+                            📍 <strong>Endereço de Entrega:</strong> ${customerData.address || 'Não informado'}<br>
+                            📱 <strong>Telefone:</strong> ${customerData.phone || 'Sem telefone'}
+                        </div>
                     </div>
-                </div>
-            `;
+                `;
+            } else {
+                container.innerHTML = `
+                    <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                        <span style="font-size: 0.85rem; color: #475569;">Acompanhe o status dos seus pedidos em tempo real:</span>
+                        <button class="btn-edit-customer" onclick="openCustomerAuthModal('login')" style="color: var(--primary); border-color: var(--primary); font-weight: 700;">🔑 Entrar na Minha Conta</button>
+                    </div>
+                `;
+            }
         }
 
         // ========== RENDERIZAR LINHA DO TEMPO DO PEDIDO ==========
@@ -6023,30 +6065,55 @@
             const countBadge = document.getElementById('orderCountBadge');
             if (!container) return;
 
-            // Coletar todos os pedidos das empresas para o cliente logado/ativo
+            // Coletar todos os pedidos das empresas e armazenamentos locais
             let allCustomerOrders = [];
+            
+            // 1. Pedidos do histórico global do dispositivo
+            try {
+                const storedPlaced = JSON.parse(localStorage.getItem('all_placed_orders') || '[]');
+                if (Array.isArray(storedPlaced)) {
+                    storedPlaced.forEach(ord => {
+                        if (ord && ord.id && !allCustomerOrders.some(o => String(o.id) === String(ord.id))) {
+                            allCustomerOrders.push(ord);
+                        }
+                    });
+                }
+            } catch(e) {}
+
+            // 2. Pedidos das empresas em memória
             if (companies && companies.length > 0) {
                 companies.forEach(comp => {
                     const compOrders = comp.orders || [];
                     compOrders.forEach(ord => {
-                        if (!allCustomerOrders.some(o => o.id === ord.id)) {
+                        if (!ord || !ord.id) return;
+                        const idx = allCustomerOrders.findIndex(o => String(o.id) === String(ord.id));
+                        if (idx >= 0) {
+                            allCustomerOrders[idx] = { ...allCustomerOrders[idx], ...ord };
+                        } else {
                             allCustomerOrders.push(ord);
                         }
                     });
                 });
             }
+
+            // 3. Pedidos ativos em customerOrders
             customerOrders.forEach(ord => {
-                if (!allCustomerOrders.some(o => o.id === ord.id)) {
+                if (!ord || !ord.id) return;
+                const idx = allCustomerOrders.findIndex(o => String(o.id) === String(ord.id));
+                if (idx >= 0) {
+                    allCustomerOrders[idx] = { ...allCustomerOrders[idx], ...ord };
+                } else {
                     allCustomerOrders.push(ord);
                 }
             });
 
-            // Filtrar pedidos deste cliente pelo número de telefone (limpeza de caracteres não numéricos)
+            // Filtrar pedidos deste cliente pelo número de telefone (se logado ou cadastrado)
             const phone = (loggedCustomer && loggedCustomer.phone) || (customerData && customerData.phone);
             const cleanPhone = phone ? String(phone).replace(/\D/g, '') : '';
             const myOrders = allCustomerOrders.filter(o => {
                 if (cleanPhone && o.customerPhone) {
-                    return String(o.customerPhone).replace(/\D/g, '') === cleanPhone;
+                    const ordPhone = String(o.customerPhone).replace(/\D/g, '');
+                    return ordPhone === cleanPhone || ordPhone.endsWith(cleanPhone) || cleanPhone.endsWith(ordPhone);
                 }
                 return true;
             });
@@ -6086,7 +6153,7 @@
                                     🏬 ${targetStoreName}
                                 </div>
                                 <div class="order-id">Pedido ${order.id}</div>
-                                <div class="order-date">📅 ${order.date}</div>
+                                <div class="order-date">📅 ${order.date || 'Hoje'}</div>
                             </div>
                             <span class="order-status-badge ${st.class}">${st.text}</span>
                         </div>
@@ -6094,16 +6161,16 @@
                         <div class="order-items-summary">
                             <strong>Itens Solicitados:</strong>
                             <ul style="margin-top: 4px; padding-left: 1.2rem; font-size: 0.85rem;">
-                                ${order.items.map(i => `
+                                ${(order.items || []).map(i => `
                                     <li style="margin-bottom: 3px;">
-                                        <strong>${i.quantity}x ${i.name}</strong>
+                                        <strong>${i.quantity || 1}x ${i.name}</strong>
                                         ${i.details ? `<br><small style="color:#6B21A8; font-weight:600;">🥣 ${i.details}</small>` : ''}
                                     </li>
                                 `).join('')}
                             </ul>
                         </div>
                         <div class="order-card-footer">
-                            <span class="order-total-price">Total: R$ ${order.total.toFixed(2).replace('.', ',')}</span>
+                            <span class="order-total-price">Total: R$ ${(order.total || 0).toFixed(2).replace('.', ',')}</span>
                             <a href="https://wa.me/${targetWhatsapp}?text=${encodedWa}" target="_blank" class="btn-track-whatsapp">
                                 💬 WhatsApp (${targetStoreName})
                             </a>
@@ -6528,27 +6595,88 @@
             if (modal) modal.classList.remove('active');
         }
 
-        function updateOrderStatus(orderId, newStatus) {
-            const order = customerOrders.find(o => o.id === orderId);
+        async function updateOrderStatus(orderId, newStatus) {
+            let order = customerOrders.find(o => String(o.id) === String(orderId) || String(o.id).replace('#', '') === String(orderId).replace('#', ''));
+            
+            if (!order) {
+                for (const c of companies) {
+                    if (c.orders) {
+                        const found = c.orders.find(o => String(o.id) === String(orderId) || String(o.id).replace('#', '') === String(orderId).replace('#', ''));
+                        if (found) {
+                            order = found;
+                            customerOrders.push(order);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (!order) {
+                // Tentar carregar de all_placed_orders
+                try {
+                    const allPlaced = JSON.parse(localStorage.getItem('all_placed_orders') || '[]');
+                    const found = allPlaced.find(o => String(o.id) === String(orderId) || String(o.id).replace('#', '') === String(orderId).replace('#', ''));
+                    if (found) {
+                        order = found;
+                        customerOrders.push(order);
+                    }
+                } catch(e) {}
+            }
+
             if (!order) return;
+
             order.status = newStatus;
+            order.updated_at = new Date().toISOString();
+
+            // Sincronizar em todas as empresas em memória
+            companies.forEach(comp => {
+                if (comp.orders) {
+                    const compOrd = comp.orders.find(o => String(o.id) === String(order.id) || String(o.id).replace('#', '') === String(order.id).replace('#', ''));
+                    if (compOrd) {
+                        compOrd.status = newStatus;
+                        compOrd.updated_at = order.updated_at;
+                    }
+                }
+            });
+
+            // Atualizar no storage global de pedidos
+            try {
+                let allPlaced = JSON.parse(localStorage.getItem('all_placed_orders') || '[]');
+                const idx = allPlaced.findIndex(o => String(o.id) === String(order.id) || String(o.id).replace('#', '') === String(order.id).replace('#', ''));
+                if (idx >= 0) {
+                    allPlaced[idx].status = newStatus;
+                    allPlaced[idx].updated_at = order.updated_at;
+                } else {
+                    allPlaced.unshift(order);
+                }
+                localStorage.setItem('all_placed_orders', JSON.stringify(allPlaced));
+            } catch(e) {}
+
             saveData();
             renderCustomerOrdersList();
             renderAdminOrdersList();
-            showNotification(`Status do pedido ${orderId} atualizado!`, 'success');
+
+            const stInfo = adminOrderStatusMap[newStatus] || { text: newStatus };
+            showNotification(`Status do pedido ${order.id} alterado para "${stInfo.text}"! ✅`, 'success');
 
             // Sincronizar atualização de status com o servidor da empresa
-            const targetCompanyId = activeCompanyId || 'company-fb-default';
-            fetch(`/api/orders/${encodeURIComponent(orderId)}/status`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-company-id': targetCompanyId
-                },
-                body: JSON.stringify({ status: newStatus })
-            }).catch(err => {
+            const targetCompanyId = order.companyId || activeCompanyId || 'company-demo-don';
+            try {
+                const res = await fetch(`/api/orders/${encodeURIComponent(order.id)}/status`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-company-id': targetCompanyId
+                    },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                const json = await res.json();
+                if (json && json.success && json.data) {
+                    order.status = json.data.status;
+                }
+            } catch(err) {
                 console.warn('Falha ao sincronizar status do pedido no servidor:', err.message);
-            });
+            }
         }
 
         async function deleteOrder(orderId) {
@@ -6560,15 +6688,32 @@
                 cancelText: 'Cancelar'
             });
             if (!confirmed) return;
-            customerOrders = customerOrders.filter(o => o.id !== orderId);
-            if (knownOrderIds) knownOrderIds.delete(orderId);
+
+            customerOrders = customerOrders.filter(o => String(o.id) !== String(orderId) && String(o.id).replace('#', '') !== String(orderId).replace('#', ''));
+            if (knownOrderIds) {
+                knownOrderIds.delete(orderId);
+                knownOrderIds.delete(orderId.replace('#', ''));
+            }
+
+            companies.forEach(comp => {
+                if (comp.orders) {
+                    comp.orders = comp.orders.filter(o => String(o.id) !== String(orderId) && String(o.id).replace('#', '') !== String(orderId).replace('#', ''));
+                }
+            });
+
+            try {
+                let allPlaced = JSON.parse(localStorage.getItem('all_placed_orders') || '[]');
+                allPlaced = allPlaced.filter(o => String(o.id) !== String(orderId) && String(o.id).replace('#', '') !== String(orderId).replace('#', ''));
+                localStorage.setItem('all_placed_orders', JSON.stringify(allPlaced));
+            } catch(e) {}
+
             saveData();
             renderCustomerOrdersList();
             renderAdminOrdersList();
             showNotification('Pedido removido do histórico.', 'info');
 
             // Sincronizar remoção com o servidor da empresa
-            const targetCompanyId = activeCompanyId || 'company-fb-default';
+            const targetCompanyId = activeCompanyId || 'company-demo-don';
             fetch(`/api/orders/${encodeURIComponent(orderId)}`, {
                 method: 'DELETE',
                 headers: {
@@ -7442,6 +7587,21 @@
 
             customerOrders.unshift(newOrder);
             if (knownOrderIds) knownOrderIds.add(newOrder.id);
+
+            // Adicionar ao array da empresa ativa
+            const activeCompObj = companies.find(c => c.id === currentCompId);
+            if (activeCompObj) {
+                if (!activeCompObj.orders) activeCompObj.orders = [];
+                activeCompObj.orders.unshift(newOrder);
+            }
+
+            // Salvar no histórico global de pedidos do navegador
+            try {
+                let allPlaced = JSON.parse(localStorage.getItem('all_placed_orders') || '[]');
+                allPlaced.unshift(newOrder);
+                localStorage.setItem('all_placed_orders', JSON.stringify(allPlaced));
+            } catch(e) {}
+
             saveData();
 
             // Enviar pedido instantaneamente para a API central da empresa
@@ -7454,10 +7614,10 @@
                 body: JSON.stringify(newOrder)
             }).then(r => r.json()).then(res => {
                 if (res && res.success) {
-                    console.log('✅ Pedido salvo no servidor com sucesso:', res.data ? res.data.id : newOrder.id);
+                    console.log('✅ Pedido salvo no servidor central:', res.data ? res.data.id : newOrder.id);
                 }
             }).catch(err => {
-                console.warn('ℹ️ Pedido salvo localmente (servidor offline):', err.message);
+                console.warn('ℹ️ Pedido registrado localmente:', err.message);
             });
 
             // Garantir que a conta esteja registrada
