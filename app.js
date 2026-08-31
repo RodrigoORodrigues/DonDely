@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * DON DELIVERY - SISTEMA COMPLETO DE CARDÁPIO DIGITAL & GESTÃO MULTI-EMPRESA
+ * DON FOOD - SISTEMA COMPLETO DE CARDÁPIO DIGITAL & GESTÃO MULTI-EMPRESA
  * ============================================================================
  * @description Sistema SPA completo em JavaScript Vanilla para delivery, catálogo
  * interativo, customização de produtos ('Monte do seu jeito'), carrinho de compras,
@@ -103,25 +103,25 @@
                 {
                     category: '🍓 Frutas Frescas',
                     items: [
-                        { name: 'Morango', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Banana', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Kiwi', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Manga', price: 0, tag: 'Grátis (1/3)' }
+                        { name: 'Morango', price: 0, tag: 'Grátis' },
+                        { name: 'Banana', price: 0, tag: 'Grátis' },
+                        { name: 'Kiwi', price: 0, tag: 'Grátis' },
+                        { name: 'Manga', price: 0, tag: 'Grátis' }
                     ]
                 },
                 {
                     category: '🥣 Cereais e Crocantes',
                     items: [
-                        { name: 'Granola', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Sucrilhos de Milho', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Cereal Ball Mesclado', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Argolinha Frutas Cítricas', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Flocos Crocantes de Chocolate', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Castanha', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Paçoca', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'M&M\'s', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Granulado Crocante Colorido', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Jujuba', price: 0, tag: 'Grátis (1/3)' }
+                        { name: 'Granola', price: 0, tag: 'Grátis' },
+                        { name: 'Sucrilhos de Milho', price: 0, tag: 'Grátis' },
+                        { name: 'Cereal Ball Mesclado', price: 0, tag: 'Grátis' },
+                        { name: 'Argolinha Frutas Cítricas', price: 0, tag: 'Grátis' },
+                        { name: 'Flocos Crocantes de Chocolate', price: 0, tag: 'Grátis' },
+                        { name: 'Castanha', price: 0, tag: 'Grátis' },
+                        { name: 'Paçoca', price: 0, tag: 'Grátis' },
+                        { name: 'M&M\'s', price: 0, tag: 'Grátis' },
+                        { name: 'Granulado Crocante Colorido', price: 0, tag: 'Grátis' },
+                        { name: 'Jujuba', price: 0, tag: 'Grátis' }
                     ]
                 },
                 {
@@ -129,15 +129,15 @@
                     items: [
                         { name: 'Nutella (Recheio & Cobertura)', price: 4.00, tag: '+R$ 4,00' },
                         { name: 'Leite em Pó Ninho', price: 3.00, tag: '+R$ 3,00' },
-                        { name: 'Recheio e Cobertura de Chocolate', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Leite Condensado', price: 0, tag: 'Grátis (1/3)' }
+                        { name: 'Recheio e Cobertura de Chocolate', price: 0, tag: 'Grátis' },
+                        { name: 'Leite Condensado', price: 0, tag: 'Grátis' }
                     ]
                 },
                 {
                     category: '🍌 Doces Especiais',
                     items: [
-                        { name: 'Banana Caramelizada', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Jujubas Especiais', price: 0, tag: 'Grátis (1/3)' }
+                        { name: 'Banana Caramelizada', price: 0, tag: 'Grátis' },
+                        { name: 'Jujubas Especiais', price: 0, tag: 'Grátis' }
                     ]
                 }
             ],
@@ -145,8 +145,8 @@
                 {
                     category: '🍳 Ovos e Proteínas Especiais',
                     items: [
-                        { name: 'Ovo Frito de Gema Mole', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Ovo Cozido Fatiado', price: 0, tag: 'Grátis (1/3)' },
+                        { name: 'Ovo Frito de Gema Mole', price: 0, tag: 'Grátis' },
+                        { name: 'Ovo Cozido Fatiado', price: 0, tag: 'Grátis' },
                         { name: 'Queijo Coalho Grelhado', price: 4.00, tag: '+R$ 4,00' },
                         { name: 'Torresmo Pururuca Crocante', price: 3.50, tag: '+R$ 3,50' }
                     ]
@@ -154,12 +154,12 @@
                 {
                     category: '🥗 Guarnições e Acompanhamentos Caseiros',
                     items: [
-                        { name: 'Farofa Crocante de Bacon', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Banana Frita na Manteiga', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Salada de Maionese Caseira', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Vinagrete Fresco da Casa', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Couve Refogada na Manteiga', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Batata Palha Crocante', price: 0, tag: 'Grátis (1/3)' }
+                        { name: 'Farofa Crocante de Bacon', price: 0, tag: 'Grátis' },
+                        { name: 'Banana Frita na Manteiga', price: 0, tag: 'Grátis' },
+                        { name: 'Salada de Maionese Caseira', price: 0, tag: 'Grátis' },
+                        { name: 'Vinagrete Fresco da Casa', price: 0, tag: 'Grátis' },
+                        { name: 'Couve Refogada na Manteiga', price: 0, tag: 'Grátis' },
+                        { name: 'Batata Palha Crocante', price: 0, tag: 'Grátis' }
                     ]
                 },
                 {
@@ -177,19 +177,19 @@
                         { name: 'Bacon Crocante Fatiado', price: 4.50, tag: '+R$ 4,50' },
                         { name: 'Cheddar Cremoso Extra', price: 3.50, tag: '+R$ 3,50' },
                         { name: 'Catupiry Original Empanado', price: 4.00, tag: '+R$ 4,00' },
-                        { name: 'Cebola Caramelizada', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Ovo Frito na Chapa', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Picles de Pepino Artesanal', price: 0, tag: 'Grátis (1/3)' },
+                        { name: 'Cebola Caramelizada', price: 0, tag: 'Grátis' },
+                        { name: 'Ovo Frito na Chapa', price: 0, tag: 'Grátis' },
+                        { name: 'Picles de Pepino Artesanal', price: 0, tag: 'Grátis' },
                         { name: 'Hambúrguer Smash Extra (80g)', price: 8.00, tag: '+R$ 8,00' }
                     ]
                 },
                 {
                     category: '🥫 Molhos Especiais da Casa',
                     items: [
-                        { name: 'Maionese Verde Temperada', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Molho Barbecue Defumado', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Maionese de Alho Assado', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Maionese de Pimenta Defumada', price: 0, tag: 'Grátis (1/3)' }
+                        { name: 'Maionese Verde Temperada', price: 0, tag: 'Grátis' },
+                        { name: 'Molho Barbecue Defumado', price: 0, tag: 'Grátis' },
+                        { name: 'Maionese de Alho Assado', price: 0, tag: 'Grátis' },
+                        { name: 'Maionese de Pimenta Defumada', price: 0, tag: 'Grátis' }
                     ]
                 }
             ],
@@ -207,10 +207,10 @@
                     items: [
                         { name: 'Bacon Crocante Extra', price: 5.00, tag: '+R$ 5,00' },
                         { name: 'Cogumelos Champignon', price: 6.00, tag: '+R$ 6,00' },
-                        { name: 'Azeitonas Pretas Fatiadas', price: 0, tag: 'Grátis (1/3)' },
+                        { name: 'Azeitonas Pretas Fatiadas', price: 0, tag: 'Grátis' },
                         { name: 'Parmesão Ralado na Hora', price: 4.00, tag: '+R$ 4,00' },
-                        { name: 'Milho Verde Selecionado', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Manjericão Fresco', price: 0, tag: 'Grátis (1/3)' }
+                        { name: 'Milho Verde Selecionado', price: 0, tag: 'Grátis' },
+                        { name: 'Manjericão Fresco', price: 0, tag: 'Grátis' }
                     ]
                 }
             ],
@@ -218,10 +218,10 @@
                 {
                     category: '🍓 Frutas Frescas Selecionadas',
                     items: [
-                        { name: 'Morango Fresco Fatiado', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Banana Fatiada', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Kiwi Selecionado', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Amora Fresca', price: 0, tag: 'Grátis (1/3)' }
+                        { name: 'Morango Fresco Fatiado', price: 0, tag: 'Grátis' },
+                        { name: 'Banana Fatiada', price: 0, tag: 'Grátis' },
+                        { name: 'Kiwi Selecionado', price: 0, tag: 'Grátis' },
+                        { name: 'Amora Fresca', price: 0, tag: 'Grátis' }
                     ]
                 },
                 {
@@ -229,18 +229,18 @@
                     items: [
                         { name: 'Nutella Pura Belga', price: 4.00, tag: '+R$ 4,00' },
                         { name: 'Leite Ninho Polvilhado', price: 3.00, tag: '+R$ 3,00' },
-                        { name: 'Calda de Morango Artesanal', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Calda de Caramel Fudge', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Calda de Chocolate Quente', price: 0, tag: 'Grátis (1/3)' }
+                        { name: 'Calda de Morango Artesanal', price: 0, tag: 'Grátis' },
+                        { name: 'Calda de Caramel Fudge', price: 0, tag: 'Grátis' },
+                        { name: 'Calda de Chocolate Quente', price: 0, tag: 'Grátis' }
                     ]
                 },
                 {
                     category: '🍬 Confeites & Crocantes',
                     items: [
-                        { name: 'M&Ms Crocantes', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Bis de Chocolate Picado', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Cereal Chocoball', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Granulado Colorido', price: 0, tag: 'Grátis (1/3)' }
+                        { name: 'M&Ms Crocantes', price: 0, tag: 'Grátis' },
+                        { name: 'Bis de Chocolate Picado', price: 0, tag: 'Grátis' },
+                        { name: 'Cereal Chocoball', price: 0, tag: 'Grátis' },
+                        { name: 'Granulado Colorido', price: 0, tag: 'Grátis' }
                     ]
                 }
             ],
@@ -250,17 +250,17 @@
                     items: [
                         { name: 'Nutella Pura Belga', price: 4.50, tag: '+R$ 4,50' },
                         { name: 'Morangos Selecionados', price: 3.50, tag: '+R$ 3,50' },
-                        { name: 'Creme Ninho Tradicional', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Beijinho de Coco Cremoso', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Doce de Leite Artesanal', price: 0, tag: 'Grátis (1/3)' }
+                        { name: 'Creme Ninho Tradicional', price: 0, tag: 'Grátis' },
+                        { name: 'Beijinho de Coco Cremoso', price: 0, tag: 'Grátis' },
+                        { name: 'Doce de Leite Artesanal', price: 0, tag: 'Grátis' }
                     ]
                 },
                 {
                     category: '🍫 Coberturas Finas',
                     items: [
-                        { name: 'Ganache de Chocolate Meio Amargo', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Raspas de Chocolate Belga', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Confeitos de Miçanga', price: 0, tag: 'Grátis (1/3)' }
+                        { name: 'Ganache de Chocolate Meio Amargo', price: 0, tag: 'Grátis' },
+                        { name: 'Raspas de Chocolate Belga', price: 0, tag: 'Grátis' },
+                        { name: 'Confeitos de Miçanga', price: 0, tag: 'Grátis' }
                     ]
                 }
             ],
@@ -277,9 +277,9 @@
                 {
                     category: '🥫 Molhos da Casa',
                     items: [
-                        { name: 'Molho Especial da Casa', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Maionese Grill Defumada', price: 0, tag: 'Grátis (1/3)' },
-                        { name: 'Molho Mustard & Honey', price: 0, tag: 'Grátis (1/3)' }
+                        { name: 'Molho Especial da Casa', price: 0, tag: 'Grátis' },
+                        { name: 'Maionese Grill Defumada', price: 0, tag: 'Grátis' },
+                        { name: 'Molho Mustard & Honey', price: 0, tag: 'Grátis' }
                     ]
                 }
             ],
@@ -299,6 +299,39 @@
         const ALL_INGREDIENTS = INGREDIENTS_BY_CATEGORY.acai;
 
         function getIngredientsForActiveCompany() {
+            const activeComp = getActiveCompany();
+            const customExtras = (activeComp && activeComp.customExtras) || settings.customExtras;
+            
+            if (customExtras && Array.isArray(customExtras.categories) && customExtras.categories.length > 0) {
+                const validCategories = customExtras.categories.filter(cat => Array.isArray(cat.chips) && cat.chips.some(chip => (chip.name || '').trim() !== ''));
+                if (validCategories.length > 0) {
+                    return validCategories.map(cat => ({
+                        category: cat.name || 'Acompanhamentos',
+                        items: (cat.chips || []).filter(chip => (chip.name || '').trim() !== '').map(chip => {
+                            let isFree = chip.isFree === true;
+                            let priceNum = 0;
+                            if (chip.price !== undefined && chip.price !== null && chip.price !== '') {
+                                if (typeof chip.price === 'number') {
+                                    priceNum = chip.price;
+                                } else {
+                                    const cleaned = String(chip.price).replace(/[^\d.,]/g, '').replace(',', '.');
+                                    priceNum = parseFloat(cleaned) || 0;
+                                }
+                            }
+                            if (priceNum === 0 || chip.price === '' || chip.price === '0' || chip.price === 'Grátis' || chip.price === 'gratis') {
+                                isFree = true;
+                                priceNum = 0;
+                            }
+                            return {
+                                name: `${chip.icon ? chip.icon + ' ' : ''}${chip.name}`,
+                                price: isFree ? 0 : priceNum,
+                                tag: isFree ? 'Grátis' : `+R$ ${priceNum.toFixed(2).replace('.', ',')}`
+                            };
+                        })
+                    }));
+                }
+            }
+
             const presetKey = getActiveCompanyPresetType();
             return INGREDIENTS_BY_CATEGORY[presetKey] || INGREDIENTS_BY_CATEGORY.acai;
         }
@@ -361,7 +394,7 @@
         const defaultSettings = {
             restaurantName: 'Açaí na Quentinha do FB',
             subtitle: 'Sabor que conquista na primeira colherada! Monte do seu jeito.',
-            whatsappNumber: '5521972888819',
+            whatsappNumber: '5521973987378',
             instagram: '@acainaquentinha_do_fb',
             cnpj: '45.123.789/0001-90',
             address: 'Rua Principal, 123 - Centro',
@@ -384,54 +417,61 @@
 
         // ========== PALETAS DE CORES & PRESETS DO SISTEMA UNIVERSAL ==========
         const THEME_PRESETS = {
+            demo: {
+                name: '🖤 Preto & Dourado Nobre (Elegância & Luxo)',
+                primary: '#18181B',
+                primaryDark: '#09090B',
+                secondary: '#D4AF37',
+                bgAccent: '#FAF8F5'
+            },
+            darkgourmet: {
+                name: '🖤 Gourmet Midnight Gold',
+                primary: '#18181B',
+                primaryDark: '#09090B',
+                secondary: '#D4AF37',
+                bgAccent: '#FAF8F5'
+            },
             acai: {
-                name: '🟣 Açaí Roxo (Padrão FB)',
-                primary: '#59176B',
-                primaryDark: '#3E0C4C',
-                secondary: '#8B26A0',
+                name: '🟣 Açaí Roxo Imperial (Padrão FB)',
+                primary: '#581C87',
+                primaryDark: '#3B0764',
+                secondary: '#9333EA',
                 bgAccent: '#FAF5FF'
             },
             fastfood: {
-                name: '🔴 Fast Food Vermelho',
-                primary: '#DC2626',
-                primaryDark: '#991B1B',
-                secondary: '#EF4444',
-                bgAccent: '#FEF2F2'
+                name: '🔴 Fast Food Ruby Red',
+                primary: '#E11D48',
+                primaryDark: '#9F1239',
+                secondary: '#FB7185',
+                bgAccent: '#FFF1F2'
             },
             burguer: {
-                name: '🟧 Hamburgueria Laranja',
+                name: '🟧 Hamburgueria Sunset Flame',
                 primary: '#EA580C',
                 primaryDark: '#9A3412',
                 secondary: '#F97316',
                 bgAccent: '#FFF7ED'
             },
             pizzaria: {
-                name: '🟢 Pizzaria Verde',
+                name: '🟢 Pizzaria Basil Emerald',
                 primary: '#059669',
-                primaryDark: '#065F46',
+                primaryDark: '#064E3B',
                 secondary: '#10B981',
                 bgAccent: '#ECFDF5'
             },
             sorveteria: {
-                name: '🔵 Sorveteria Azul',
-                primary: '#2563EB',
-                primaryDark: '#1E40AF',
-                secondary: '#3B82F6',
-                bgAccent: '#EFF6FF'
+                name: '🔵 Sorveteria Azure Sky',
+                primary: '#0284C7',
+                primaryDark: '#0369A1',
+                secondary: '#38BDF8',
+                bgAccent: '#F0F9FF'
             },
             confeitaria: {
-                name: '🌸 Confeitaria Rosa',
+                name: '🌸 Confeitaria Sweet Berry',
                 primary: '#DB2777',
                 primaryDark: '#9D174D',
-                secondary: '#EC4899',
+                secondary: '#F472B6',
                 bgAccent: '#FDF2F8'
-            },
-            darkgourmet: {
-                name: '🖤 Gourmet Gold',
-                primary: '#1E1B4B',
-                primaryDark: '#0F172A',
-                secondary: '#D97706',
-                bgAccent: '#18181B'
             }
         };
 
@@ -1317,11 +1357,11 @@
             }
             return {
                 id: activeCompanyId || 'company-fb-default',
-                name: (settings && settings.restaurantName) || 'Don Delivery',
+                name: (settings && settings.restaurantName) || 'Don Food',
                 slug: (settings && settings.slug) || 'demo',
                 presetType: (settings && settings.presetType) || 'acai',
                 email: (settings && settings.email) || 'donfim@gmail.com',
-                whatsappNumber: (settings && settings.whatsappNumber) || '5521972888819'
+                whatsappNumber: (settings && settings.whatsappNumber) || '5521973987378'
             };
         }
 
@@ -1665,7 +1705,7 @@
             showNotification(`Sistema e cardápio completamente atualizados para "${profile.name}"! 🚀🎨`, 'success');
         }
 
-        // ========== FUNÇÕES UTILITÁRIAS DE SLUGS E LINKS DE ACESSO (dondelivery.site) ==========
+        // ========== FUNÇÕES UTILITÁRIAS DE SLUGS E LINKS DE ACESSO (donfood.com) ==========
         function sanitizeSlug(text) {
             if (!text) return '';
             return text
@@ -1693,7 +1733,7 @@
 
         function getCompanyOfficialUrl(comp) {
             const slug = getCompanySlug(comp);
-            return `https://dondelivery.site/?empresa=${encodeURIComponent(slug)}`;
+            return `https://www.donfood.com/?empresa=${encodeURIComponent(slug)}`;
         }
 
         function getCompanyCurrentUrl(comp) {
@@ -1764,8 +1804,8 @@
             const slugBadge = document.getElementById('adminCompanySlugBadge');
             const openBtn = document.getElementById('adminCompanyOpenLinkBtn');
             
-            if (urlText) urlText.textContent = `https://dondelivery.site/?empresa=${slugVal}`;
-            if (slugBadge) slugBadge.textContent = `dondelivery.site/?empresa=${slugVal}`;
+            if (urlText) urlText.textContent = `https://www.donfood.com/?empresa=${slugVal}`;
+            if (slugBadge) slugBadge.textContent = `www.donfood.com/?empresa=${slugVal}`;
             if (openBtn) openBtn.href = `${window.location.origin}/?empresa=${slugVal}`;
         }
 
@@ -1774,11 +1814,11 @@
             id: 'company-demo-don',
             slug: 'demo',
             isDemo: true,
-            name: 'Don Delivery',
-            email: 'demo@dondelivery.site',
+            name: 'Don Food',
+            email: 'demo@donfood.com',
             subtitle: 'Cardápio Digital & Delivery Oficial! Faça seu pedido teste e monte do seu jeito.',
             whatsappNumber: '5521999999999',
-            instagram: '@dondelivery.site',
+            instagram: '@donfood.com',
             cnpj: '00.000.000/0001-99',
             address: 'Av. Brasil, 500 - Loja Modelo',
             logoUrl: 'Logo_Don.png',
@@ -1787,10 +1827,10 @@
             deliveryTime: '25 - 40 min',
             presetType: 'burguer',
             themeColors: {
-                primary: '#0284C7',
-                primaryDark: '#0369A1',
-                secondary: '#38BDF8',
-                bgAccent: '#F0F9FF'
+                primary: '#18181B',
+                primaryDark: '#09090B',
+                secondary: '#D4AF37',
+                bgAccent: '#FAF8F5'
             },
             coupons: [
                 { code: 'DON10', discount: 10, type: 'percent', minOrder: 30, active: true },
@@ -1875,7 +1915,7 @@
             name: 'Açaí na Quentinha do FB',
             email: 'donfim@gmail.com',
             subtitle: 'Sabor que conquista na primeira colherada! Monte do seu jeito.',
-            whatsappNumber: '5521972888819',
+            whatsappNumber: '5521973987378',
             instagram: '@acainaquentinha_do_fb',
             cnpj: '45.123.789/0001-90',
             address: 'Rua Principal, 123 - Centro',
@@ -1921,13 +1961,17 @@
                 // Garantir que cada empresa tenha slug, logo e produtos da demo atualizados
                 companies.forEach(comp => {
                      comp.slug = getCompanySlug(comp);
+                     if (comp.whatsappNumber === '5521972888819') {
+                         comp.whatsappNumber = '5521973987378';
+                     }
                      if (comp.id === 'company-demo-don' || comp.isDemo || comp.slug === 'demo') {
-                         if (!comp.name || comp.name.includes('Don Burguer')) {
-                             comp.name = 'Don Delivery';
+                         if (!comp.name || comp.name.includes('Don Burguer') || comp.name === 'Don Delivery') {
+                             comp.name = 'Don Food';
                          }
                          comp.logoUrl = 'Logo_Don.png';
-                         // Atualizar os produtos da demo com a vitrine diversificada
+                         // Atualizar os produtos da demo com a vitrine diversificada e tema moderno
                          comp.products = defaultDemoCompany.products;
+                         comp.themeColors = defaultDemoCompany.themeColors;
                      }
                 });
                 localStorage.setItem('companies', JSON.stringify(companies));
@@ -2170,7 +2214,7 @@
             // Se atingir os 10 cliques, abre o painel Dev diretamente
             if (devClickCounter >= 10) {
                 devClickCounter = 0;
-                showNotification('🛠️ Acesso Desenvolvedor Don Delivery desbloqueado!', 'success');
+                showNotification('🛠️ Acesso Desenvolvedor Don Food desbloqueado!', 'success');
                 openDevPasswordModal();
             } else {
                 // Notificação sutil para guiar quando estiver próximo dos 10 cliques
@@ -3167,7 +3211,7 @@
             saveData();
             switchActiveCompany(newCompanyId);
             renderDevCompanyList();
-            alert(`🎉 Empresa "${name}" cadastrada com sucesso!\n🌐 Link Oficial: https://dondelivery.site/?empresa=${slug}\n📧 E-mail de Login: ${email}\n🔑 Senha: ${password}`);
+            alert(`🎉 Empresa "${name}" cadastrada com sucesso!\n🌐 Link Oficial: https://www.donfood.com/?empresa=${slug}\n📧 E-mail de Login: ${email}\n🔑 Senha: ${password}`);
             switchDevTab('companies');
         }
 
@@ -3429,6 +3473,9 @@
             const extrasDescEl = document.getElementById('extrasSectionDesc');
             if (extrasDescEl) extrasDescEl.value = extras.desc !== undefined ? extras.desc : (defaultExtras.desc || '');
 
+            const extrasFreeLimitEl = document.getElementById('extrasFreeLimit');
+            if (extrasFreeLimitEl) extrasFreeLimitEl.value = extras.freeLimit !== undefined ? extras.freeLimit : (settings.freeAccompanimentsLimit || 3);
+
             if (extras.categories && Array.isArray(extras.categories) && extras.categories.length > 0) {
                 currentAdminExtrasCategories = JSON.parse(JSON.stringify(extras.categories));
             } else if (extras.chips && Array.isArray(extras.chips)) {
@@ -3636,6 +3683,24 @@
             }).join('');
         }
 
+        function getProductFreeLimit(product) {
+            if (!product) return 3;
+            if (product.allowFreeAccompaniments === false) return 0;
+            if (product.freeAccompanimentsLimit !== undefined && product.freeAccompanimentsLimit !== null && product.freeAccompanimentsLimit !== '') {
+                const parsed = parseInt(product.freeAccompanimentsLimit, 10);
+                return isNaN(parsed) ? 3 : Math.max(0, parsed);
+            }
+            if (settings.customExtras && settings.customExtras.freeLimit !== undefined && settings.customExtras.freeLimit !== '') {
+                const parsed = parseInt(settings.customExtras.freeLimit, 10);
+                return isNaN(parsed) ? 3 : Math.max(0, parsed);
+            }
+            if (settings.freeAccompanimentsLimit !== undefined && settings.freeAccompanimentsLimit !== '') {
+                const parsed = parseInt(settings.freeAccompanimentsLimit, 10);
+                return isNaN(parsed) ? 3 : Math.max(0, parsed);
+            }
+            return 3;
+        }
+
         // ========== INTERACTIVE PRODUCT CUSTOMIZER (POR CATEGORIA) ==========
         function openAcaiCustomizer(productId) {
             const product = products.find(p => p.id === productId);
@@ -3644,25 +3709,23 @@
             activeCustomizingProduct = product;
             selectedIngredients = [];
 
+            const freeLimit = getProductFreeLimit(product);
             const presetKey = getActiveCompanyPresetType();
             let titlePrefix = "Monte seu";
-            let subtitleText = `3 acompanhamentos inclusos no preço (R$ ${product.price.toFixed(2).replace('.', ',')})`;
+            let subtitleText = freeLimit > 0
+                ? `${freeLimit} acompanhamentos grátis inclusos no valor (R$ ${product.price.toFixed(2).replace('.', ',')})`
+                : `Escolha os acompanhamentos e adicionais da sua preferência (R$ ${product.price.toFixed(2).replace('.', ',')})`;
 
             if (presetKey === 'marmitaria') {
                 titlePrefix = "Monte sua";
-                subtitleText = `Escolha os acompanhamentos e adicionais da sua marmita (R$ ${product.price.toFixed(2).replace('.', ',')})`;
             } else if (presetKey === 'pizzaria') {
                 titlePrefix = "Personalize sua";
-                subtitleText = `Escolha a borda recheada e adicionais para sua pizza (R$ ${product.price.toFixed(2).replace('.', ',')})`;
             } else if (presetKey === 'burguer') {
                 titlePrefix = "Customize seu";
-                subtitleText = `Escolha os adicionais, queijos e molhos da casa para o seu lanche (R$ ${product.price.toFixed(2).replace('.', ',')})`;
             } else if (presetKey === 'confeitaria') {
                 titlePrefix = "Personalize seu";
-                subtitleText = `Escolha os recheios gourmet e coberturas finas (R$ ${product.price.toFixed(2).replace('.', ',')})`;
             } else if (presetKey === 'sorveteria') {
                 titlePrefix = "Monte seu";
-                subtitleText = `Escolha as coberturas e confeitos do seu sorvete (R$ ${product.price.toFixed(2).replace('.', ',')})`;
             }
 
             document.getElementById('customizerModalTitle').textContent = `${titlePrefix} ${product.name}`;
@@ -3681,12 +3744,14 @@
         function renderCustomizerBody() {
             const container = document.getElementById('customizerModalBody');
             const ingredientsList = getIngredientsForActiveCompany();
+            const freeLimit = getProductFreeLimit(activeCustomizingProduct);
             
             let html = `
-                <div class="customizer-counter-box">
+                <div class="customizer-counter-box" id="customizerCounterBox">
                     <span class="customizer-counter-text">✨ Acompanhamentos Escolhidos:</span>
-                    <span class="customizer-counter-badge" id="customizerFreeCount">0/3</span>
+                    <span class="customizer-counter-badge" id="customizerFreeCount">0/${freeLimit} Grátis</span>
                 </div>
+                <div id="customizerAlertBox" class="customizer-alert-banner warning" style="display: none;"></div>
             `;
 
             ingredientsList.forEach((cat, catIdx) => {
@@ -3712,11 +3777,47 @@
         function onIngredientToggle(checkbox) {
             const name = checkbox.value;
             const price = parseFloat(checkbox.getAttribute('data-price')) || 0;
+            const isFree = price === 0;
+            const freeLimit = getProductFreeLimit(activeCustomizingProduct);
+            const currentFreeCount = selectedIngredients.filter(i => i.price === 0).length;
 
             if (checkbox.checked) {
+                // Se for um item grátis e o cliente já atingiu o limite de grátis permitidos
+                if (isFree && freeLimit > 0 && currentFreeCount >= freeLimit) {
+                    checkbox.checked = false; // Bloqueia a seleção!
+
+                    // Exibir alerta sonoro/notificação
+                    showNotification(`🛑 Limite de ${freeLimit} acompanhamentos grátis atingido! Desmarque um item para escolher outro.`, 'warning');
+
+                    const alertEl = document.getElementById('customizerAlertBox');
+                    if (alertEl) {
+                        alertEl.className = 'customizer-alert-banner warning';
+                        alertEl.style.display = 'flex';
+                        alertEl.innerHTML = `<span>🛑</span><span>Limite de <strong>${freeLimit} acompanhamentos grátis</strong> atingido! Desmarque um item para selecionar outro.</span>`;
+                    }
+                    return;
+                }
+
                 selectedIngredients.push({ name, price });
+
+                // Se acabou de atingir o limite de grátis
+                const newFreeCount = selectedIngredients.filter(i => i.price === 0).length;
+                if (isFree && freeLimit > 0 && newFreeCount === freeLimit) {
+                    showNotification(`✨ Você selecionou os ${freeLimit} acompanhamentos grátis permitidos!`, 'success');
+                    const alertEl = document.getElementById('customizerAlertBox');
+                    if (alertEl) {
+                        alertEl.className = 'customizer-alert-banner success';
+                        alertEl.style.display = 'flex';
+                        alertEl.innerHTML = `<span>✅</span><span>Você atingiu o limite de <strong>${freeLimit}/${freeLimit} acompanhamentos grátis</strong>! Seleções grátis adicionais foram bloqueadas.</span>`;
+                    }
+                }
             } else {
                 selectedIngredients = selectedIngredients.filter(i => i.name !== name);
+                const freeCountNow = selectedIngredients.filter(i => i.price === 0).length;
+                const alertEl = document.getElementById('customizerAlertBox');
+                if (alertEl && freeCountNow < freeLimit) {
+                    alertEl.style.display = 'none';
+                }
             }
 
             updateCustomizerPrice();
@@ -3725,21 +3826,35 @@
         function updateCustomizerPrice() {
             if (!activeCustomizingProduct) return;
 
+            const freeLimit = getProductFreeLimit(activeCustomizingProduct);
             const freeItems = selectedIngredients.filter(i => i.price === 0);
             const paidItems = selectedIngredients.filter(i => i.price > 0);
-
             const freeCount = freeItems.length;
+
             const badgeEl = document.getElementById('customizerFreeCount');
             if (badgeEl) {
-                badgeEl.textContent = `${Math.min(freeCount, 3)}/3 Grátis`;
-                badgeEl.style.background = freeCount > 3 ? '#DC2626' : '#D97706';
+                badgeEl.textContent = `${freeCount}/${freeLimit} Grátis`;
+                if (freeLimit > 0 && freeCount >= freeLimit) {
+                    badgeEl.classList.add('limit-reached');
+                } else {
+                    badgeEl.classList.remove('limit-reached');
+                }
             }
 
-            let paidSum = paidItems.reduce((acc, curr) => acc + curr.price, 0);
-            let extraFreeCount = Math.max(0, freeCount - 3);
-            let extraFreeSum = extraFreeCount * 2.00; // R$ 2,00 por ingrediente adicional extra
+            // Atualiza o estado visual dos checkboxes grátis não selecionados quando o limite for atingido
+            const allCheckboxes = document.querySelectorAll('#customizerModalBody input[type="checkbox"]');
+            allCheckboxes.forEach(cb => {
+                const itemPrice = parseFloat(cb.getAttribute('data-price')) || 0;
+                const parentLabel = cb.closest('.customizer-item-checkbox');
+                if (itemPrice === 0 && freeLimit > 0 && freeCount >= freeLimit && !cb.checked) {
+                    if (parentLabel) parentLabel.classList.add('disabled-free');
+                } else {
+                    if (parentLabel) parentLabel.classList.remove('disabled-free');
+                }
+            });
 
-            let total = activeCustomizingProduct.price + paidSum + extraFreeSum;
+            let paidSum = paidItems.reduce((acc, curr) => acc + curr.price, 0);
+            let total = activeCustomizingProduct.price + paidSum;
 
             const priceEl = document.getElementById('customizerTotalPrice');
             if (priceEl) {
@@ -3754,10 +3869,7 @@
             const paidItems = selectedIngredients.filter(i => i.price > 0);
 
             const paidSum = paidItems.reduce((acc, curr) => acc + curr.price, 0);
-            const extraFreeCount = Math.max(0, freeItems.length - 3);
-            const extraFreeSum = extraFreeCount * 2.00;
-
-            const finalUnitPrice = activeCustomizingProduct.price + paidSum + extraFreeSum;
+            const finalUnitPrice = activeCustomizingProduct.price + paidSum;
 
             const ingNames = selectedIngredients.map(i => i.name).join(', ') || 'Sem acompanhamentos selecionados';
 
@@ -4093,13 +4205,39 @@
             `).join('');
         }
 
+        function toggleProductCustomizationFields(enabled) {
+            const container = document.getElementById('productCustomizationOptionsContainer');
+            if (container) {
+                container.style.display = enabled ? 'block' : 'none';
+            }
+        }
+
+        function toggleProductFreeLimitInput(enabled) {
+            const container = document.getElementById('productFreeLimitContainer');
+            if (container) {
+                container.style.display = enabled ? 'block' : 'none';
+            }
+        }
+
         // ========== GERENCIAR PRODUTOS ==========
         function addProduct() {
             editingProductId = null;
             document.getElementById('modalTitle').textContent = 'Adicionar Novo Produto';
             productForm.reset();
             document.getElementById('productAvailable').checked = true;
-            document.getElementById('productIsAcai').checked = true;
+            
+            if (document.getElementById('productIsAcai')) {
+                document.getElementById('productIsAcai').checked = true;
+                toggleProductCustomizationFields(true);
+            }
+            if (document.getElementById('productAllowFreeAccompaniments')) {
+                document.getElementById('productAllowFreeAccompaniments').checked = true;
+                toggleProductFreeLimitInput(true);
+            }
+            if (document.getElementById('productFreeLimit')) {
+                document.getElementById('productFreeLimit').value = '3';
+            }
+
             document.getElementById('productImage').value = 'super_barca.svg';
             const preview = document.getElementById('productImagePreview');
             if (preview) preview.src = 'super_barca.svg';
@@ -4119,9 +4257,22 @@
             document.getElementById('productPrice').value = product.price;
             document.getElementById('productImage').value = product.image;
             document.getElementById('productAvailable').checked = product.available;
+            
+            const isCustomEnabled = product.isCustomizable !== undefined ? product.isCustomizable : (product.isAcai !== false);
             if (document.getElementById('productIsAcai')) {
-                const isEnabled = product.isCustomizable !== undefined ? product.isCustomizable : (product.isAcai !== false);
-                document.getElementById('productIsAcai').checked = isEnabled;
+                document.getElementById('productIsAcai').checked = isCustomEnabled;
+                toggleProductCustomizationFields(isCustomEnabled);
+            }
+
+            const allowFree = product.allowFreeAccompaniments !== false;
+            if (document.getElementById('productAllowFreeAccompaniments')) {
+                document.getElementById('productAllowFreeAccompaniments').checked = allowFree;
+                toggleProductFreeLimitInput(allowFree);
+            }
+
+            const freeLimitVal = product.freeAccompanimentsLimit !== undefined ? product.freeAccompanimentsLimit : (product.freeLimit !== undefined ? product.freeLimit : 3);
+            if (document.getElementById('productFreeLimit')) {
+                document.getElementById('productFreeLimit').value = freeLimitVal;
             }
             
             const preview = document.getElementById('productImagePreview');
@@ -4134,6 +4285,9 @@
             e.preventDefault();
             
             const isCustom = document.getElementById('productIsAcai') ? document.getElementById('productIsAcai').checked : false;
+            const allowFree = document.getElementById('productAllowFreeAccompaniments') ? document.getElementById('productAllowFreeAccompaniments').checked : true;
+            const parsedLimit = parseInt(document.getElementById('productFreeLimit')?.value || '3', 10);
+            const freeLimit = isNaN(parsedLimit) ? 3 : Math.max(0, parsedLimit);
 
             const productData = {
                 id: editingProductId || Date.now(),
@@ -4144,7 +4298,10 @@
                 image: document.getElementById('productImage').value,
                 available: document.getElementById('productAvailable').checked,
                 isAcai: isCustom,
-                isCustomizable: isCustom
+                isCustomizable: isCustom,
+                allowFreeAccompaniments: allowFree,
+                freeAccompanimentsLimit: freeLimit,
+                freeLimit: freeLimit
             };
             
             if (editingProductId) {
@@ -4263,11 +4420,14 @@
                 ]
             };
 
-            // Salvar Seção de Acompanhamentos Customizada (Suporta múltiplos blocos/títulos de categorias)
+            // Salvar Seção de Acompanhamentos Customizada (Suporta múltiplos blocos/títulos de categorias e limite de grátis)
             const extrasEnabled = document.getElementById('extrasSectionEnabled')?.checked;
             const extrasBadge = document.getElementById('extrasSectionBadge')?.value;
             const extrasTitle = document.getElementById('extrasSectionTitle')?.value;
             const extrasDesc = document.getElementById('extrasSectionDesc')?.value;
+            const extrasFreeLimitInput = document.getElementById('extrasFreeLimit')?.value;
+            const parsedFreeLimit = parseInt(extrasFreeLimitInput || '3', 10);
+            const extrasFreeLimit = isNaN(parsedFreeLimit) ? 3 : Math.max(0, parsedFreeLimit);
 
             // Garantir que categorias salvas sejam válidas e limpas
             const cleanCategories = (currentAdminExtrasCategories || []).map(cat => ({
@@ -4280,8 +4440,10 @@
                 badge: extrasBadge || '',
                 title: extrasTitle || '',
                 desc: extrasDesc || '',
+                freeLimit: extrasFreeLimit,
                 categories: cleanCategories
             };
+            settings.freeAccompanimentsLimit = extrasFreeLimit;
 
             saveData();
             updateSiteSettings();
@@ -4330,19 +4492,24 @@
                             <div style="text-align: center; color: var(--gray-600); font-size: 0.76rem; padding: 0.5rem; background: #F8FAFC; border-radius: 6px;">
                                 Nenhum item neste bloco. Clique em "➕ Add Item" acima para adicionar.
                             </div>
-                        ` : cat.chips.map((chip, chipIdx) => `
-                            <div style="display: grid; grid-template-columns: 80px 1fr 100px 34px; gap: 0.35rem; align-items: center; background: #F8FAFC; padding: 0.35rem; border-radius: 6px; border: 1px solid #E2E8F0;">
+                        ` : cat.chips.map((chip, chipIdx) => {
+                            const isChipFree = (chip.isFree === true) || (chip.price === '' || chip.price === '0' || chip.price === 'Grátis' || chip.price === 'gratis');
+                            return `
+                            <div style="display: grid; grid-template-columns: 80px 1fr 90px 95px 34px; gap: 0.35rem; align-items: center; background: #F8FAFC; padding: 0.35rem; border-radius: 6px; border: 1px solid #E2E8F0;">
                                 <div style="display: flex; gap: 0.15rem;">
                                     <input type="text" class="form-input" value="${chip.icon || '✨'}" readonly onclick="openIconPickerForExtrasCategoryChip(${catIdx}, ${chipIdx})" style="text-align: center; font-size: 1.05rem; padding: 0.25rem; cursor: pointer; width: 44px;" title="Clique para escolher ícone">
                                     <button type="button" onclick="openIconPickerForExtrasCategoryChip(${catIdx}, ${chipIdx})" title="Escolher Ícone" style="background: #E2E8F0; border: 1px solid #CBD5E1; border-radius: 6px; padding: 0 0.25rem; cursor: pointer; font-size: 0.8rem;">🎨</button>
                                 </div>
                                 <input type="text" class="form-input" value="${chip.name || ''}" placeholder="Nome do acompanhamento / item" oninput="updateAdminExtrasCategoryChipField(${catIdx}, ${chipIdx}, 'name', this.value)" style="font-size: 0.82rem; padding: 0.3rem;">
-                                <input type="text" class="form-input" value="${chip.price || ''}" placeholder="+R$ 2,50" oninput="updateAdminExtrasCategoryChipField(${catIdx}, ${chipIdx}, 'price', this.value)" style="font-size: 0.82rem; padding: 0.3rem;">
+                                <button type="button" onclick="toggleAdminExtrasCategoryChipFree(${catIdx}, ${chipIdx})" title="Clique para alternar entre Grátis e Pago" style="font-size: 0.74rem; font-weight: 700; padding: 0.3rem 0.35rem; border-radius: 6px; cursor: pointer; border: 1px solid ${isChipFree ? '#6EE7B7' : '#FCD34D'}; background: ${isChipFree ? '#ECFDF5' : '#FFFBEB'}; color: ${isChipFree ? '#047857' : '#B45309'}; text-align: center; white-space: nowrap;">
+                                    ${isChipFree ? '🎁 Grátis' : '💰 Pago'}
+                                </button>
+                                <input type="text" class="form-input" value="${chip.price || (isChipFree ? 'Grátis' : '+R$ 2,50')}" placeholder="Grátis ou +R$ 2,50" oninput="updateAdminExtrasCategoryChipField(${catIdx}, ${chipIdx}, 'price', this.value)" style="font-size: 0.82rem; padding: 0.3rem;">
                                 <button type="button" onclick="removeAdminExtrasChipFromCategory(${catIdx}, ${chipIdx})" title="Remover este item" style="background: #FEE2E2; color: #DC2626; border: 1px solid #FCA5A5; border-radius: 6px; padding: 0.25rem; font-size: 0.82rem; cursor: pointer; text-align: center;">
                                     🗑️
                                 </button>
                             </div>
-                        `).join('')}
+                        `;}).join('')}
                     </div>
                 </div>
             `).join('');
@@ -5212,6 +5379,29 @@
         function updateAdminExtrasCategoryChipField(catIdx, chipIdx, field, value) {
             if (currentAdminExtrasCategories[catIdx] && currentAdminExtrasCategories[catIdx].chips[chipIdx]) {
                 currentAdminExtrasCategories[catIdx].chips[chipIdx][field] = value;
+                if (field === 'price') {
+                    const valClean = String(value).trim().toLowerCase();
+                    if (valClean === '0' || valClean === '' || valClean === 'grátis' || valClean === 'gratis') {
+                        currentAdminExtrasCategories[catIdx].chips[chipIdx].isFree = true;
+                    } else {
+                        currentAdminExtrasCategories[catIdx].chips[chipIdx].isFree = false;
+                    }
+                }
+            }
+        }
+
+        function toggleAdminExtrasCategoryChipFree(catIdx, chipIdx) {
+            if (currentAdminExtrasCategories[catIdx] && currentAdminExtrasCategories[catIdx].chips[chipIdx]) {
+                const chip = currentAdminExtrasCategories[catIdx].chips[chipIdx];
+                const isCurrentlyFree = (chip.isFree === true) || (chip.price === '' || chip.price === '0' || chip.price === 'Grátis' || chip.price === 'gratis');
+                if (isCurrentlyFree) {
+                    chip.price = '+R$ 3,00';
+                    chip.isFree = false;
+                } else {
+                    chip.price = 'Grátis';
+                    chip.isFree = true;
+                }
+                renderAdminExtrasCategoriesEditor();
             }
         }
 
@@ -5338,6 +5528,9 @@
             document.getElementById('extrasSectionBadge').value = defaultData.badge || '';
             document.getElementById('extrasSectionTitle').value = defaultData.title || '';
             document.getElementById('extrasSectionDesc').value = defaultData.desc || '';
+            if (document.getElementById('extrasFreeLimit')) {
+                document.getElementById('extrasFreeLimit').value = '3';
+            }
 
             if (defaultData.categories && Array.isArray(defaultData.categories)) {
                 currentAdminExtrasCategories = JSON.parse(JSON.stringify(defaultData.categories));
@@ -7301,7 +7494,7 @@
             const line = '-'.repeat(cols) + '\n';
             const doubleLine = '='.repeat(cols) + '\n';
 
-            const storeName = (settings.restaurantName || 'DON DELIVERY').toUpperCase();
+            const storeName = (settings.restaurantName || 'DON FOOD').toUpperCase();
             const storeAddress = (settings.address || '').trim();
             const storeCnpj = (settings.cnpj || '').trim();
             const storeInstagram = (settings.instagram || '@acainaquentinha_do_fb').trim();
@@ -7376,7 +7569,7 @@
 
             const pWidthNum = printerSettings.paperWidth || 58;
             const pWidth = pWidthNum + 'mm';
-            const storeName = (settings.restaurantName || 'DON DELIVERY').toUpperCase();
+            const storeName = (settings.restaurantName || 'DON FOOD').toUpperCase();
             const storeAddress = (settings.address || '').trim();
             const storeCnpj = (settings.cnpj || '').trim();
             const storeInstagram = (settings.instagram || '@acainaquentinha_do_fb').trim();
@@ -7925,7 +8118,7 @@
             // Criar registro de pedido para o histórico do cliente e admin
             const activeComp = (companies && companies.find(c => c.id === activeCompanyId)) || settings;
             const currentCompId = activeCompanyId || 'company-demo-don';
-            const currentCompName = (activeComp && activeComp.name) || settings.restaurantName || 'Don Delivery';
+            const currentCompName = (activeComp && activeComp.name) || settings.restaurantName || 'Don Food';
             const currentCompWa = (activeComp && activeComp.whatsappNumber) || settings.whatsappNumber;
 
             const orderId = '#' + Math.floor(1000 + Math.random() * 9000);
@@ -8294,10 +8487,10 @@
             const activeComp = getActiveCompany();
             if (currentQrScope === 'portal') {
                 return {
-                    title: 'Don Delivery • Plataforma Oficial',
-                    url: 'https://dondelivery.site',
-                    qrImageUrl: `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent('https://dondelivery.site')}`,
-                    storeName: 'Don Delivery'
+                    title: 'Don Food • Plataforma Oficial',
+                    url: 'https://www.donfood.com',
+                    qrImageUrl: `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent('https://www.donfood.com')}`,
+                    storeName: 'Don Food'
                 };
             } else {
                 const officialUrl = getCompanyOfficialUrl(activeComp);
@@ -8364,7 +8557,7 @@
                 const blobUrl = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = blobUrl;
-                const filename = (currentQrScope === 'portal') ? 'qrcode-dondelivery.png' : `qrcode-${(data.storeName || 'loja').toLowerCase().replace(/[^a-z0-9]/g, '-')}.png`;
+                const filename = (currentQrScope === 'portal') ? 'qrcode-donfood.png' : `qrcode-${(data.storeName || 'loja').toLowerCase().replace(/[^a-z0-9]/g, '-')}.png`;
                 a.download = filename;
                 document.body.appendChild(a);
                 a.click();
@@ -8477,7 +8670,7 @@
                         <br>
                         <div class="url">${data.url}</div>
                         <div class="footer-text">
-                            Sem filas • Rápido e Seguro • Don Delivery
+                            Sem filas • Rápido e Seguro • Don Food
                         </div>
                     </div>
                     <script>
@@ -8491,7 +8684,7 @@
             printWindow.document.close();
         }
 
-        // ========== AQUISIÇÃO DO DON DELIVERY ==========
+        // ========== AQUISIÇÃO DO DON FOOD ==========
         function openAcquireAppModal() {
             const modal = document.getElementById('acquireAppModal');
             if (modal) modal.classList.add('active');

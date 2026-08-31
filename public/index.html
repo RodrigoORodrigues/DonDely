@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Don Delivery & Cardáios </title>
+    <title>Don Food & Cardápios</title>
+    <meta name="description" content="Don Food - Sistema Completo de Cardápio Digital & Gestão de Pedidos">
+    <meta property="og:title" content="Don Food & Cardápios">
+    <meta property="og:description" content="Don Food - Sistema Completo de Cardápio Digital & Gestão de Pedidos">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap" rel="stylesheet">
@@ -1130,7 +1133,7 @@
             box-shadow: var(--shadow-lg);
         }
 
-        /* BOTÃO TOPO ADQUIRIR DON DELIVERY */
+        /* BOTÃO TOPO ADQUIRIR DON FOOD */
         .btn-acquire-header {
             background: linear-gradient(135deg, #F59E0B, #EA580C);
             color: #FFFFFF;
@@ -1203,18 +1206,18 @@
             }
         }
 
-        /* LANDING PAGE DEMO SHOWCASE */
+        /* LANDING PAGE DEMO SHOWCASE - PALETA PRETO & DOURADO LUXO */
         .demo-landing-hero {
             margin-top: 76px;
-            background: radial-gradient(circle at 50% 20%, #2E1065 0%, #0F172A 70%, #030712 100%);
+            background: radial-gradient(ellipse at 50% 0%, #27272A 0%, #18181B 55%, #09090B 100%);
             color: #FFFFFF;
-            padding: 3rem 1.5rem 2.5rem;
+            padding: 3.25rem 1.5rem 2.75rem;
             position: relative;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid rgba(212, 175, 55, 0.15);
         }
 
         .demo-landing-container {
-            max-width: 1100px;
+            max-width: 1120px;
             margin: 0 auto;
             text-align: center;
         }
@@ -1222,62 +1225,65 @@
         .demo-landing-badge {
             display: inline-flex;
             align-items: center;
-            gap: 0.4rem;
-            background: rgba(139, 92, 246, 0.2);
-            border: 1px solid rgba(167, 139, 250, 0.4);
-            color: #DDD6FE;
-            padding: 0.35rem 1rem;
+            gap: 0.45rem;
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.2), rgba(0, 0, 0, 0.5));
+            border: 1px solid rgba(212, 175, 55, 0.4);
+            color: #FDE68A;
+            padding: 0.4rem 1.15rem;
             border-radius: 50px;
             font-size: 0.82rem;
             font-weight: 800;
             letter-spacing: 0.5px;
             text-transform: uppercase;
             margin-bottom: 1.25rem;
+            box-shadow: 0 4px 14px rgba(212, 175, 55, 0.12);
         }
 
         .demo-landing-title {
-            font-size: 2.3rem;
+            font-size: 2.4rem;
             font-weight: 900;
             line-height: 1.2;
-            margin-bottom: 1rem;
-            background: linear-gradient(135deg, #FFFFFF 30%, #E0E7FF 70%, #C7D2FE 100%);
+            margin-bottom: 1.1rem;
+            background: linear-gradient(135deg, #FFFFFF 40%, #FEF08A 75%, #D4AF37 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
         .demo-landing-desc {
             font-size: 1.05rem;
-            color: #CBD5E1;
-            max-width: 760px;
-            margin: 0 auto 2rem auto;
-            line-height: 1.6;
+            color: #E4E4E7;
+            max-width: 780px;
+            margin: 0 auto 2.25rem auto;
+            line-height: 1.65;
         }
 
         .demo-features-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 1rem;
+            gap: 1.1rem;
             margin-bottom: 2.25rem;
             text-align: left;
         }
 
         .demo-feature-card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            backdrop-filter: blur(10px);
-            padding: 1.1rem;
-            border-radius: 14px;
-            transition: all 0.2s;
+            background: rgba(39, 39, 42, 0.45);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            backdrop-filter: blur(12px);
+            padding: 1.25rem;
+            border-radius: 16px;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         }
 
         .demo-feature-card:hover {
-            transform: translateY(-2px);
-            background: rgba(255, 255, 255, 0.08);
-            border-color: rgba(167, 139, 250, 0.3);
+            transform: translateY(-3px);
+            background: rgba(39, 39, 42, 0.7);
+            border-color: rgba(212, 175, 55, 0.55);
+            box-shadow: 0 10px 25px -5px rgba(212, 175, 55, 0.2);
         }
 
         .demo-feature-icon {
-            font-size: 1.6rem;
+            font-size: 1.7rem;
             margin-bottom: 0.5rem;
             display: inline-block;
         }
@@ -1285,14 +1291,14 @@
         .demo-feature-title {
             font-size: 0.95rem;
             font-weight: 800;
-            color: #F8FAFC;
+            color: #FAFAFA;
             margin-bottom: 0.25rem;
         }
 
         .demo-feature-text {
-            font-size: 0.8rem;
-            color: #94A3B8;
-            line-height: 1.4;
+            font-size: 0.82rem;
+            color: #A1A1AA;
+            line-height: 1.45;
         }
 
         .demo-actions-row {
@@ -1303,7 +1309,7 @@
             flex-wrap: wrap;
         }
 
-        /* FAIXA DEMONSTRAÇÃO COM BORDAS BRILHANTES E ARREDONDADAS */
+        /* FAIXA DEMONSTRAÇÃO COM BORDAS DOURADAS E ELEGANTES */
         #demoNoticeBar {
             background: transparent;
             padding: 1rem 1.25rem 0.5rem;
@@ -1322,29 +1328,13 @@
             flex-wrap: wrap;
             padding: 0.85rem 1.75rem;
             border-radius: 50px;
-            background: linear-gradient(135deg, rgba(30, 27, 75, 0.95), rgba(67, 56, 202, 0.92), rgba(109, 40, 217, 0.95));
-            border: 2px solid #A855F7;
-            box-shadow: 0 0 15px rgba(168, 85, 247, 0.55), 0 0 30px rgba(99, 102, 241, 0.4), inset 0 0 12px rgba(168, 85, 247, 0.25);
-            animation: glowPulseBorder 3s infinite alternate ease-in-out;
-            backdrop-filter: blur(8px);
+            background: linear-gradient(135deg, rgba(24, 24, 27, 0.96), rgba(9, 9, 11, 0.98), rgba(24, 24, 27, 0.96));
+            border: 1.5px solid rgba(212, 175, 55, 0.35);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(212, 175, 55, 0.15);
+            backdrop-filter: blur(12px);
             color: #FFFFFF;
             font-size: 0.9rem;
             text-align: center;
-        }
-
-        @keyframes glowPulseBorder {
-            0% {
-                border-color: #8B5CF6;
-                box-shadow: 0 0 14px rgba(139, 92, 246, 0.6), 0 0 28px rgba(67, 56, 202, 0.4), inset 0 0 10px rgba(139, 92, 246, 0.2);
-            }
-            50% {
-                border-color: #EC4899;
-                box-shadow: 0 0 22px rgba(236, 72, 153, 0.75), 0 0 40px rgba(168, 85, 247, 0.5), inset 0 0 16px rgba(236, 72, 153, 0.3);
-            }
-            100% {
-                border-color: #38BDF8;
-                box-shadow: 0 0 18px rgba(56, 189, 248, 0.7), 0 0 32px rgba(99, 102, 241, 0.45), inset 0 0 12px rgba(56, 189, 248, 0.25);
-            }
         }
 
         @media (max-width: 768px) {
@@ -1376,7 +1366,7 @@
         /* ========== HERO SECTION ========== */
         .hero {
             margin-top: 76px;
-            background: linear-gradient(135deg, #23042c 0%, var(--primary) 50%, var(--primary-dark) 100%);
+            background: linear-gradient(135deg, #0B0F19 0%, var(--primary-dark) 45%, var(--primary) 100%);
             padding: 4rem 2rem;
             position: relative;
             overflow: hidden;
@@ -2930,8 +2920,9 @@
                 font-size: 2.5rem;
             }
 
-            .status-badge {
+            .hero-badges-wrapper {
                 margin: 0 auto 1.5rem auto;
+                justify-content: center;
             }
 
             .hero-buttons {
@@ -3082,19 +3073,18 @@
 
             .hero-badges-wrapper {
                 display: flex;
-                flex-direction: row;
-                flex-wrap: nowrap;
+                flex-direction: column;
                 align-items: center;
                 justify-content: center;
-                gap: 0.45rem;
-                margin-bottom: 1.1rem;
+                gap: 0.5rem;
+                margin: 0 auto 1.15rem auto;
                 width: 100%;
             }
 
             .status-badge, .delivery-time-badge {
                 height: 34px;
-                padding: 0 0.75rem;
-                font-size: 0.76rem;
+                padding: 0 0.85rem;
+                font-size: 0.78rem;
                 flex-shrink: 0;
                 display: inline-flex;
                 align-items: center;
@@ -3834,28 +3824,76 @@
 
         .customizer-counter-box {
             background: #FEF3C7;
-            border: 1px solid #F59E0B;
-            border-radius: 12px;
-            padding: 0.85rem 1rem;
-            margin-bottom: 1.25rem;
+            border: 1.5px solid #F59E0B;
+            border-radius: 14px;
+            padding: 0.85rem 1.1rem;
+            margin-bottom: 0.85rem;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
+            transition: all 0.3s ease;
         }
 
         .customizer-counter-text {
-            font-weight: 700;
+            font-weight: 800;
             color: #92400E;
-            font-size: 0.9rem;
+            font-size: 0.92rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            letter-spacing: -0.2px;
         }
 
         .customizer-counter-badge {
             background: #D97706;
             color: white;
             font-weight: 800;
-            padding: 0.2rem 0.6rem;
+            padding: 0.3rem 0.85rem;
             border-radius: 20px;
-            font-size: 0.85rem;
+            font-size: 0.88rem;
+            letter-spacing: 0.3px;
+            box-shadow: 0 2px 6px rgba(217, 119, 6, 0.3);
+            transition: all 0.25s ease;
+        }
+
+        .customizer-counter-badge.limit-reached {
+            background: #EA580C;
+            animation: bounceBadge 0.35s ease;
+        }
+
+        @keyframes bounceBadge {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.12); }
+        }
+
+        .customizer-alert-banner {
+            border-radius: 10px;
+            padding: 0.65rem 0.9rem;
+            margin-bottom: 1rem;
+            font-size: 0.82rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            animation: fadeInAlert 0.3s ease-out;
+        }
+
+        @keyframes fadeInAlert {
+            from { opacity: 0; transform: translateY(-4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .customizer-alert-banner.warning {
+            background: #FEF2F2;
+            border: 1.5px solid #EF4444;
+            color: #B91C1C;
+        }
+
+        .customizer-alert-banner.success {
+            background: #ECFDF5;
+            border: 1.5px solid #10B981;
+            color: #047857;
         }
 
         .customizer-cat-heading {
@@ -3879,6 +3917,7 @@
             margin-bottom: 0.5rem;
             cursor: pointer;
             transition: all 0.2s;
+            user-select: none;
         }
 
         .customizer-item-checkbox:hover {
@@ -3886,11 +3925,27 @@
             background: #FAF5FF;
         }
 
+        .customizer-item-checkbox.disabled-free {
+            opacity: 0.55;
+            cursor: not-allowed;
+            background: #F1F5F9;
+            border-color: #E2E8F0;
+        }
+
+        .customizer-item-checkbox.disabled-free:hover {
+            border-color: #E2E8F0;
+            background: #F1F5F9;
+        }
+
         .customizer-item-checkbox input[type="checkbox"] {
             width: 20px;
             height: 20px;
             accent-color: var(--primary);
             cursor: pointer;
+        }
+
+        .customizer-item-checkbox.disabled-free input[type="checkbox"] {
+            cursor: not-allowed;
         }
 
         .customizer-item-label {
@@ -5025,19 +5080,19 @@
         <div class="admin-content">
             <!-- CONFIGURAÇÕES GERAIS -->
             <div class="admin-section">
-                <!-- CARTÃO DE LINK EXCLUSIVO DO CARDÁPIO (dondelivery.site) -->
+                <!-- CARTÃO DE LINK EXCLUSIVO DO CARDÁPIO (donfood.com) -->
                 <div style="background: linear-gradient(135deg, #312E81, #4F46E5, #7C3AED); border-radius: 12px; padding: 1.1rem; color: #FFFFFF; margin-bottom: 1.25rem; box-shadow: 0 4px 15px rgba(79, 70, 229, 0.25);">
                     <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.6rem; flex-wrap: wrap;">
                         <span style="font-size: 0.78rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; background: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 20px;">
                             🌐 Link Oficial do seu Cardápio
                         </span>
                         <span id="adminCompanySlugBadge" style="font-family: monospace; font-size: 0.72rem; background: rgba(0,0,0,0.3); padding: 3px 8px; border-radius: 6px; color: #A5B4FC;">
-                            dondelivery.site/?empresa=...
+                            www.donfood.com/?empresa=...
                         </span>
                     </div>
                     
                     <div style="background: rgba(0, 0, 0, 0.3); padding: 0.65rem 0.85rem; border-radius: 8px; font-family: monospace; font-size: 0.86rem; word-break: break-all; margin-bottom: 0.75rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; border: 1px solid rgba(255,255,255,0.15);">
-                        <span id="adminCompanyShareUrlText" style="color: #E0E7FF; font-weight: 600;">https://dondelivery.site/?empresa=sua-loja</span>
+                        <span id="adminCompanyShareUrlText" style="color: #E0E7FF; font-weight: 600;">https://www.donfood.com/?empresa=sua-loja</span>
                     </div>
 
                     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
@@ -5063,7 +5118,7 @@
                 <div class="form-group">
                     <label class="form-label">Link de Acesso da Loja (Slug)</label>
                     <div style="display: flex; align-items: center; gap: 0;">
-                        <span style="font-size: 0.82rem; color: #4F46E5; font-family: monospace; background: #EEF2FF; padding: 0.6rem 0.65rem; border: 1.5px solid #C7D2FE; border-radius: 8px 0 0 8px; border-right: none; font-weight: bold; white-space: nowrap;">dondelivery.site/?empresa=</span>
+                        <span style="font-size: 0.82rem; color: #4F46E5; font-family: monospace; background: #EEF2FF; padding: 0.6rem 0.65rem; border: 1.5px solid #C7D2FE; border-radius: 8px 0 0 8px; border-right: none; font-weight: bold; white-space: nowrap;">www.donfood.com/?empresa=</span>
                         <input type="text" class="form-input" id="restaurantSlug" placeholder="minha-loja" style="border-radius: 0 8px 8px 0; border-left: 1.5px solid #C7D2FE;" oninput="handleAdminSlugInput(this)">
                     </div>
                     <small style="color: var(--gray-600); font-size: 0.75rem; margin-top: 0.25rem; display: block;">Seus clientes acessarão sua loja diretamente através deste link exclusivo.</small>
@@ -5390,6 +5445,19 @@
                 <div class="form-group">
                     <label class="form-label">Descrição da Seção</label>
                     <input type="text" class="form-input" id="extrasSectionDesc" placeholder="Ex: Adicione aquele toque especial com os melhores acompanhamentos da casa:">
+                </div>
+
+                <!-- CONFIGURAÇÃO GERAL DE ACOMPANHAMENTOS GRÁTIS -->
+                <div class="form-group" style="background: #FFFBEB; border: 1.5px solid #FCD34D; border-radius: 10px; padding: 0.85rem; margin-top: 0.75rem;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+                        <label for="extrasFreeLimit" style="font-weight: 800; color: #92400E; font-size: 0.88rem; display: flex; align-items: center; gap: 0.35rem;">
+                            <span>🎁 Quantidade Padrão de Acompanhamentos Grátis Permitidos:</span>
+                        </label>
+                        <input type="number" class="form-input" id="extrasFreeLimit" min="0" max="20" value="3" style="width: 80px; text-align: center; font-weight: 800; font-size: 1rem; padding: 0.3rem; border-color: #F59E0B; background: #FFFFFF;" title="Quantidade de itens grátis que o cliente pode escolher">
+                    </div>
+                    <small style="color: #B45309; font-size: 0.78rem; display: block; margin-top: 0.35rem; line-height: 1.4;">
+                        💡 O cliente poderá escolher até este número de acompanhamentos grátis na montagem do pedido. Ao atingir o limite (ex: 3 grátis), o sistema bloqueia seleções extras grátis e exibe o alerta explicativo.
+                    </small>
                 </div>
 
                 <!-- CATEGORIAS / BLOCOS DE ITENS E ACOMPANHAMENTOS (MÚLTIPLOS) -->
@@ -5772,13 +5840,30 @@
                     </div>
                 </div>
                 
-                <div class="form-group">
-                    <div class="form-switch" style="margin-bottom: 0.5rem;">
+                <div class="form-group" style="background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 10px; padding: 0.85rem; margin-bottom: 0.85rem;">
+                    <div class="form-switch" style="margin-bottom: 0.4rem;">
                         <label class="switch">
-                            <input type="checkbox" id="productIsAcai" checked>
+                            <input type="checkbox" id="productIsAcai" checked onchange="toggleProductCustomizationFields(this.checked)">
                             <span class="slider"></span>
                         </label>
-                        <span class="switch-label">Habilitar Montagem com Acompanhamentos Grátis</span>
+                        <span class="switch-label" style="font-weight: 700; color: #1E293B;">⚡ Habilitar Customização ("Monte do Seu Jeito")</span>
+                    </div>
+
+                    <div id="productCustomizationSettingsGroup" style="margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px dashed #CBD5E1; display: flex; flex-direction: column; gap: 0.6rem;">
+                        <div class="form-switch">
+                            <label class="switch">
+                                <input type="checkbox" id="productAllowFreeAccompaniments" checked onchange="toggleProductFreeLimitInput(this.checked)">
+                                <span class="slider"></span>
+                            </label>
+                            <span class="switch-label" style="font-size: 0.84rem; color: #334155; font-weight: 600;">🎁 Permitir Acompanhamentos Grátis neste Produto</span>
+                        </div>
+
+                        <div id="productFreeLimitContainer" style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; background: #FEF3C7; border: 1px solid #F59E0B; border-radius: 8px; padding: 0.45rem 0.75rem;">
+                            <label for="productFreeLimit" style="font-size: 0.82rem; font-weight: 700; color: #92400E;">
+                                🔢 Quantidade de Grátis Permitidos:
+                            </label>
+                            <input type="number" class="form-input" id="productFreeLimit" min="0" max="20" value="3" style="width: 75px; text-align: center; font-weight: 800; font-size: 0.95rem; padding: 0.25rem; border-color: #F59E0B; background: white;" title="Quantidade de acompanhamentos grátis permitidos">
+                        </div>
                     </div>
                 </div>
 
@@ -5926,7 +6011,7 @@
                     <span class="cart-count" id="cartCount">0</span>
                 </button>
                 
-                <button type="button" class="btn-acquire-header" onclick="openAcquireAppModal()" title="Adquira o Sistema Don Delivery para o seu restaurante" style="display: inline-flex;">
+                <button type="button" class="btn-acquire-header" onclick="openAcquireAppModal()" title="Adquira o Sistema Don Food para o seu restaurante" style="display: inline-flex;">
                     💎 Quero o App
                 </button>
 
@@ -5956,10 +6041,10 @@
     <section id="demoLandingHero" class="demo-landing-hero" style="display: none;">
         <div class="demo-landing-container">
             <div style="text-align: center; margin-bottom: 0.75rem;">
-                <img src="/Don_delivery.png" alt="Don Delivery" style="height: 52px; width: auto; max-width: 280px; object-fit: contain; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3)); display: inline-block;" onerror="this.onerror=null; this.src='Don_delivery.png';">
+                <img src="/Don_Food.png" alt="Don Food" style="height: 52px; width: auto; max-width: 280px; object-fit: contain; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3)); display: inline-block;" onerror="this.onerror=null; this.src='Don_Food.png';">
             </div>
             <div class="demo-landing-badge">
-                🚀 DON DELIVERY • SISTEMA COMPLETO DE CARDÁPIO & PEDIDOS
+                🚀 DON FOOD • SISTEMA COMPLETO DE CARDÁPIO & PEDIDOS
             </div>
             <h1 class="demo-landing-title">
                 Tenha seu Próprio Sistema de Delivery Sem Pagar Taxas Abusivas!
@@ -5987,28 +6072,28 @@
                 <div class="demo-feature-card">
                     <span class="demo-feature-icon">🌐</span>
                     <h4 class="demo-feature-title">Link & QR Code Próprio</h4>
-                    <p class="demo-feature-text">Tenha seu link <strong>dondelivery.site/?empresa=sua-loja</strong> e QR Code para mesas e balcão.</p>
+                    <p class="demo-feature-text">Tenha seu link <strong>www.donfood.com/?empresa=sua-loja</strong> e QR Code para mesas e balcão.</p>
                 </div>
             </div>
 
             <div class="demo-actions-row">
-                <button type="button" onclick="openAcquireAppModal()" class="btn-admin" style="background: linear-gradient(135deg, #10B981, #059669); color: white; font-weight: 800; font-size: 1rem; padding: 0.85rem 1.6rem; border-radius: 50px; box-shadow: 0 4px 18px rgba(16, 185, 129, 0.4); display: inline-flex; align-items: center; gap: 0.5rem; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">
-                    💎 Quero o Don Delivery no Meu Negócio
+                <button type="button" onclick="openAcquireAppModal()" class="btn-admin" style="background: linear-gradient(135deg, #F59E0B 0%, #D4AF37 50%, #B8860B 100%); color: #09090B; font-weight: 800; font-size: 1rem; padding: 0.85rem 1.6rem; border-radius: 50px; box-shadow: 0 4px 20px rgba(212, 175, 55, 0.45); display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s; border: none;" onmouseover="this.style.transform='translateY(-2px) scale(1.02)'; this.style.boxShadow='0 8px 25px rgba(212, 175, 55, 0.6)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 20px rgba(212, 175, 55, 0.45)';">
+                    💎 Quero o Don Food no Meu Negócio
                 </button>
-                <a href="#cardapio" class="btn-admin" style="background: rgba(255,255,255,0.15); color: white; font-weight: 700; font-size: 0.95rem; padding: 0.85rem 1.4rem; border-radius: 50px; border: 1px solid rgba(255,255,255,0.3); text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem;">
+                <a href="#cardapio" class="btn-admin" style="background: rgba(255, 255, 255, 0.06); color: #FAFAFA; font-weight: 700; font-size: 0.95rem; padding: 0.85rem 1.4rem; border-radius: 50px; border: 1px solid rgba(212, 175, 55, 0.35); backdrop-filter: blur(8px); text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s;" onmouseover="this.style.background='rgba(212, 175, 55, 0.15)'; this.style.borderColor='rgba(212, 175, 55, 0.6)';" onmouseout="this.style.background='rgba(255, 255, 255, 0.06)'; this.style.borderColor='rgba(212, 175, 55, 0.35)';">
                     🍔 Testar Cardápio de Demonstração Abaixo ↓
                 </a>
-                <button type="button" onclick="openQrCodeModal()" class="btn-admin" style="background: #4F46E5; color: white; font-weight: 700; font-size: 0.95rem; padding: 0.85rem 1.3rem; border-radius: 50px; display: inline-flex; align-items: center; gap: 0.5rem;">
+                <button type="button" onclick="openQrCodeModal()" class="btn-admin" style="background: linear-gradient(135deg, #27272A 0%, #18181B 100%); color: #FDE68A; font-weight: 700; font-size: 0.95rem; padding: 0.85rem 1.3rem; border-radius: 50px; border: 1px solid rgba(212, 175, 55, 0.4); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4); display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.borderColor='rgba(212, 175, 55, 0.7)'; this.style.boxShadow='0 6px 20px rgba(212, 175, 55, 0.25)';" onmouseout="this.style.transform='none'; this.style.borderColor='rgba(212, 175, 55, 0.4)'; this.style.boxShadow='0 4px 16px rgba(0, 0, 0, 0.4)';">
                     📱 Ver QR Code
                 </button>
             </div>
         </div>
     </section>
 
-    <!-- FAIXA LOJA DEMONSTRAÇÃO (dondelivery.site) -->
+    <!-- FAIXA LOJA DEMONSTRAÇÃO (donfood.com) -->
     <div id="demoNoticeBar" style="display: none;">
         <div class="demo-notice-glow-box">
-            <span>✨ <strong>Loja de Demonstração Don Delivery</strong> — Cardápio modelo interativo para testar pedidos em tempo real!</span>
+            <span>✨ <strong>Loja de Demonstração Don Food</strong> — Cardápio modelo interativo para testar pedidos em tempo real!</span>
             <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
                 <button type="button" onclick="openAcquireAppModal()" class="btn-acquire-header" style="font-size: 0.8rem; padding: 5px 14px; font-weight: 700; border-radius: 50px; background: linear-gradient(135deg, #10B981, #059669); color: #fff; box-shadow: 0 2px 10px rgba(16, 185, 129, 0.4);">
                     💎 Adquirir Sistema
@@ -6319,9 +6404,9 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Slug / Link Exclusivo de Acesso (dondelivery.site)</label>
+                        <label class="form-label">Slug / Link Exclusivo de Acesso (donfood.com)</label>
                         <div style="display: flex; align-items: center; gap: 0;">
-                            <span style="font-size: 0.82rem; color: #4F46E5; font-family: monospace; background: #EEF2FF; padding: 0.6rem 0.65rem; border: 1.5px solid #C7D2FE; border-radius: 8px 0 0 8px; border-right: none; font-weight: bold; white-space: nowrap;">dondelivery.site/?empresa=</span>
+                            <span style="font-size: 0.82rem; color: #4F46E5; font-family: monospace; background: #EEF2FF; padding: 0.6rem 0.65rem; border: 1.5px solid #C7D2FE; border-radius: 8px 0 0 8px; border-right: none; font-weight: bold; white-space: nowrap;">www.donfood.com/?empresa=</span>
                             <input type="text" class="form-input" id="devNewCompSlug" placeholder="ex: burger-king" style="border-radius: 0 8px 8px 0; border-left: 1.5px solid #C7D2FE;" oninput="handleSlugSanitize(this)">
                         </div>
                         <small style="color: var(--gray-600); font-size: 0.75rem; margin-top: 0.25rem; display: block;">Link direto que direciona os clientes para esta empresa.</small>
@@ -6544,9 +6629,9 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">Slug / Link Exclusivo de Acesso (dondelivery.site)</label>
+                    <label class="form-label">Slug / Link Exclusivo de Acesso (donfood.com)</label>
                     <div style="display: flex; align-items: center; gap: 0;">
-                        <span style="font-size: 0.82rem; color: #4F46E5; font-family: monospace; background: #EEF2FF; padding: 0.6rem 0.65rem; border: 1.5px solid #C7D2FE; border-radius: 8px 0 0 8px; border-right: none; font-weight: bold; white-space: nowrap;">dondelivery.site/?empresa=</span>
+                        <span style="font-size: 0.82rem; color: #4F46E5; font-family: monospace; background: #EEF2FF; padding: 0.6rem 0.65rem; border: 1.5px solid #C7D2FE; border-radius: 8px 0 0 8px; border-right: none; font-weight: bold; white-space: nowrap;">www.donfood.com/?empresa=</span>
                         <input type="text" class="form-input" id="devEditCompSlug" placeholder="ex: burger-king" style="border-radius: 0 8px 8px 0; border-left: 1.5px solid #C7D2FE;" oninput="handleSlugSanitize(this)">
                     </div>
                     <small style="color: var(--gray-600); font-size: 0.75rem; margin-top: 0.25rem; display: block;">Link direto que direciona os clientes para esta empresa.</small>
@@ -6736,7 +6821,7 @@
                     🏬 Desta Loja
                 </button>
                 <button type="button" id="qrScopePortalBtn" class="btn-admin" onclick="switchQrScope('portal')" style="flex: 1; font-size: 0.78rem; font-weight: 700; background: transparent; color: #475569; border-radius: 8px; padding: 0.45rem;">
-                    🌐 Portal Don Delivery
+                    🌐 Portal Don Food
                 </button>
             </div>
 
@@ -6747,11 +6832,11 @@
                 </div>
                 
                 <div style="background: white; padding: 12px; border-radius: 14px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 0.6rem; display: flex; align-items: center; justify-content: center; min-height: 220px; min-width: 220px;">
-                    <img id="qrCodeImage" src="" alt="QR Code" style="width: 200px; height: 200px; object-fit: contain; display: block;" onerror="this.onerror=null; this.src='https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://dondelivery.site';">
+                    <img id="qrCodeImage" src="" alt="QR Code" style="width: 200px; height: 200px; object-fit: contain; display: block;" onerror="this.onerror=null; this.src='https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://www.donfood.com';">
                 </div>
 
                 <div style="font-family: monospace; font-size: 0.8rem; color: #4F46E5; background: #EEF2FF; padding: 4px 10px; border-radius: 6px; word-break: break-all; max-width: 100%; border: 1px solid #C7D2FE;" id="qrCodeTargetUrl">
-                    https://dondelivery.site/?empresa=acai-fb
+                    https://www.donfood.com/?empresa=acai-fb
                 </div>
                 <small style="color: #6B7280; font-size: 0.72rem; margin-top: 0.35rem;">Aponte a câmera do seu celular para abrir o cardápio</small>
             </div>
@@ -6777,16 +6862,16 @@
         </div>
     </div>
 
-    <!-- MODAL DE AQUISIÇÃO / QUERO O DON DELIVERY -->
+    <!-- MODAL DE AQUISIÇÃO / QUERO O DON FOOD -->
     <div class="modal" id="acquireAppModal" style="z-index: 3650;">
         <div class="modal-content" style="max-width: 580px; border-radius: 18px; padding: 1.75rem; border-top: 6px solid #F59E0B;">
             <div class="modal-header" style="border-bottom: 1px solid var(--gray-200); padding-bottom: 0.75rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
                 <div style="text-align: left;">
                     <span style="font-size: 0.72rem; font-weight: 800; background: #FEF3C7; color: #B45309; padding: 3px 8px; border-radius: 20px; text-transform: uppercase;">
-                        🚀 Solução Completa Don Delivery
+                        🚀 Solução Completa Don Food
                     </span>
                     <h3 class="modal-title" style="color: #1E1B4B; margin-top: 0.35rem; font-size: 1.3rem;">
-                        Tenha o Don Delivery no Seu Estabelecimento
+                        Tenha o Don Food no Seu Estabelecimento
                     </h3>
                 </div>
                 <button class="modal-close" onclick="closeAcquireAppModal()">✕</button>
@@ -6794,7 +6879,7 @@
 
             <div style="background: linear-gradient(135deg, #312E81, #1E1B4B); border-radius: 12px; padding: 1rem 1.2rem; color: white; margin-bottom: 1.25rem; text-align: left;">
                 <p style="font-size: 0.92rem; line-height: 1.5; margin: 0; color: #E0E7FF;">
-                    Aumente seus pedidos, fidelize clientes e pare de pagar comissões abusivas por cada venda! O Don Delivery é a solução definitiva e pronta para usar.
+                    Aumente seus pedidos, fidelize clientes e pare de pagar comissões abusivas por cada venda! O Don Food é a solução definitiva e pronta para usar.
                 </p>
             </div>
 
@@ -6818,7 +6903,7 @@
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 0.6rem;">
-                <a href="https://api.whatsapp.com/send?phone=5521972888819&text=Ol%C3%A1%21+Gostaria+de+adquirir+o+sistema+Don+Delivery+para+o+meu+estabelecimento+e+conhecer+as+condi%C3%A7%C3%B5es." target="_blank" class="btn-admin" style="background: #25D366; color: white; font-weight: 800; font-size: 0.95rem; padding: 0.85rem; border-radius: 10px; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 0.5rem; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.35);">
+                <a href="https://api.whatsapp.com/send?phone=5521973987378&text=Ol%C3%A1%21+Gostaria+de+adquirir+o+sistema+Don+Food+para+o+meu+estabelecimento+e+conhecer+as+condi%C3%A7%C3%B5es." target="_blank" class="btn-admin" style="background: #25D366; color: white; font-weight: 800; font-size: 0.95rem; padding: 0.85rem; border-radius: 10px; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 0.5rem; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.35);">
                     💬 Falar com Consultor no WhatsApp Oficial
                 </a>
             </div>
@@ -6846,10 +6931,10 @@
 
     <footer class="footer">
         <div class="footer-content-wrap">
-            <span id="footerDevTrigger" onclick="handleDevLogoClick(event)" class="footer-dev-trigger" title="Don Delivery">
+            <span id="footerDevTrigger" onclick="handleDevLogoClick(event)" class="footer-dev-trigger" title="Don Food">
                 <span>Aplicativo</span>
                 <strong class="don-delivery-highlight">
-                    <img src="/Don_delivery.png" alt="Don Delivery" class="footer-logo-don" onerror="if(this.src.indexOf('Don_delivery.png') === -1) { this.src = '/Don_delivery.png'; } else { this.src = 'don_delivery.png'; }">
+                    <img src="/Don_Food.png" alt="Don Food" class="footer-logo-don" onerror="if(this.src.indexOf('Don_Food.png') === -1) { this.src = '/Don_Food.png'; } else { this.src = 'Don_food.png'; }">
                 </strong>
             </span>
             <span class="footer-dev-by-wrap">
@@ -6921,6 +7006,8 @@
         </div>
     </aside>
 
-    <script src="app.js?v=2.2.0"></script>
+    <!-- Supabase JS Client SDK for Realtime Subscriptions -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js?v=2.3.0"></script>
 </body>
 </html>

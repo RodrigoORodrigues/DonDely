@@ -1,5 +1,5 @@
 -- ============================================================================
--- DON DELIVERY - ESQUEMA SEGURO COM ROW LEVEL SECURITY (RLS) & POLICIES
+-- DON FOOD - ESQUEMA SEGURO COM ROW LEVEL SECURITY (RLS) & POLICIES
 -- ============================================================================
 
 -- 1. Tabela de Empresas (Multi-Tenant)

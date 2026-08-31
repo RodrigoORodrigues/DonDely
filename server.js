@@ -771,6 +771,6 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Servidor Don Delivery ativo na porta ${PORT}`);
+    console.log(`🚀 Servidor Don Food ativo na porta ${PORT}`);
     console.log(`🛡️ 20 Precauções de Segurança e Estabilidade implementadas com sucesso.`);
 });
