@@ -418,11 +418,25 @@
         // ========== PALETAS DE CORES & PRESETS DO SISTEMA UNIVERSAL ==========
         const THEME_PRESETS = {
             demo: {
-                name: '🖤 Preto & Dourado Nobre (Elegância & Luxo)',
-                primary: '#18181B',
-                primaryDark: '#09090B',
-                secondary: '#D4AF37',
-                bgAccent: '#FAF8F5'
+                name: '🔥 Don Food Sunset (Vermelho, Laranja & Amarelo)',
+                primary: '#DC2626',
+                primaryDark: '#991B1B',
+                secondary: '#EA580C',
+                bgAccent: '#FFFDF7'
+            },
+            burguer: {
+                name: '🟧 Hamburgueria Sunset Flame (Laranja & Fogo)',
+                primary: '#EA580C',
+                primaryDark: '#9A3412',
+                secondary: '#F59E0B',
+                bgAccent: '#FFF7ED'
+            },
+            fastfood: {
+                name: '🔴 Fast Food Red & Amber (Vermelho & Dourado)',
+                primary: '#DC2626',
+                primaryDark: '#991B1B',
+                secondary: '#F59E0B',
+                bgAccent: '#FEF2F2'
             },
             darkgourmet: {
                 name: '🖤 Gourmet Midnight Gold',
@@ -437,20 +451,6 @@
                 primaryDark: '#3B0764',
                 secondary: '#9333EA',
                 bgAccent: '#FAF5FF'
-            },
-            fastfood: {
-                name: '🔴 Fast Food Ruby Red',
-                primary: '#E11D48',
-                primaryDark: '#9F1239',
-                secondary: '#FB7185',
-                bgAccent: '#FFF1F2'
-            },
-            burguer: {
-                name: '🟧 Hamburgueria Sunset Flame',
-                primary: '#EA580C',
-                primaryDark: '#9A3412',
-                secondary: '#F97316',
-                bgAccent: '#FFF7ED'
             },
             pizzaria: {
                 name: '🟢 Pizzaria Basil Emerald',
@@ -1827,10 +1827,10 @@
             deliveryTime: '25 - 40 min',
             presetType: 'burguer',
             themeColors: {
-                primary: '#18181B',
-                primaryDark: '#09090B',
-                secondary: '#D4AF37',
-                bgAccent: '#FAF8F5'
+                primary: '#DC2626',
+                primaryDark: '#991B1B',
+                secondary: '#EA580C',
+                bgAccent: '#FFFDF7'
             },
             coupons: [
                 { code: 'DON10', discount: 10, type: 'percent', minOrder: 30, active: true },
@@ -4117,16 +4117,16 @@
                     container.innerHTML = `
                         <div class="admin-header-pill-group">
                             <span class="admin-logged-store-badge" title="${activeComp.name || settings.restaurantName}">
-                                🏬 <strong>${activeComp.name || settings.restaurantName}</strong>
+                                <strong>${activeComp.name || settings.restaurantName}</strong>
                             </span>
                             <button class="admin-header-bell-btn ${hasNewBadge ? 'has-new' : ''}" onclick="adminPanel.classList.add('active'); adminOverlay.classList.add('active'); filterAdminOrdersByStatus('RECEIVED');" title="${receivedCount} pedido(s) aguardando atendimento">
-                                🔔 ${receivedCount > 0 ? `<strong>${receivedCount}</strong>` : ''}
+                                ${receivedCount > 0 ? `<strong>${receivedCount}</strong>` : '🔔'}
                             </button>
                             <button class="btn-admin-header-panel" onclick="adminPanel.classList.add('active'); adminOverlay.classList.add('active'); renderPresetCatalog();" title="Abrir Painel Administrativo">
-                                ⚙️ Painel
+                                Painel
                             </button>
                             <button class="btn-admin-header-logout" onclick="logoutAdmin()" title="Sair da Empresa">
-                                🚪 Sair
+                                Sair
                             </button>
                         </div>
                     `;
@@ -4134,7 +4134,7 @@
                     container.style.display = 'flex';
                     container.innerHTML = `
                         <button class="btn-admin-header-login" onclick="openAdminLogin()" title="Painel de Login da Empresa">
-                            🏬 Login Empresa
+                            Login Empresa
                         </button>
                     `;
                 }
@@ -6016,13 +6016,13 @@
                     const firstName = loggedCustomer.name ? loggedCustomer.name.trim().split(' ')[0] : 'Cliente';
                     container.innerHTML = `
                         <button class="customer-header-btn" onclick="openCustomerOrdersModal()" title="Ver Meus Pedidos">
-                            👤 Olá, ${firstName} | 📦 Pedidos
+                            Olá, ${firstName} | Pedidos
                         </button>
                     `;
                 } else {
                     container.innerHTML = `
                         <button class="customer-header-btn" onclick="openCustomerAuthModal('login')" title="Entrar na Minha Conta">
-                            👤 Entrar / Cadastrar
+                            Entrar / Cadastrar
                         </button>
                     `;
                 }

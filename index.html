@@ -1206,14 +1206,19 @@
             }
         }
 
-        /* LANDING PAGE DEMO SHOWCASE - PALETA PRETO & DOURADO LUXO */
+        /* ========== LANDING PAGE DEMO SHOWCASE - SEÇÕES COMPLETAS E ALTA CONVERSÃO ========== */
+        .demo-landing-wrapper {
+            width: 100%;
+            overflow: hidden;
+        }
+
         .demo-landing-hero {
             margin-top: 76px;
-            background: radial-gradient(ellipse at 50% 0%, #27272A 0%, #18181B 55%, #09090B 100%);
-            color: #FFFFFF;
-            padding: 3.25rem 1.5rem 2.75rem;
+            background: linear-gradient(180deg, #FFFDF7 0%, #FFF7ED 50%, #FEF2F2 100%);
+            color: #1F2937;
+            padding: 3.5rem 1.5rem 3rem;
             position: relative;
-            border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+            border-bottom: 1px solid #FED7AA;
         }
 
         .demo-landing-container {
@@ -1225,91 +1230,595 @@
         .demo-landing-badge {
             display: inline-flex;
             align-items: center;
-            gap: 0.45rem;
-            background: linear-gradient(135deg, rgba(212, 175, 55, 0.2), rgba(0, 0, 0, 0.5));
-            border: 1px solid rgba(212, 175, 55, 0.4);
-            color: #FDE68A;
-            padding: 0.4rem 1.15rem;
+            gap: 0.5rem;
+            background: linear-gradient(135deg, #FEF2F2 0%, #FFFBEB 100%);
+            border: 1.5px solid #FCD34D;
+            color: #B45309;
+            padding: 0.45rem 1.25rem;
             border-radius: 50px;
             font-size: 0.82rem;
             font-weight: 800;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.6px;
             text-transform: uppercase;
             margin-bottom: 1.25rem;
-            box-shadow: 0 4px 14px rgba(212, 175, 55, 0.12);
+            box-shadow: 0 4px 14px rgba(245, 158, 11, 0.15);
         }
 
         .demo-landing-title {
-            font-size: 2.4rem;
+            font-size: 2.7rem;
             font-weight: 900;
-            line-height: 1.2;
+            line-height: 1.18;
             margin-bottom: 1.1rem;
-            background: linear-gradient(135deg, #FFFFFF 40%, #FEF08A 75%, #D4AF37 100%);
+            background: linear-gradient(135deg, #111827 30%, #B91C1C 70%, #EA580C 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
         .demo-landing-desc {
-            font-size: 1.05rem;
-            color: #E4E4E7;
+            font-size: 1.18rem;
+            color: #4B5563;
             max-width: 780px;
-            margin: 0 auto 2.25rem auto;
-            line-height: 1.65;
+            margin: 0 auto 1.5rem auto;
+            line-height: 1.6;
+            font-weight: 500;
         }
 
-        .demo-features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 1.1rem;
+        .demo-pills-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 0.5rem 0.85rem;
+            color: #9A3412;
+            font-size: 0.92rem;
+            font-weight: 700;
             margin-bottom: 2.25rem;
-            text-align: left;
         }
 
-        .demo-feature-card {
-            background: rgba(39, 39, 42, 0.45);
-            border: 1px solid rgba(212, 175, 55, 0.2);
-            backdrop-filter: blur(12px);
-            padding: 1.25rem;
-            border-radius: 16px;
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-        }
-
-        .demo-feature-card:hover {
-            transform: translateY(-3px);
-            background: rgba(39, 39, 42, 0.7);
-            border-color: rgba(212, 175, 55, 0.55);
-            box-shadow: 0 10px 25px -5px rgba(212, 175, 55, 0.2);
-        }
-
-        .demo-feature-icon {
-            font-size: 1.7rem;
-            margin-bottom: 0.5rem;
-            display: inline-block;
-        }
-
-        .demo-feature-title {
-            font-size: 0.95rem;
-            font-weight: 800;
-            color: #FAFAFA;
-            margin-bottom: 0.25rem;
-        }
-
-        .demo-feature-text {
-            font-size: 0.82rem;
-            color: #A1A1AA;
-            line-height: 1.45;
+        .demo-pills-row span.sep {
+            color: #F59E0B;
         }
 
         .demo-actions-row {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 0.85rem;
+            gap: 1rem;
             flex-wrap: wrap;
+            margin-bottom: 2rem;
         }
 
-        /* FAIXA DEMONSTRAÇÃO COM BORDAS DOURADAS E ELEGANTES */
+        .demo-trust-flow {
+            background: #FFFFFF;
+            border: 1px solid #FED7AA;
+            border-radius: 50px;
+            padding: 0.75rem 1.6rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            font-size: 0.88rem;
+            color: #4B5563;
+            font-weight: 600;
+            box-shadow: 0 4px 16px rgba(234, 88, 12, 0.08);
+        }
+
+        .demo-trust-flow strong {
+            color: #DC2626;
+        }
+
+        .demo-trust-flow .arrow {
+            color: #EA580C;
+            font-weight: 800;
+        }
+
+        /* 2. SEÇÃO 0% DE COMISSÃO & COMPARATIVO VISUAL */
+        .demo-section-light {
+            background: #FFFDF9;
+            color: #1F2937;
+            padding: 4rem 1.5rem;
+            border-bottom: 1px solid #F3F4F6;
+        }
+
+        .demo-section-header {
+            text-align: center;
+            max-width: 760px;
+            margin: 0 auto 2.75rem auto;
+        }
+
+        .demo-section-badge {
+            display: inline-block;
+            background: #FEF3C7;
+            color: #92400E;
+            font-size: 0.8rem;
+            font-weight: 800;
+            padding: 0.35rem 0.95rem;
+            border-radius: 50px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.75rem;
+        }
+
+        .demo-section-title {
+            font-size: 2.1rem;
+            font-weight: 900;
+            color: #111827;
+            line-height: 1.25;
+            margin-bottom: 0.75rem;
+        }
+
+        .demo-section-subtitle {
+            font-size: 1.05rem;
+            color: #4B5563;
+            line-height: 1.55;
+        }
+
+        .demo-comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            max-width: 960px;
+            margin: 0 auto;
+        }
+
+        .demo-comp-card {
+            border-radius: 20px;
+            padding: 2rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .demo-comp-card.marketplace {
+            background: #FFFFFF;
+            border: 2px solid #FEE2E2;
+            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.06);
+        }
+
+        .demo-comp-card.donfood {
+            background: linear-gradient(145deg, #FFFFFF 0%, #FFFBEB 100%);
+            border: 2px solid #F59E0B;
+            box-shadow: 0 10px 30px -5px rgba(245, 158, 11, 0.2);
+            position: relative;
+        }
+
+        .demo-comp-badge {
+            display: inline-block;
+            padding: 0.3rem 0.85rem;
+            border-radius: 50px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+
+        .demo-comp-card.marketplace .demo-comp-badge {
+            background: #FEE2E2;
+            color: #991B1B;
+        }
+
+        .demo-comp-card.donfood .demo-comp-badge {
+            background: #DC2626;
+            color: #FFFFFF;
+            box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+        }
+
+        .demo-comp-title {
+            font-size: 1.35rem;
+            font-weight: 900;
+            margin-bottom: 0.75rem;
+            color: #111827;
+        }
+
+        .demo-comp-list {
+            list-style: none;
+            padding: 0;
+            margin: 1.25rem 0 0 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.85rem;
+        }
+
+        .demo-comp-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.65rem;
+            font-size: 0.95rem;
+            line-height: 1.45;
+            color: #374151;
+        }
+
+        .demo-comp-item .icon-check {
+            color: #16A34A;
+            font-weight: 900;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .demo-comp-item .icon-cross {
+            color: #DC2626;
+            font-weight: 900;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        /* 3. SEÇÃO SISTEMA POR DENTRO (4 PILARES) */
+        .demo-section-gray {
+            background: #F9FAFB;
+            padding: 4.5rem 1.5rem;
+            border-bottom: 1px solid #E5E7EB;
+        }
+
+        .demo-system-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1.35rem;
+            max-width: 1140px;
+            margin: 0 auto;
+        }
+
+        .demo-system-card {
+            background: #FFFFFF;
+            border: 1px solid #E5E7EB;
+            border-radius: 18px;
+            padding: 1.65rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+            display: flex;
+            flex-direction: column;
+            transition: all 0.25s ease;
+        }
+
+        .demo-system-card:hover {
+            transform: translateY(-4px);
+            border-color: #F59E0B;
+            box-shadow: 0 12px 28px -6px rgba(234, 88, 12, 0.15);
+        }
+
+        .demo-system-icon-box {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #FEF2F2, #FFFBEB);
+            border: 1px solid #FED7AA;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1.1rem;
+            color: #DC2626;
+        }
+
+        .demo-system-title {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: #111827;
+            margin-bottom: 0.5rem;
+        }
+
+        .demo-system-desc {
+            font-size: 0.88rem;
+            color: #4B5563;
+            line-height: 1.55;
+            margin-bottom: 1.1rem;
+            flex-grow: 1;
+        }
+
+        .demo-system-preview-pill {
+            background: #F3F4F6;
+            border-radius: 8px;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.78rem;
+            color: #374151;
+            font-weight: 600;
+            border-left: 3px solid #EA580C;
+        }
+
+        /* 4. SEÇÃO QUANTO VOCÊ ECONOMIZA (SIMULADOR INTERATIVO) */
+        .demo-section-dark {
+            background: linear-gradient(180deg, #FFFBEB 0%, #FFF7ED 50%, #FEF2F2 100%);
+            color: #1F2937;
+            padding: 4.5rem 1.5rem;
+            position: relative;
+            border-bottom: 1px solid #FED7AA;
+        }
+
+        .demo-calculator-box {
+            max-width: 860px;
+            margin: 0 auto;
+            background: #FFFFFF;
+            border: 1.5px solid #FCD34D;
+            border-radius: 24px;
+            padding: 2.25rem;
+            box-shadow: 0 16px 36px rgba(234, 88, 12, 0.09);
+        }
+
+        .demo-calc-buttons {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin: 1.25rem 0 1.5rem 0;
+        }
+
+        .demo-calc-btn {
+            background: #F9FAFB;
+            border: 1px solid #E5E7EB;
+            color: #374151;
+            padding: 0.6rem 1.15rem;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 0.92rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .demo-calc-btn:hover {
+            background: #FEF3C7;
+            border-color: #F59E0B;
+            color: #92400E;
+        }
+
+        .demo-calc-btn.active {
+            background: linear-gradient(135deg, #DC2626, #EA580C);
+            border-color: #F59E0B;
+            color: #FFFFFF;
+            box-shadow: 0 4px 14px rgba(234, 88, 12, 0.35);
+        }
+
+        /* Linha Deslizante da Calculadora (De 1 mil em 1 mil) */
+        .demo-calc-slider-container {
+            margin: 1.25rem 0 2rem 0;
+            background: linear-gradient(135deg, #FFFBEB 0%, #FFF7ED 100%);
+            border: 1.5px solid #FDE68A;
+            border-radius: 20px;
+            padding: 1.35rem 1.5rem;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02), 0 4px 14px rgba(245, 158, 11, 0.08);
+        }
+
+        .demo-calc-slider-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-bottom: 1.1rem;
+        }
+
+        .demo-calc-slider-label {
+            font-size: 0.88rem;
+            font-weight: 800;
+            color: #9A3412;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .demo-calc-slider-current {
+            background: linear-gradient(135deg, #DC2626 0%, #EA580C 100%);
+            color: #FFFFFF;
+            font-weight: 900;
+            font-size: 1.1rem;
+            padding: 0.4rem 1.25rem;
+            border-radius: 50px;
+            box-shadow: 0 4px 14px rgba(234, 88, 12, 0.3);
+            border: 2px solid #FCD34D;
+            letter-spacing: 0.3px;
+        }
+
+        .demo-calc-slider-track-wrap {
+            position: relative;
+            margin: 0.85rem 0 0.5rem 0;
+        }
+
+        .demo-calc-range-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 14px;
+            border-radius: 10px;
+            background: linear-gradient(to right, #EA580C 0%, #F59E0B 23.7%, #E5E7EB 23.7%, #E5E7EB 100%);
+            outline: none;
+            cursor: pointer;
+            transition: background 0.1s ease;
+        }
+
+        .demo-calc-range-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #DC2626 0%, #EA580C 100%);
+            border: 3px solid #FFFFFF;
+            box-shadow: 0 4px 14px rgba(220, 38, 38, 0.45), 0 0 10px rgba(245, 158, 11, 0.4);
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .demo-calc-range-slider::-webkit-slider-thumb:hover,
+        .demo-calc-range-slider:active::-webkit-slider-thumb {
+            transform: scale(1.2);
+            box-shadow: 0 6px 20px rgba(220, 38, 38, 0.6), 0 0 16px rgba(245, 158, 11, 0.6);
+        }
+
+        .demo-calc-range-slider::-moz-range-thumb {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #DC2626 0%, #EA580C 100%);
+            border: 3px solid #FFFFFF;
+            box-shadow: 0 4px 14px rgba(220, 38, 38, 0.45);
+            cursor: pointer;
+        }
+
+        .demo-calc-slider-scale {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.76rem;
+            color: #78350F;
+            font-weight: 700;
+            margin-top: 0.65rem;
+            padding: 0 4px;
+        }
+
+        .demo-calc-results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1.2fr;
+            gap: 1.25rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .demo-calc-res-card {
+            background: #F9FAFB;
+            border: 1px solid #E5E7EB;
+            border-radius: 16px;
+            padding: 1.25rem 1rem;
+        }
+
+        .demo-calc-res-card.highlight {
+            background: linear-gradient(145deg, #FFFBEB 0%, #FEF2F2 100%);
+            border: 2px solid #F59E0B;
+            box-shadow: 0 8px 24px rgba(245, 158, 11, 0.18);
+        }
+
+        .demo-calc-res-label {
+            font-size: 0.8rem;
+            color: #6B7280;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.4rem;
+        }
+
+        .demo-calc-res-val {
+            font-size: 1.65rem;
+            font-weight: 900;
+            color: #111827;
+        }
+
+        .demo-calc-res-card.highlight .demo-calc-res-val {
+            color: #DC2626;
+            font-size: 1.9rem;
+        }
+
+        .demo-calc-res-sub {
+            font-size: 0.78rem;
+            color: #6B7280;
+            margin-top: 0.35rem;
+        }
+
+        .demo-calc-res-card.highlight .demo-calc-res-sub {
+            color: #EA580C;
+            font-weight: 800;
+        }
+
+        .demo-calc-disclaimer {
+            font-size: 0.78rem;
+            color: #6B7280;
+            text-align: center;
+            margin-top: 1.25rem;
+            line-height: 1.4;
+        }
+
+        /* 5. SEÇÃO DEPOIMENTOS E PROVA SOCIAL */
+        .demo-testimonials-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            max-width: 1080px;
+            margin: 0 auto 3rem auto;
+        }
+
+        .demo-testimonial-card {
+            background: #FFFFFF;
+            border: 1px solid #E5E7EB;
+            border-radius: 20px;
+            padding: 1.85rem;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .demo-test-stars {
+            color: #F59E0B;
+            font-size: 1.15rem;
+            margin-bottom: 0.85rem;
+            letter-spacing: 2px;
+        }
+
+        .demo-test-quote {
+            font-size: 0.95rem;
+            color: #374151;
+            line-height: 1.6;
+            font-style: italic;
+            margin-bottom: 1.25rem;
+        }
+
+        .demo-test-author {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            border-top: 1px solid #F3F4F6;
+            padding-top: 1rem;
+        }
+
+        .demo-test-avatar {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #EA580C, #F59E0B);
+            color: #FFFFFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1rem;
+        }
+
+        .demo-test-info-name {
+            font-size: 0.92rem;
+            font-weight: 800;
+            color: #111827;
+        }
+
+        .demo-test-info-role {
+            font-size: 0.78rem;
+            color: #6B7280;
+        }
+
+        .demo-metrics-strip {
+            background: #FFFFFF;
+            border: 1px solid #E5E7EB;
+            border-radius: 18px;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 1.5rem 2rem;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+        }
+
+        .demo-metric-item .demo-metric-num {
+            font-size: 1.85rem;
+            font-weight: 900;
+            color: #DC2626;
+            line-height: 1;
+            margin-bottom: 0.35rem;
+        }
+
+        .demo-metric-item .demo-metric-lbl {
+            font-size: 0.82rem;
+            color: #4B5563;
+            font-weight: 600;
+        }
+
+        /* FAIXA DEMONSTRAÇÃO COM BORDAS DOURADAS/ÂMBAR E ELEGANTES */
         #demoNoticeBar {
             background: transparent;
             padding: 1rem 1.25rem 0.5rem;
@@ -1328,9 +1837,9 @@
             flex-wrap: wrap;
             padding: 0.85rem 1.75rem;
             border-radius: 50px;
-            background: linear-gradient(135deg, rgba(24, 24, 27, 0.96), rgba(9, 9, 11, 0.98), rgba(24, 24, 27, 0.96));
-            border: 1.5px solid rgba(212, 175, 55, 0.35);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(212, 175, 55, 0.15);
+            background: linear-gradient(135deg, rgba(40, 10, 12, 0.96), rgba(20, 5, 7, 0.98), rgba(40, 10, 12, 0.96));
+            border: 1.5px solid rgba(245, 158, 11, 0.4);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(245, 158, 11, 0.15);
             backdrop-filter: blur(12px);
             color: #FFFFFF;
             font-size: 0.9rem;
@@ -1338,6 +1847,31 @@
         }
 
         @media (max-width: 768px) {
+            .demo-comparison-grid {
+                grid-template-columns: 1fr;
+            }
+            .demo-calc-results-grid {
+                grid-template-columns: 1fr;
+                gap: 0.85rem;
+            }
+            .demo-metrics-strip {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+                padding: 1.25rem;
+            }
+            .demo-landing-title {
+                font-size: 1.9rem;
+            }
+            .demo-landing-desc {
+                font-size: 1rem;
+            }
+            .demo-landing-hero {
+                margin-top: 66px;
+                padding: 2.5rem 1rem 2rem;
+            }
+            .demo-section-title {
+                font-size: 1.65rem;
+            }
             #demoNoticeBar {
                 padding: 0.75rem 0.75rem 0.25rem;
             }
@@ -1350,26 +1884,24 @@
             }
         }
 
-        @media (max-width: 768px) {
-            .demo-landing-title {
-                font-size: 1.75rem;
-            }
-            .demo-landing-desc {
-                font-size: 0.92rem;
-            }
-            .demo-landing-hero {
-                margin-top: 66px;
-                padding: 2.25rem 1rem 2rem;
-            }
-        }
-
-        /* ========== HERO SECTION ========== */
+        /* ========== HERO SECTION (MODERNO & APPETIZING FOOD PSYCHOLOGY) ========== */
         .hero {
             margin-top: 76px;
-            background: linear-gradient(135deg, #0B0F19 0%, var(--primary-dark) 45%, var(--primary) 100%);
-            padding: 4rem 2rem;
+            background: 
+                radial-gradient(ellipse 95% 85% at 50% 50%, 
+                    #991B1B 0%, 
+                    #B91C1C 22%, 
+                    #C2410C 42%, 
+                    #EA580C 60%, 
+                    #F97316 74%, 
+                    #F59E0B 84%, 
+                    #FDE047 93%, 
+                    #FEF08A 100%
+                );
+            padding: 4.5rem 2rem 5rem;
             position: relative;
             overflow: hidden;
+            border-bottom: 3px solid #F59E0B;
         }
 
         .hero.has-demo-landing {
@@ -1379,6 +1911,7 @@
         @media (max-width: 768px) {
             .hero {
                 margin-top: 66px;
+                padding: 3rem 1.25rem 3.5rem;
             }
             .hero.has-demo-landing {
                 margin-top: 0 !important;
@@ -1392,67 +1925,103 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: url('data:image/svg+xml,<svg width="60" height="60" xmlns="http://www.w3.org/2000/svg"><circle cx="30" cy="30" r="2" fill="white" opacity="0.1"/></svg>');
-            opacity: 0.3;
+            background-image: 
+                radial-gradient(rgba(255, 255, 255, 0.12) 1.5px, transparent 1.5px),
+                radial-gradient(rgba(245, 158, 11, 0.1) 1.5px, transparent 1.5px);
+            background-size: 32px 32px, 64px 64px;
+            background-position: 0 0, 16px 16px;
+            opacity: 0.45;
+            pointer-events: none;
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(251, 146, 60, 0.25) 0%, transparent 70%);
+            filter: blur(40px);
+            pointer-events: none;
+            animation: pulseGlow 6s ease-in-out infinite alternate;
+        }
+
+        @keyframes pulseGlow {
+            0% { transform: scale(1) translate(0, 0); opacity: 0.6; }
+            100% { transform: scale(1.15) translate(-30px, 20px); opacity: 0.9; }
         }
 
         .hero-container {
             max-width: 1200px;
             margin: 0 auto;
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 3rem;
+            grid-template-columns: 1.15fr 0.85fr;
+            gap: 3.5rem;
             align-items: center;
             position: relative;
+            z-index: 2;
+        }
+
+        @media (max-width: 900px) {
+            .hero-container {
+                grid-template-columns: 1fr;
+                gap: 2.5rem;
+            }
         }
 
         .hero-logo-img {
             max-width: 100%;
-            width: 300px;
-            height: 300px;
+            width: 235px;
+            height: 235px;
             aspect-ratio: 1 / 1;
             border-radius: 50%;
             object-fit: contain;
             object-position: center;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 14px 35px rgba(0, 0, 0, 0.45);
-            border: 4px solid rgba(255, 255, 255, 0.25);
-            animation: rotate3DLogo 12s linear infinite;
-            transform-style: preserve-3d;
-            perspective: 1000px;
-            display: none; /* Mantido escondido inicialmente, manipulado pelo JS */
-            background: rgba(255, 255, 255, 0.08);
-            padding: 12px;
-            backdrop-filter: blur(8px);
-            will-change: transform;
+            margin-bottom: 1.15rem;
+            box-shadow: 0 18px 42px rgba(0, 0, 0, 0.45), 0 0 35px rgba(245, 158, 11, 0.4);
+            border: 3.5px solid rgba(254, 215, 170, 0.85);
+            display: none; /* Manipulado pelo JS */
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.08));
+            padding: 14px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            animation: floatLogo 4s ease-in-out infinite;
+            transition: transform 0.3s ease;
         }
 
         .hero-logo-img:hover {
-            animation-play-state: paused;
+            transform: scale(1.05) translateY(-4px);
         }
 
-        @keyframes rotate3DLogo {
-            0% {
-                transform: perspective(1000px) rotateY(0deg);
+        @keyframes floatLogo {
+            0%, 100% {
+                transform: translateY(0px);
             }
-            100% {
-                transform: perspective(1000px) rotateY(360deg);
+            50% {
+                transform: translateY(-8px);
             }
         }
 
         .hero-content h1 {
-            font-size: 3.5rem;
-            font-weight: 700;
-            color: var(--white);
-            margin-bottom: 1rem;
+            font-size: 2.6rem;
+            font-weight: 900;
+            color: #FFFFFF;
+            margin-bottom: 0.75rem;
+            line-height: 1.15;
+            text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5), 0 0 20px rgba(245, 158, 11, 0.3);
+            letter-spacing: -0.5px;
             animation: fadeInUp 0.8s;
         }
 
         .hero-subtitle {
             font-size: 1.25rem;
-            color: var(--white);
-            margin-bottom: 1.5rem;
-            opacity: 0.95;
+            color: #FFF7ED;
+            margin-bottom: 1.75rem;
+            line-height: 1.55;
+            font-weight: 500;
+            text-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
             animation: fadeInUp 0.8s 0.2s backwards;
         }
 
@@ -1460,10 +2029,10 @@
             display: inline-flex;
             align-items: center;
             justify-content: flex-start;
-            gap: 0.5rem;
-            flex-wrap: nowrap;
+            gap: 0.65rem;
+            flex-wrap: wrap;
             max-width: 100%;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.75rem;
             animation: fadeInUp 0.8s 0.4s backwards;
         }
 
@@ -1471,17 +2040,17 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 0.4rem;
-            height: 36px;
-            padding: 0 0.9rem;
+            gap: 0.45rem;
+            height: 38px;
+            padding: 0 1.1rem;
             background: #FFFFFF;
             border-radius: 50px;
-            font-size: 0.85rem;
-            font-weight: 700;
+            font-size: 0.88rem;
+            font-weight: 800;
             line-height: 1;
             margin: 0;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+            border: 1.5px solid rgba(254, 215, 170, 0.8);
             box-sizing: border-box;
             vertical-align: middle;
             white-space: nowrap;
@@ -1495,8 +2064,8 @@
         }
 
         .status-dot {
-            width: 8px;
-            height: 8px;
+            width: 9px;
+            height: 9px;
             border-radius: 50%;
             display: inline-block;
             flex-shrink: 0;
@@ -1504,106 +2073,153 @@
         }
 
         .status-open { color: #059669; }
-        .status-open .status-dot { background: #10B981; }
+        .status-open .status-dot { background: #10B981; box-shadow: 0 0 8px #10B981; }
         .status-closed { color: #DC2626; }
         .status-closed .status-dot { background: #EF4444; }
 
         .delivery-time-badge {
-            color: var(--gray-700);
+            color: #374151;
         }
 
         .delivery-time-badge .del-time-val {
-            color: var(--primary);
-            font-weight: 800;
+            color: #EA580C;
+            font-weight: 900;
         }
 
         .hero-buttons {
             display: flex;
             gap: 1rem;
+            flex-wrap: wrap;
             animation: fadeInUp 0.8s 0.6s backwards;
         }
 
         .btn {
-            padding: 0.875rem 2rem;
+            padding: 0.95rem 2.2rem;
             border: none;
             border-radius: 50px;
-            font-weight: 600;
-            font-size: 1rem;
+            font-weight: 800;
+            font-size: 1.02rem;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.25s ease;
             display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.6rem;
             text-decoration: none;
         }
 
         .btn-primary {
-            background: var(--white);
-            color: var(--primary);
+            background: #FFFFFF;
+            color: #DC2626;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25), 0 0 15px rgba(255, 255, 255, 0.4);
+            border: 2px solid #FFFFFF;
         }
 
         .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: var(--shadow-xl);
+            transform: translateY(-3px) scale(1.02);
+            background: #FFFBEB;
+            color: #B91C1C;
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35), 0 0 25px rgba(254, 240, 138, 0.6);
         }
 
         .btn-whatsapp {
-            background: var(--whatsapp);
-            color: var(--white);
+            background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+            color: #FFFFFF;
+            box-shadow: 0 6px 20px rgba(37, 211, 102, 0.35);
+            border: 2px solid rgba(255, 255, 255, 0.25);
         }
 
         .btn-whatsapp:hover {
-            background: #1fa855;
-            transform: translateY(-3px);
-            box-shadow: var(--shadow-xl);
+            background: linear-gradient(135deg, #1fa855 0%, #0d6e63 100%);
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 10px 28px rgba(37, 211, 102, 0.5);
         }
 
+        /* HERO FEATURED PRODUCT CARD (APPETIZING GOURMET GLASS) */
         .hero-card {
-            background: rgba(255, 255, 255, 0.42);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1.5px solid rgba(255, 255, 255, 0.65);
-            border-radius: 24px;
-            padding: 2rem;
-            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2), inset 0 1px 2px rgba(255, 255, 255, 0.8);
-            animation: float 3s ease-in-out infinite;
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.08) 100%);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 2px solid rgba(254, 215, 170, 0.45);
+            border-radius: 28px;
+            padding: 1.75rem;
+            box-shadow: 
+                0 24px 50px -10px rgba(0, 0, 0, 0.55),
+                0 0 40px rgba(245, 158, 11, 0.25),
+                inset 0 1px 2px rgba(255, 255, 255, 0.6);
+            animation: float 4s ease-in-out infinite;
             color: #FFFFFF;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
 
+        .hero-card:hover {
+            box-shadow: 
+                0 30px 60px -10px rgba(0, 0, 0, 0.65),
+                0 0 50px rgba(245, 158, 11, 0.4),
+                inset 0 1px 2px rgba(255, 255, 255, 0.8);
+        }
+
+        .hero-card-img-wrap {
+            width: 100%;
+            height: 250px;
+            border-radius: 20px;
+            overflow: hidden;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(0, 0, 0, 0.2) 100%);
+            border: 1.5px solid rgba(255, 255, 255, 0.4);
+            margin-bottom: 1.25rem;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hero-card-img-wrap img,
         .hero-card img {
             width: 100%;
-            height: 260px;
-            object-fit: contain;
-            background: rgba(255, 255, 255, 0.25);
-            border: 1.5px solid rgba(255, 255, 255, 0.5);
-            border-radius: 18px;
-            margin-bottom: 1rem;
-            padding: 6px;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+            transition: transform 0.4s ease;
+        }
+
+        .hero-card:hover img {
+            transform: scale(1.05);
         }
 
         .hero-card h3 {
-            font-size: 1.5rem;
+            font-size: 1.55rem;
             color: #FFFFFF;
-            font-weight: 800;
-            margin-bottom: 0.5rem;
-            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+            font-weight: 900;
+            margin-bottom: 0.6rem;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+            line-height: 1.25;
         }
 
         .hero-card p {
-            color: #FFFFFF;
-            margin-bottom: 1rem;
+            color: #FED7AA;
+            margin-bottom: 1.25rem;
             font-size: 0.95rem;
-            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
             font-weight: 500;
+            line-height: 1.5;
+        }
+
+        .hero-card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            padding-top: 1rem;
         }
 
         .hero-card-price {
-            font-size: 1.85rem;
+            font-size: 2.1rem;
             font-weight: 900;
-            color: #FEF08A;
-            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 14px rgba(254, 240, 138, 0.5);
+            color: #FDE047;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7), 0 0 20px rgba(253, 224, 71, 0.6);
+            line-height: 1;
         }
 
         /* ========== CARDÁPIO ========== */
@@ -3053,8 +3669,8 @@
             }
 
             .hero-logo-img {
-                width: 160px;
-                height: 160px;
+                width: 200px;
+                height: 200px;
                 margin: 0 auto 0.85rem auto;
                 border-width: 3px;
             }
@@ -3478,8 +4094,8 @@
             }
 
             .hero-logo-img {
-                width: 140px;
-                height: 140px;
+                width: 175px;
+                height: 175px;
             }
 
             .status-badge, .delivery-time-badge {
@@ -3527,16 +4143,40 @@
 
         /* ========== PROMO BANNER & SEÇÃO DE INGREDIENTES DINÂMICOS ========== */
         .promo-banner {
-            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
-            color: var(--white);
-            padding: 2.25rem 1.25rem;
+            background: 
+                radial-gradient(ellipse 95% 85% at 50% 50%, 
+                    #FDE047 0%, 
+                    #F59E0B 18%, 
+                    #F97316 35%, 
+                    #EA580C 52%, 
+                    #DC2626 70%, 
+                    #B91C1C 84%, 
+                    #7F1D1D 96%, 
+                    #450A0A 100%
+                );
+            color: #FFFFFF;
+            padding: 2.5rem 1.5rem;
             margin: 2rem 0;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            border: 2px solid var(--secondary);
+            border-radius: 24px;
+            box-shadow: 0 16px 40px rgba(127, 29, 29, 0.4), 0 0 30px rgba(245, 158, 11, 0.25);
+            border: 2.5px solid #F59E0B;
             position: relative;
             overflow: hidden;
             transition: all 0.3s ease;
+        }
+
+        .promo-banner::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                radial-gradient(rgba(255, 255, 255, 0.15) 1.5px, transparent 1.5px);
+            background-size: 28px 28px;
+            opacity: 0.35;
+            pointer-events: none;
         }
 
         .promo-header {
@@ -3549,46 +4189,47 @@
 
         .promo-badge {
             display: inline-block;
-            background: #FEF08A;
-            color: #1E1B4B;
+            background: #111827;
+            color: #FEF08A;
             font-weight: 800;
             font-size: 0.85rem;
-            padding: 0.4rem 1.2rem;
+            padding: 0.45rem 1.3rem;
             border-radius: 50px;
             text-transform: uppercase;
             letter-spacing: 1px;
             margin-bottom: 0.75rem;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+            border: 1.5px solid #F59E0B;
         }
 
         .promo-title-box {
             display: inline-block;
-            background: rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.22);
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 2px solid #F59E0B;
             padding: 1rem 1.75rem;
             border-radius: 18px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.35);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), inset 0 1px 2px rgba(255, 255, 255, 0.8);
             max-width: 680px;
             margin: 0.25rem auto 0.5rem auto;
         }
 
         .promo-title {
             font-size: 1.65rem;
-            font-weight: 800;
-            color: #FFFFFF;
+            font-weight: 900;
+            color: #111827;
             line-height: 1.3;
             margin: 0;
             letter-spacing: -0.3px;
-            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+            text-shadow: none;
         }
 
         .promo-title span {
-            color: #FEF08A;
+            color: #DC2626;
             display: inline-block;
             font-weight: 900;
-            text-shadow: 0 0 14px rgba(254, 240, 138, 0.5), 0 2px 4px rgba(0, 0, 0, 0.3);
+            text-shadow: none;
             letter-spacing: 0.5px;
         }
 
@@ -3613,11 +4254,12 @@
         .promo-option-card {
             flex: 0 0 200px;
             max-width: 200px;
-            background: rgba(255, 255, 255, 0.12);
-            backdrop-filter: blur(5px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            padding: 1.1rem 0.65rem;
-            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.55);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1.5px solid rgba(255, 255, 255, 0.85);
+            padding: 1.15rem 0.75rem;
+            border-radius: 18px;
             transition: transform 0.3s ease, opacity 0.3s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
             text-align: center;
             box-sizing: border-box;
@@ -3625,23 +4267,24 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            opacity: 0.78;
-            transform: scale(0.95);
+            opacity: 0.88;
+            transform: scale(0.96);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
         }
 
         .promo-option-card:hover {
             opacity: 1;
             transform: translateY(-3px) scale(1.02);
-            background: rgba(255, 255, 255, 0.22);
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+            background: rgba(255, 255, 255, 0.85);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
         }
 
         .promo-option-card.highlight {
             opacity: 1;
-            transform: scale(1.03);
-            border-color: #FEF08A;
-            background: rgba(254, 240, 138, 0.2);
-            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+            transform: scale(1.04);
+            border-color: #F59E0B;
+            background: #FFFFFF;
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18), 0 0 20px rgba(245, 158, 11, 0.35);
         }
 
         .promo-carousel-dots {
@@ -3656,7 +4299,7 @@
             width: 8px;
             height: 8px;
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.35);
+            background: rgba(0, 0, 0, 0.25);
             border: none;
             cursor: pointer;
             padding: 0;
@@ -3664,29 +4307,40 @@
         }
 
         .promo-carousel-dot.active {
-            background: #FEF08A;
+            background: #111827;
             width: 22px;
             border-radius: 10px;
-            box-shadow: 0 0 8px rgba(254, 240, 138, 0.6);
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.4);
         }
 
         .promo-option-icon {
-            font-size: 2rem;
-            margin-bottom: 0.25rem;
+            font-size: 2.1rem;
+            margin-bottom: 0.35rem;
         }
 
         .promo-option-title {
-            font-weight: 700;
-            font-size: 0.95rem;
-            color: #FEF08A;
+            font-weight: 900;
+            font-size: 0.96rem;
+            color: #111827;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .promo-option-card small {
+            color: #374151;
+            font-weight: 600;
+            font-size: 0.82rem;
+            margin-top: 0.25rem;
+            line-height: 1.35;
         }
 
         .promo-subtitle-combo {
             text-align: center;
-            font-size: 0.88rem;
-            color: #E2E8F0;
-            margin-top: 0.75rem;
-            font-weight: 500;
+            font-size: 0.95rem;
+            color: #111827;
+            margin-top: 0.9rem;
+            font-weight: 700;
+            text-shadow: none;
         }
 
         /* SHOWCASE DE INGREDIENTES / ADICIONAIS DA CATEGORIA */
@@ -6000,9 +6654,9 @@
                 </div>
             </a>
             
-            <nav class="nav">
-                <a href="#inicio" class="nav-link">🏠 Início</a>
-                <a href="#cardapio" class="nav-link">🍧 Cardápio</a>
+            <nav class="nav" id="mainHeaderNav">
+                <a href="#inicio" class="nav-link">Início</a>
+                <a href="#cardapio" class="nav-link">Cardápio</a>
             </nav>
             
             <div class="header-actions">
@@ -6011,8 +6665,8 @@
                     <span class="cart-count" id="cartCount">0</span>
                 </button>
                 
-                <button type="button" class="btn-acquire-header" onclick="openAcquireAppModal()" title="Adquira o Sistema Don Food para o seu restaurante" style="display: inline-flex;">
-                    💎 Quero o App
+                <button type="button" class="btn-acquire-header" id="btnAcquireHeader" onclick="openAcquireAppModal()" title="Adquira o Sistema Don Food para o seu restaurante" style="display: inline-flex;">
+                    Quero Testar
                 </button>
 
                 <div id="customerHeaderContainer">
@@ -6038,57 +6692,338 @@
     </header>
 
     <!-- LANDING PAGE SHOWCASE (EXIBIDA QUANDO ESTIVER NO LINK PRINCIPAL / DEMO) -->
-    <section id="demoLandingHero" class="demo-landing-hero" style="display: none;">
-        <div class="demo-landing-container">
-            <div style="text-align: center; margin-bottom: 0.75rem;">
-                <img src="/Don_Food.png" alt="Don Food" style="height: 52px; width: auto; max-width: 280px; object-fit: contain; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3)); display: inline-block;" onerror="this.onerror=null; this.src='Don_Food.png';">
-            </div>
-            <div class="demo-landing-badge">
-                🚀 DON FOOD • SISTEMA COMPLETO DE CARDÁPIO & PEDIDOS
-            </div>
-            <h1 class="demo-landing-title">
-                Tenha seu Próprio Sistema de Delivery Sem Pagar Taxas Abusivas!
-            </h1>
-            <p class="demo-landing-desc">
-                Cardápio digital moderno, pedidos automáticos no WhatsApp, impressão térmica 58mm/80mm, cupons de desconto, painel admin em tempo real e link exclusivo para seu estabelecimento.
-            </p>
+    <div id="demoLandingHero" class="demo-landing-wrapper" style="display: none;">
+        <!-- 1. HERO PRINCIPAL -->
+        <section class="demo-landing-hero">
+            <div class="demo-landing-container">
+                <div class="demo-landing-badge">
+                    0% DE COMISSÃO POR PEDIDO • SISTEMA COMPLETO
+                </div>
+                <h1 class="demo-landing-title">
+                    Seu próprio delivery. Sua marca. Seu dinheiro.
+                </h1>
+                <p class="demo-landing-desc">
+                    Receba pedidos pelo WhatsApp e pelo seu cardápio digital sem pagar comissão por venda.
+                </p>
 
-            <div class="demo-features-grid">
-                <div class="demo-feature-card">
-                    <span class="demo-feature-icon">💰</span>
-                    <h4 class="demo-feature-title">0% de Comissões</h4>
-                    <p class="demo-feature-text">Livre-se das taxas exorbitantes de aplicativos. Todo o lucro das suas vendas é 100% seu.</p>
+                <div class="demo-pills-row">
+                    <span>Cardápio Digital</span>
+                    <span class="sep">•</span>
+                    <span>Pedidos no WhatsApp</span>
+                    <span class="sep">•</span>
+                    <span>Impressão Automática</span>
+                    <span class="sep">•</span>
+                    <span>QR Code</span>
+                    <span class="sep">•</span>
+                    <span>Painel de Gestão</span>
                 </div>
-                <div class="demo-feature-card">
-                    <span class="demo-feature-icon">🖨️</span>
-                    <h4 class="demo-feature-title">Impressão Térmica</h4>
-                    <p class="demo-feature-text">Imprima comandas de cozinha e balcão formatadas em 58mm ou 80mm com 1 clique.</p>
-                </div>
-                <div class="demo-feature-card">
-                    <span class="demo-feature-icon">📲</span>
-                    <h4 class="demo-feature-title">Pedidos no WhatsApp</h4>
-                    <p class="demo-feature-text">Receba pedidos organizados, com dados de entrega, troco, adicionais e observações.</p>
-                </div>
-                <div class="demo-feature-card">
-                    <span class="demo-feature-icon">🌐</span>
-                    <h4 class="demo-feature-title">Link & QR Code Próprio</h4>
-                    <p class="demo-feature-text">Tenha seu link <strong>www.donfood.com/?empresa=sua-loja</strong> e QR Code para mesas e balcão.</p>
-                </div>
-            </div>
 
-            <div class="demo-actions-row">
-                <button type="button" onclick="openAcquireAppModal()" class="btn-admin" style="background: linear-gradient(135deg, #F59E0B 0%, #D4AF37 50%, #B8860B 100%); color: #09090B; font-weight: 800; font-size: 1rem; padding: 0.85rem 1.6rem; border-radius: 50px; box-shadow: 0 4px 20px rgba(212, 175, 55, 0.45); display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s; border: none;" onmouseover="this.style.transform='translateY(-2px) scale(1.02)'; this.style.boxShadow='0 8px 25px rgba(212, 175, 55, 0.6)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 20px rgba(212, 175, 55, 0.45)';">
-                    💎 Quero o Don Food no Meu Negócio
-                </button>
-                <a href="#cardapio" class="btn-admin" style="background: rgba(255, 255, 255, 0.06); color: #FAFAFA; font-weight: 700; font-size: 0.95rem; padding: 0.85rem 1.4rem; border-radius: 50px; border: 1px solid rgba(212, 175, 55, 0.35); backdrop-filter: blur(8px); text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s;" onmouseover="this.style.background='rgba(212, 175, 55, 0.15)'; this.style.borderColor='rgba(212, 175, 55, 0.6)';" onmouseout="this.style.background='rgba(255, 255, 255, 0.06)'; this.style.borderColor='rgba(212, 175, 55, 0.35)';">
-                    🍔 Testar Cardápio de Demonstração Abaixo ↓
-                </a>
-                <button type="button" onclick="openQrCodeModal()" class="btn-admin" style="background: linear-gradient(135deg, #27272A 0%, #18181B 100%); color: #FDE68A; font-weight: 700; font-size: 0.95rem; padding: 0.85rem 1.3rem; border-radius: 50px; border: 1px solid rgba(212, 175, 55, 0.4); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4); display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.borderColor='rgba(212, 175, 55, 0.7)'; this.style.boxShadow='0 6px 20px rgba(212, 175, 55, 0.25)';" onmouseout="this.style.transform='none'; this.style.borderColor='rgba(212, 175, 55, 0.4)'; this.style.boxShadow='0 4px 16px rgba(0, 0, 0, 0.4)';">
-                    📱 Ver QR Code
-                </button>
+                <div class="demo-actions-row">
+                    <button type="button" onclick="openAcquireAppModal()" class="btn-admin" style="background: linear-gradient(135deg, #DC2626 0%, #EA580C 50%, #F59E0B 100%); color: #FFFFFF; font-weight: 800; font-size: 1.05rem; padding: 0.95rem 2rem; border-radius: 50px; box-shadow: 0 6px 24px rgba(234, 88, 12, 0.4); display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s; border: none; cursor: pointer;" onmouseover="this.style.transform='translateY(-2px) scale(1.02)'; this.style.boxShadow='0 10px 30px rgba(220, 38, 38, 0.5)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 6px 24px rgba(234, 88, 12, 0.4)';">
+                        QUERO TESTAR O DON FOOD
+                    </button>
+                    <a href="#cardapio" class="btn-admin" style="background: #FFFFFF; color: #9A3412; font-weight: 700; font-size: 0.98rem; padding: 0.95rem 1.6rem; border-radius: 50px; border: 1.5px solid #FED7AA; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s;" onmouseover="this.style.background='#FFFBEB'; this.style.borderColor='#F59E0B';" onmouseout="this.style.background='#FFFFFF'; this.style.borderColor='#FED7AA';">
+                        Ver demonstração ↓
+                    </a>
+                </div>
+
+                <div class="demo-trust-flow">
+                    <span><strong>0% de comissão:</strong> Venda mais sem entregar uma parte de cada venda</span>
+                    <span class="sep">•</span>
+                    <span>Seu cliente <span class="arrow">→</span> Seu pedido <span class="arrow">→</span> Seu WhatsApp <span class="arrow">→</span> Sua cozinha <span class="arrow">→</span> <strong>Seu dinheiro</strong></span>
+                </div>
             </div>
-        </div>
-    </section>
+        </section>
+
+        <!-- 2. SEÇÃO 0% DE COMISSÃO & COMPARATIVO VISUAL -->
+        <section class="demo-section-light" id="demoComparativo">
+            <div class="demo-landing-container">
+                <div class="demo-section-header">
+                    <span class="demo-section-badge">0% DE COMISSÃO POR PEDIDO</span>
+                    <h2 class="demo-section-title">Venda R$ 10.000 → continue com seus R$ 10.000</h2>
+                    <p class="demo-section-subtitle">
+                        Pare de pagar mensalidades caras e porcentagens abusivas sobre cada prato vendido. Com o Don Food, o lucro é 100% seu.
+                    </p>
+                </div>
+
+                <div class="demo-comparison-grid">
+                    <!-- CARD MARKETPLACE -->
+                    <div class="demo-comp-card marketplace">
+                        <span class="demo-comp-badge">Marketplace Tradicional</span>
+                        <h3 class="demo-comp-title">Aplicativos de Terceiros</h3>
+                        <p style="font-size: 0.88rem; color: #6B7280; margin-bottom: 1rem;">Você trabalha para pagar taxas e dividir clientes com concorrentes.</p>
+                        
+                        <ul class="demo-comp-list">
+                            <li class="demo-comp-item">
+                                <span class="icon-cross">✕</span>
+                                <div><strong>15% a 27% de comissão</strong> sobre cada pedido</div>
+                            </li>
+                            <li class="demo-comp-item">
+                                <span class="icon-cross">✕</span>
+                                <div><strong>O cliente pertence ao app</strong>, você não tem os contatos</div>
+                            </li>
+                            <li class="demo-comp-item">
+                                <span class="icon-cross">✕</span>
+                                <div><strong>Seus concorrentes aparecem</strong> logo abaixo do seu prato</div>
+                            </li>
+                            <li class="demo-comp-item">
+                                <span class="icon-cross">✕</span>
+                                <div><strong>Repasse demorado</strong> do dinheiro das suas vendas</div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- CARD DON FOOD -->
+                    <div class="demo-comp-card donfood">
+                        <span class="demo-comp-badge">Com o Don Food</span>
+                        <h3 class="demo-comp-title">Seu Sistema Próprio</h3>
+                        <p style="font-size: 0.88rem; color: #78350F; margin-bottom: 1rem;">Autonomia, fidelização e lucro integral no seu restaurante.</p>
+                        
+                        <ul class="demo-comp-list">
+                            <li class="demo-comp-item">
+                                <span class="icon-check">✓</span>
+                                <div><strong>0% de comissão</strong> — 100% do valor da venda fica com você</div>
+                            </li>
+                            <li class="demo-comp-item">
+                                <span class="icon-check">✓</span>
+                                <div><strong>Seu cliente fiel</strong> — banco de dados e WhatsApp direto no seu controle</div>
+                            </li>
+                            <li class="demo-comp-item">
+                                <span class="icon-check">✓</span>
+                                <div><strong>Seu próprio link & QR Code</strong> exclusivo para Instagram, mesas e embalagens</div>
+                            </li>
+                            <li class="demo-comp-item">
+                                <span class="icon-check">✓</span>
+                                <div><strong>Sua marca em destaque</strong>, sem concorrência disputando seu público</div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. SEÇÃO SISTEMA POR DENTRO (4 PILARES) -->
+        <section class="demo-section-gray" id="demoDemonstracao">
+            <div class="demo-landing-container">
+                <div class="demo-section-header">
+                    <span class="demo-section-badge">POR DENTRO DO PRODUTO</span>
+                    <h2 class="demo-section-title">Veja o Don Food funcionando na prática</h2>
+                    <p class="demo-section-subtitle">
+                        Tudo em um só sistema. Desenvolvido para facilitar o atendimento do início ao fim.
+                    </p>
+                </div>
+
+                <div class="demo-system-grid">
+                    <!-- PILAR 1 -->
+                    <div class="demo-system-card">
+                        <div class="demo-system-icon-box">📱</div>
+                        <h3 class="demo-system-title">Cardápio do Cliente</h3>
+                        <p class="demo-system-desc">
+                            Cardápio moderno, rápido e responsivo para celular ou computador. O cliente monta o pedido, escolhe adicionais e envia no WhatsApp em menos de 1 minuto.
+                        </p>
+                        <div class="demo-system-preview-pill">
+                            Fotos atrativas, adicionais e cálculo instantâneo
+                        </div>
+                    </div>
+
+                    <!-- PILAR 2 -->
+                    <div class="demo-system-card">
+                        <div class="demo-system-icon-box">🖥️</div>
+                        <h3 class="demo-system-title">Painel de Pedidos</h3>
+                        <p class="demo-system-desc">
+                            Organize os pedidos em tempo real no estilo Kanban. Alerta sonoro a cada novo pedido e acompanhamento de status: Recebido, Em Preparo, Saiu para Entrega e Entregue.
+                        </p>
+                        <div class="demo-system-preview-pill">
+                            Alerta sonoro de pedidos & gestão visual
+                        </div>
+                    </div>
+
+                    <!-- PILAR 3 -->
+                    <div class="demo-system-card">
+                        <div class="demo-system-icon-box">🖨️</div>
+                        <h3 class="demo-system-title">Impressão da Cozinha</h3>
+                        <p class="demo-system-desc">
+                            O pedido chega e pode ser impresso diretamente na cozinha e no balcão com 1 clique, formatado para impressoras térmicas padrão 80mm ou 58mm.
+                        </p>
+                        <div class="demo-system-preview-pill">
+                            Comandas térmicas prontas sem complicação
+                        </div>
+                    </div>
+
+                    <!-- PILAR 4 -->
+                    <div class="demo-system-card">
+                        <div class="demo-system-icon-box">📊</div>
+                        <h3 class="demo-system-title">Gestão e Administração</h3>
+                        <p class="demo-system-desc">
+                            Controle total dos seus produtos, preços, taxas de entrega por bairro, cupons de desconto, horários de funcionamento e relatórios de faturamento.
+                        </p>
+                        <div class="demo-system-preview-pill">
+                            Edição fácil de produtos, taxas e cupons
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. SEÇÃO QUANTO VOCÊ ECONOMIZA? (SIMULADOR INTERATIVO) -->
+        <section class="demo-section-dark" id="demoEconomia">
+            <div class="demo-landing-container">
+                <div class="demo-section-header">
+                    <span class="demo-section-badge">ECONOMIA REAL</span>
+                    <h2 class="demo-section-title">Pare de entregar uma parte de cada venda para marketplaces</h2>
+                    <p class="demo-section-subtitle">
+                        Escolha seu faturamento mensal aproximado e veja quanto dinheiro você deixa na mesa todos os meses:
+                    </p>
+                </div>
+
+                <div class="demo-calculator-box">
+                    <div style="text-align: center; font-size: 0.92rem; font-weight: 800; color: #78350F; text-transform: uppercase; letter-spacing: 0.5px;">
+                        Selecione ou deslize seu volume de vendas mensal:
+                    </div>
+
+                    <div class="demo-calc-buttons">
+                        <button type="button" class="demo-calc-btn" data-amount="5000" onclick="updateDemoSavingsCalc(5000, this)">R$ 5.000 /mês</button>
+                        <button type="button" class="demo-calc-btn" data-amount="10000" onclick="updateDemoSavingsCalc(10000, this)">R$ 10.000 /mês</button>
+                        <button type="button" class="demo-calc-btn active" data-amount="15000" onclick="updateDemoSavingsCalc(15000, this)">R$ 15.000 /mês</button>
+                        <button type="button" class="demo-calc-btn" data-amount="20000" onclick="updateDemoSavingsCalc(20000, this)">R$ 20.000 /mês</button>
+                        <button type="button" class="demo-calc-btn" data-amount="25000" onclick="updateDemoSavingsCalc(25000, this)">R$ 25.000 /mês</button>
+                    </div>
+
+                    <!-- LINHA DESLIZANTE DE CÁLCULO DE 1 MIL EM 1 MIL (ATÉ R$ 25 MIL) -->
+                    <div class="demo-calc-slider-container">
+                        <div class="demo-calc-slider-header">
+                            <span class="demo-calc-slider-label">
+                                <span>⚡</span> Arraste a linha para calcular de R$ 1.000 em R$ 1.000:
+                            </span>
+                            <span class="demo-calc-slider-current" id="calcSliderCurrentBadge">R$ 15.000 /mês</span>
+                        </div>
+                        <div class="demo-calc-slider-track-wrap">
+                            <input type="range" id="demoSavingsRangeSlider" min="1000" max="25000" step="1000" value="15000" class="demo-calc-range-slider" oninput="onDemoSavingsSliderChange(this.value)">
+                        </div>
+                        <div class="demo-calc-slider-scale">
+                            <span>R$ 1.000</span>
+                            <span>R$ 5.000</span>
+                            <span>R$ 10.000</span>
+                            <span>R$ 15.000</span>
+                            <span>R$ 20.000</span>
+                            <span>R$ 25.000</span>
+                        </div>
+                    </div>
+
+                    <div class="demo-calc-results-grid">
+                        <div class="demo-calc-res-card">
+                            <div class="demo-calc-res-label">Venda Mensal</div>
+                            <div class="demo-calc-res-val" id="calcSalesDisplay">R$ 15.000</div>
+                            <div class="demo-calc-res-sub">Faturamento bruto</div>
+                        </div>
+
+                        <div class="demo-calc-res-card">
+                            <div class="demo-calc-res-label" style="color: #DC2626;">Taxas Marketplaces (15%)</div>
+                            <div class="demo-calc-res-val" id="calcFeeDisplay" style="color: #DC2626;">- R$ 2.250</div>
+                            <div class="demo-calc-res-sub" style="color: #EF4444;">Perdido em comissões/mês</div>
+                        </div>
+
+                        <div class="demo-calc-res-card highlight">
+                            <div class="demo-calc-res-label" style="color: #B45309;">Economia com Don Food</div>
+                            <div class="demo-calc-res-val" id="calcSavingsDisplay">R$ 2.250 /mês</div>
+                            <div class="demo-calc-res-sub" id="calcAnnualSavingsDisplay">R$ 27.000 no seu bolso por ano!</div>
+                        </div>
+                    </div>
+
+                    <div style="text-align: center;">
+                        <button type="button" onclick="openAcquireAppModal()" class="btn-admin" style="background: linear-gradient(135deg, #DC2626 0%, #EA580C 50%, #F59E0B 100%); color: #FFFFFF; font-weight: 800; font-size: 1rem; padding: 0.9rem 2.2rem; border-radius: 50px; border: none; cursor: pointer; box-shadow: 0 6px 20px rgba(234, 88, 12, 0.4); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px) scale(1.02)';" onmouseout="this.style.transform='none';">
+                            QUERO ECONOMIZAR COM O DON FOOD
+                        </button>
+                    </div>
+
+                    <p class="demo-calc-disclaimer">
+                        *Exemplo ilustrativo. As taxas de marketplaces de terceiros variam geralmente entre 12% e 27% sobre as vendas. Com o Don Food, sua comissão por pedido é 0%.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. SEÇÃO DEPOIMENTOS E PROVA SOCIAL -->
+        <section class="demo-section-light" id="demoDepoimentos">
+            <div class="demo-landing-container">
+                <div class="demo-section-header">
+                    <span class="demo-section-badge">DEPOIMENTOS & RESULTADOS</span>
+                    <h2 class="demo-section-title">Quem já vende com o Don Food</h2>
+                    <p class="demo-section-subtitle">
+                        Empresas reais que economizam em taxas e atendem clientes com muito mais agilidade.
+                    </p>
+                </div>
+
+                <div class="demo-testimonials-grid">
+                    <!-- DEPOIMENTO 1 -->
+                    <div class="demo-testimonial-card">
+                        <div>
+                            <div class="demo-test-stars">★★★★★</div>
+                            <p class="demo-test-quote">
+                                "Agora consigo receber os pedidos organizados sem precisar ficar respondendo mensagem por mensagem. Economizamos mais de R$ 3.000 em taxas já no primeiro mês!"
+                            </p>
+                        </div>
+                        <div class="demo-test-author">
+                            <div class="demo-test-avatar">C</div>
+                            <div>
+                                <div class="demo-test-info-name">Sr. Carlos Medeiros</div>
+                                <div class="demo-test-info-role">Don Burguer Artesanal</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DEPOIMENTO 2 -->
+                    <div class="demo-testimonial-card">
+                        <div>
+                            <div class="demo-test-stars">★★★★★</div>
+                            <p class="demo-test-quote">
+                                "A impressão automática na cozinha agilizou nosso atendimento em 50%. Nossos clientes adoram a facilidade de pedir pelo cardápio digital."
+                            </p>
+                        </div>
+                        <div class="demo-test-author">
+                            <div class="demo-test-avatar" style="background: linear-gradient(135deg, #7C3AED, #9333EA);">F</div>
+                            <div>
+                                <div class="demo-test-info-name">Sr. Fabiano Felix</div>
+                                <div class="demo-test-info-role">Açaí na Quentinha do FB</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DEPOIMENTO 3 -->
+                    <div class="demo-testimonial-card">
+                        <div>
+                            <div class="demo-test-stars">★★★★★</div>
+                            <p class="demo-test-quote">
+                                "Divulgar nosso próprio link no Instagram e colocar o QR Code nas embalagens fez nossa base de clientes fiéis explodir sem depender de outros apps."
+                            </p>
+                        </div>
+                        <div class="demo-test-author">
+                            <div class="demo-test-avatar" style="background: linear-gradient(135deg, #EC4899, #F43F5E);">E</div>
+                            <div>
+                                <div class="demo-test-info-name">Srta. Elaine Viana</div>
+                                <div class="demo-test-info-role">Amor na Panela</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="demo-metrics-strip">
+                    <div class="demo-metric-item">
+                        <div class="demo-metric-num">+150.000</div>
+                        <div class="demo-metric-lbl">Pedidos Processados</div>
+                    </div>
+                    <div class="demo-metric-item">
+                        <div class="demo-metric-num">0%</div>
+                        <div class="demo-metric-lbl">Comissões sobre Vendas</div>
+                    </div>
+                    <div class="demo-metric-item">
+                        <div class="demo-metric-num">99.9%</div>
+                        <div class="demo-metric-lbl">Estabilidade & Rapidez</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
 
     <!-- FAIXA LOJA DEMONSTRAÇÃO (donfood.com) -->
     <div id="demoNoticeBar" style="display: none;">
@@ -6107,8 +7042,8 @@
         <div class="hero-container">
             <div class="hero-content">
                 <!-- A IMAGEM DA LOGO AGORA ENTRA AQUI -->
-                <img id="heroLogo" src="" alt="Açaí na Quentinha do FB" class="hero-logo-img">
-                <h1 id="heroRestaurantName" style="display: none;">Açaí na Quentinha do FB</h1>
+                <img id="heroLogo" src="" alt="Don Food" class="hero-logo-img">
+                <h1 id="heroRestaurantName">Don Food</h1>
                 
                 <p class="hero-subtitle" id="heroSubtitle">Delivery rápido e sabor inigualável! Peça agora e receba em até 30 minutos.</p>
                 

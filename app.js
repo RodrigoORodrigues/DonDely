@@ -418,11 +418,25 @@
         // ========== PALETAS DE CORES & PRESETS DO SISTEMA UNIVERSAL ==========
         const THEME_PRESETS = {
             demo: {
-                name: '🖤 Preto & Dourado Nobre (Elegância & Luxo)',
-                primary: '#18181B',
-                primaryDark: '#09090B',
-                secondary: '#D4AF37',
-                bgAccent: '#FAF8F5'
+                name: '🔥 Don Food Sunset (Vermelho, Laranja & Amarelo)',
+                primary: '#DC2626',
+                primaryDark: '#991B1B',
+                secondary: '#EA580C',
+                bgAccent: '#FFFDF7'
+            },
+            burguer: {
+                name: '🟧 Hamburgueria Sunset Flame (Laranja & Fogo)',
+                primary: '#EA580C',
+                primaryDark: '#9A3412',
+                secondary: '#F59E0B',
+                bgAccent: '#FFF7ED'
+            },
+            fastfood: {
+                name: '🔴 Fast Food Red & Amber (Vermelho & Dourado)',
+                primary: '#DC2626',
+                primaryDark: '#991B1B',
+                secondary: '#F59E0B',
+                bgAccent: '#FEF2F2'
             },
             darkgourmet: {
                 name: '🖤 Gourmet Midnight Gold',
@@ -437,20 +451,6 @@
                 primaryDark: '#3B0764',
                 secondary: '#9333EA',
                 bgAccent: '#FAF5FF'
-            },
-            fastfood: {
-                name: '🔴 Fast Food Ruby Red',
-                primary: '#E11D48',
-                primaryDark: '#9F1239',
-                secondary: '#FB7185',
-                bgAccent: '#FFF1F2'
-            },
-            burguer: {
-                name: '🟧 Hamburgueria Sunset Flame',
-                primary: '#EA580C',
-                primaryDark: '#9A3412',
-                secondary: '#F97316',
-                bgAccent: '#FFF7ED'
             },
             pizzaria: {
                 name: '🟢 Pizzaria Basil Emerald',
@@ -1413,7 +1413,7 @@
                 <div class="promo-header">
                     ${badge ? `<span class="promo-badge">${badge}</span>` : ''}
                     ${title ? `<div class="promo-title-box"><h2 class="promo-title">${title}</h2></div>` : ''}
-                    ${subtitle ? `<p class="promo-subtitle" style="color: #FEF08A; font-weight: 600; margin-top: 0.35rem;">${subtitle}</p>` : ''}
+                    ${subtitle ? `<p class="promo-subtitle" style="color: #111827; font-weight: 800; font-size: 1.05rem; margin-top: 0.5rem; text-shadow: none;">${subtitle}</p>` : ''}
                 </div>
 
                 <div class="promo-carousel-wrapper" id="promoCarouselWrapper">
@@ -1424,7 +1424,7 @@
                                 <div class="promo-option-card ${originalIdx === 0 ? 'highlight' : ''}" data-original-index="${originalIdx}" data-index="${idx}">
                                     <div class="promo-option-icon">${card.icon || ''}</div>
                                     <div class="promo-option-title">${card.title || ''}</div>
-                                    <small style="color: #CBD5E1;">${card.desc || ''}</small>
+                                    <small style="color: #374151; font-weight: 600;">${card.desc || ''}</small>
                                 </div>
                             `;
                         }).join('')}
@@ -1827,10 +1827,10 @@
             deliveryTime: '25 - 40 min',
             presetType: 'burguer',
             themeColors: {
-                primary: '#18181B',
-                primaryDark: '#09090B',
-                secondary: '#D4AF37',
-                bgAccent: '#FAF8F5'
+                primary: '#DC2626',
+                primaryDark: '#991B1B',
+                secondary: '#EA580C',
+                bgAccent: '#FFFDF7'
             },
             coupons: [
                 { code: 'DON10', discount: 10, type: 'percent', minOrder: 30, active: true },
@@ -2043,6 +2043,31 @@
                 } else {
                     heroSection.classList.remove('has-demo-landing');
                 }
+            }
+
+            // Atualizar Links de Navegação do Header dependendo do Modo (Demo Showcase vs Loja Individual)
+            const mainHeaderNav = document.getElementById('mainHeaderNav');
+            if (mainHeaderNav) {
+                if (isCurrentDemo) {
+                    mainHeaderNav.innerHTML = `
+                        <a href="#demoLandingHero" class="nav-link">Início</a>
+                        <a href="#demoComparativo" class="nav-link">0% Comissões</a>
+                        <a href="#demoDemonstracao" class="nav-link">Recursos</a>
+                        <a href="#demoEconomia" class="nav-link">Economia</a>
+                        <a href="#demoDepoimentos" class="nav-link">Depoimentos</a>
+                        <a href="#cardapio" class="nav-link" style="color: #EA580C; font-weight: 800;">Cardápio Demo</a>
+                    `;
+                } else {
+                    mainHeaderNav.innerHTML = `
+                        <a href="#inicio" class="nav-link">Início</a>
+                        <a href="#cardapio" class="nav-link">Cardápio</a>
+                    `;
+                }
+            }
+
+            const btnAcquireHeader = document.getElementById('btnAcquireHeader');
+            if (btnAcquireHeader) {
+                btnAcquireHeader.textContent = isCurrentDemo ? 'Quero Testar' : 'Quero o App';
             }
 
             // 3. Carregar Configurações, Produtos e Pedidos ISOLADOS por Empresa (Database Isolation)
@@ -3553,7 +3578,7 @@
                 logoIcon.innerHTML = `<img src="${settings.logoUrl}" alt="${settings.restaurantName}" onerror="if(this.src.indexOf('Logo_Don.png') === -1) { this.src = '/Logo_Don.png'; }">`;
                 logoIcon.style.background = 'transparent';
 
-                // Configurações do Hero (Imagem invés do texto)
+                // Configurações do Hero (Imagem redonda com o nome da empresa abaixo)
                 heroLogo.src = settings.logoUrl;
                 heroLogo.alt = settings.restaurantName;
                 heroLogo.onerror = function() {
@@ -3562,7 +3587,8 @@
                     }
                 };
                 heroLogo.style.display = 'block'; // Mostra a imagem
-                heroRestaurantName.style.display = 'none'; // Esconde o texto H1
+                heroRestaurantName.textContent = settings.restaurantName;
+                heroRestaurantName.style.display = 'block'; // Mostra o nome da empresa abaixo da logo
             } else {
                 // Caso não tenha logoUrl definida
                 logoIcon.innerHTML = '';
@@ -3591,15 +3617,28 @@
             document.getElementById('whatsappBtn').href = whatsappUrl;
             document.getElementById('whatsappFab').href = whatsappUrl;
             
-            // Atualizar card hero com produto de destaque
-            const featuredProduct = products.find(p => p.name.toLowerCase().includes('barca')) || products.find(p => p.available);
+            // Atualizar card hero com produto de destaque (Gourmet & Alta Conversão)
+            const featuredProduct = products.find(p => p.name.toLowerCase().includes('barca') || p.name.toLowerCase().includes('burger') || p.name.toLowerCase().includes('duplo') || p.name.toLowerCase().includes('pizza')) || products.find(p => p.available);
             if (featuredProduct) {
+                const isCustom = featuredProduct.isCustomizable || (featuredProduct.name || '').toLowerCase().includes('açaí') || (featuredProduct.name || '').toLowerCase().includes('barca');
                 document.getElementById('heroCard').innerHTML = `
-                    <div style="position: absolute; top: 12px; right: 12px; background: #EAB308; color: #000; font-weight: 800; font-size: 0.75rem; padding: 4px 12px; border-radius: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 2;">🔥 O MAIS PEDIDO!</div>
-                    <img src="${featuredProduct.image}" alt="${featuredProduct.name}" onerror="this.onerror=null; this.src='super_barca.svg';">
+                    <div style="position: absolute; top: 14px; right: 14px; background: linear-gradient(135deg, #F59E0B 0%, #EA580C 100%); color: #FFFFFF; font-weight: 900; font-size: 0.78rem; padding: 5px 14px; border-radius: 50px; box-shadow: 0 4px 12px rgba(234, 88, 12, 0.4); z-index: 2; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid rgba(255,255,255,0.4);">
+                        🔥 O Mais Pedido!
+                    </div>
+                    <div class="hero-card-img-wrap">
+                        <img src="${featuredProduct.image}" alt="${featuredProduct.name}" onerror="this.onerror=null; this.src='super_barca.svg';">
+                    </div>
                     <h3>${featuredProduct.name}</h3>
                     <p>${featuredProduct.description}</p>
-                    <div class="hero-card-price">R$ ${featuredProduct.price.toFixed(2).replace('.', ',')}</div>
+                    <div class="hero-card-footer">
+                        <div>
+                            <span style="font-size: 0.72rem; color: #FED7AA; text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 2px;">Valor Especial</span>
+                            <div class="hero-card-price">R$ ${featuredProduct.price.toFixed(2).replace('.', ',')}</div>
+                        </div>
+                        <button type="button" onclick="${isCustom ? `openAcaiCustomizer(${featuredProduct.id})` : `addToCart(${featuredProduct.id})`}" class="btn-admin" style="background: linear-gradient(135deg, #F59E0B 0%, #EA580C 100%); color: #FFFFFF; font-weight: 800; font-size: 0.92rem; padding: 0.7rem 1.35rem; border-radius: 50px; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(234, 88, 12, 0.4); display: inline-flex; align-items: center; gap: 0.4rem; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)';" onmouseout="this.style.transform='scale(1)';">
+                            ${isCustom ? '⚡ Personalizar' : '🛒 Quero Esse'}
+                        </button>
+                    </div>
                 `;
             }
         }
@@ -4117,16 +4156,16 @@
                     container.innerHTML = `
                         <div class="admin-header-pill-group">
                             <span class="admin-logged-store-badge" title="${activeComp.name || settings.restaurantName}">
-                                🏬 <strong>${activeComp.name || settings.restaurantName}</strong>
+                                <strong>${activeComp.name || settings.restaurantName}</strong>
                             </span>
                             <button class="admin-header-bell-btn ${hasNewBadge ? 'has-new' : ''}" onclick="adminPanel.classList.add('active'); adminOverlay.classList.add('active'); filterAdminOrdersByStatus('RECEIVED');" title="${receivedCount} pedido(s) aguardando atendimento">
-                                🔔 ${receivedCount > 0 ? `<strong>${receivedCount}</strong>` : ''}
+                                ${receivedCount > 0 ? `<strong>${receivedCount}</strong>` : '🔔'}
                             </button>
                             <button class="btn-admin-header-panel" onclick="adminPanel.classList.add('active'); adminOverlay.classList.add('active'); renderPresetCatalog();" title="Abrir Painel Administrativo">
-                                ⚙️ Painel
+                                Painel
                             </button>
                             <button class="btn-admin-header-logout" onclick="logoutAdmin()" title="Sair da Empresa">
-                                🚪 Sair
+                                Sair
                             </button>
                         </div>
                     `;
@@ -4134,7 +4173,7 @@
                     container.style.display = 'flex';
                     container.innerHTML = `
                         <button class="btn-admin-header-login" onclick="openAdminLogin()" title="Painel de Login da Empresa">
-                            🏬 Login Empresa
+                            Login Empresa
                         </button>
                     `;
                 }
@@ -6016,13 +6055,13 @@
                     const firstName = loggedCustomer.name ? loggedCustomer.name.trim().split(' ')[0] : 'Cliente';
                     container.innerHTML = `
                         <button class="customer-header-btn" onclick="openCustomerOrdersModal()" title="Ver Meus Pedidos">
-                            👤 Olá, ${firstName} | 📦 Pedidos
+                            Olá, ${firstName} | Pedidos
                         </button>
                     `;
                 } else {
                     container.innerHTML = `
                         <button class="customer-header-btn" onclick="openCustomerAuthModal('login')" title="Entrar na Minha Conta">
-                            👤 Entrar / Cadastrar
+                            Entrar / Cadastrar
                         </button>
                     `;
                 }
@@ -8684,7 +8723,55 @@
             printWindow.document.close();
         }
 
-        // ========== AQUISIÇÃO DO DON FOOD ==========
+        // ========== AQUISIÇÃO DO DON FOOD & CALCULADORA DEMO ==========
+        function updateDemoSavingsCalc(salesAmount, btnEl) {
+            salesAmount = Number(salesAmount) || 15000;
+
+            // Sincronizar botões rápidos
+            document.querySelectorAll('.demo-calc-buttons .demo-calc-btn').forEach(btn => {
+                const btnAmt = Number(btn.getAttribute('data-amount') || 0);
+                if (btnAmt === salesAmount) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            // Sincronizar input range e background gradient
+            const slider = document.getElementById('demoSavingsRangeSlider');
+            if (slider) {
+                slider.value = salesAmount;
+                const min = Number(slider.min) || 1000;
+                const max = Number(slider.max) || 25000;
+                const percentage = Math.max(0, Math.min(100, ((salesAmount - min) / (max - min)) * 100));
+                slider.style.background = `linear-gradient(to right, #EA580C 0%, #F59E0B ${percentage}%, #E5E7EB ${percentage}%, #E5E7EB 100%)`;
+            }
+
+            // Atualizar badge do slider
+            const sliderBadge = document.getElementById('calcSliderCurrentBadge');
+            if (sliderBadge) {
+                sliderBadge.textContent = `R$ ${salesAmount.toLocaleString('pt-BR')} /mês`;
+            }
+
+            const rate = 0.15; // Média estimada de 15% cobrada por marketplaces
+            const fee = salesAmount * rate;
+            const annualSavings = fee * 12;
+
+            const salesEl = document.getElementById('calcSalesDisplay');
+            const feeEl = document.getElementById('calcFeeDisplay');
+            const savingsEl = document.getElementById('calcSavingsDisplay');
+            const annualSavingsEl = document.getElementById('calcAnnualSavingsDisplay');
+
+            if (salesEl) salesEl.textContent = `R$ ${salesAmount.toLocaleString('pt-BR')}`;
+            if (feeEl) feeEl.textContent = `- R$ ${fee.toLocaleString('pt-BR')}`;
+            if (savingsEl) savingsEl.textContent = `R$ ${fee.toLocaleString('pt-BR')} /mês`;
+            if (annualSavingsEl) annualSavingsEl.textContent = `R$ ${annualSavings.toLocaleString('pt-BR')} no seu bolso por ano!`;
+        }
+
+        function onDemoSavingsSliderChange(value) {
+            updateDemoSavingsCalc(Number(value));
+        }
+
         function openAcquireAppModal() {
             const modal = document.getElementById('acquireAppModal');
             if (modal) modal.classList.add('active');
@@ -8696,6 +8783,8 @@
         }
 
         // Expor todas as funções globais necessárias para eventos onclick do HTML
+        window.updateDemoSavingsCalc = updateDemoSavingsCalc;
+        window.onDemoSavingsSliderChange = onDemoSavingsSliderChange;
         window.openQrCodeModal = openQrCodeModal;
         window.closeQrCodeModal = closeQrCodeModal;
         window.switchQrScope = switchQrScope;
