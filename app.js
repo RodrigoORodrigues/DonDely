@@ -2549,16 +2549,11 @@
             // 3. Atualizar Visibilidade do Banner de Demonstração e Landing Page Showcase
             const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
             
-            // Determinar visualização inicial (Landing Showcase vs Loja vs Login www.donfood/login)
-            const pathname = window.location.pathname.toLowerCase();
-            const hash = window.location.hash.toLowerCase();
-            const searchParams = new URLSearchParams(window.location.search);
-
-            if (pathname.includes('/login') || hash === '#login' || searchParams.get('view') === 'login' || searchParams.get('login') === '1') {
-                currentAppView = 'login';
-            } else if (!isCurrentDemo) {
+            // Determinar visualização inicial (Landing Showcase vs Loja)
+            if (!isCurrentDemo) {
                 currentAppView = 'store';
             } else {
+                const hash = window.location.hash;
                 if (hash === '#loja-demo' || hash === '#cardapio' || hash === '#inicio') {
                     currentAppView = 'store';
                 } else {
@@ -2728,7 +2723,7 @@
             `).join('');
         }
 
-        // ========== GERENCIAMENTO DE VISUALIZAÇÃO (LANDING APRESENTAÇÃO vs LOJA DEMO vs LOGIN EMPRESA) ==========
+        // ========== GERENCIAMENTO DE VISUALIZAÇÃO (LANDING APRESENTAÇÃO vs LOJA DEMO / CARDÁPIO) ==========
         function updateHeaderNavForCurrentView() {
             const mainHeaderNav = document.getElementById('mainHeaderNav');
             if (!mainHeaderNav) return;
@@ -2736,13 +2731,7 @@
             const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
             const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
 
-            if (currentAppView === 'login') {
-                mainHeaderNav.innerHTML = `
-                    <a href="javascript:void(0)" onclick="switchToLandingView(event)" class="nav-link">← Apresentação</a>
-                    <a href="javascript:void(0)" onclick="switchToStoreView('cardapio')" class="nav-link">Cardápio</a>
-                    <a href="javascript:void(0)" onclick="switchToLoginView(event)" class="nav-link" style="color: #4F46E5; font-weight: 800; background: #EEF2FF; padding: 0.35rem 0.85rem; border-radius: 20px; border: 1.5px solid #C7D2FE;">🔑 Login Empresa</a>
-                `;
-            } else if (isCurrentDemo) {
+            if (isCurrentDemo) {
                 if (currentAppView === 'landing') {
                     mainHeaderNav.innerHTML = `
                         <a href="#demoLandingHero" onclick="switchToLandingView(event)" class="nav-link">Início</a>
@@ -2767,91 +2756,30 @@
             }
         }
 
-        function updateStandaloneCompanyLoginCard() {
-            const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
-            
-            // 1. Atualizar Fundo de Boas-Vindas com o Nome da Empresa Cadastrada
-            const welcomeTitleEl = document.getElementById('loginWelcomeCompanyName');
-            if (welcomeTitleEl) {
-                welcomeTitleEl.textContent = activeComp.name || 'Sua Loja';
-            }
-
-            // 2. Atualizar Dropdown de Seleção de Estabelecimentos
-            const selectEl = document.getElementById('standaloneCompanySelect');
-            if (selectEl && typeof companies !== 'undefined' && companies.length > 0) {
-                selectEl.innerHTML = companies.map(c => `
-                    <option value="${c.id}" ${c.id === activeCompanyId ? 'selected' : ''}>
-                        ${c.name} ${c.id === 'company-fb-default' ? '(Padrão)' : ''}
-                    </option>
-                `).join('');
-            }
-
-            // 3. Preencher E-mail se disponível
-            const emailInput = document.getElementById('standaloneCompanyEmail');
-            if (emailInput && activeComp.email && (!emailInput.value || emailInput.value === '')) {
-                emailInput.value = activeComp.email;
-            }
-
-            const errorEl = document.getElementById('standaloneCompanyError');
-            if (errorEl) errorEl.style.display = 'none';
-        }
-
-        function handleStandaloneCompanySelectChange(companyId) {
-            if (!companyId) return;
-            activeCompanyId = companyId;
-            const matched = companies.find(c => c.id === companyId);
-            if (matched) {
-                const welcomeTitleEl = document.getElementById('loginWelcomeCompanyName');
-                if (welcomeTitleEl) {
-                    welcomeTitleEl.textContent = matched.name || 'Sua Loja';
-                }
-                const emailInput = document.getElementById('standaloneCompanyEmail');
-                if (emailInput && matched.email) {
-                    emailInput.value = matched.email;
-                }
-                const passwordInputEl = document.getElementById('standaloneCompanyPassword');
-                if (passwordInputEl) {
-                    passwordInputEl.value = '';
-                    passwordInputEl.focus();
-                }
-            }
-        }
-
         function updateAppViewDisplay() {
             const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
             const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
 
             const demoHero = document.getElementById('demoLandingHero');
             const storeWrapper = document.getElementById('storeViewWrapper');
-            const loginWrapper = document.getElementById('companyLoginViewWrapper');
             const demoBar = document.getElementById('demoNoticeBar');
             const heroSection = document.getElementById('inicio');
 
-            if (currentAppView === 'login') {
-                if (demoHero) demoHero.style.display = 'none';
-                if (storeWrapper) storeWrapper.style.display = 'none';
-                if (loginWrapper) loginWrapper.style.display = 'flex';
-                if (demoBar) demoBar.style.display = 'none';
-                if (heroSection) heroSection.classList.remove('has-demo-landing');
-                updateStandaloneCompanyLoginCard();
-            } else if (!isCurrentDemo) {
+            if (!isCurrentDemo) {
                 currentAppView = 'store';
                 if (demoHero) demoHero.style.display = 'none';
                 if (storeWrapper) storeWrapper.style.display = 'block';
-                if (loginWrapper) loginWrapper.style.display = 'none';
                 if (demoBar) demoBar.style.display = 'none';
                 if (heroSection) heroSection.classList.remove('has-demo-landing');
             } else {
                 if (currentAppView === 'landing') {
                     if (demoHero) demoHero.style.display = 'block';
                     if (storeWrapper) storeWrapper.style.display = 'none';
-                    if (loginWrapper) loginWrapper.style.display = 'none';
                     if (demoBar) demoBar.style.display = 'none';
                     if (heroSection) heroSection.classList.add('has-demo-landing');
                 } else {
                     if (demoHero) demoHero.style.display = 'none';
                     if (storeWrapper) storeWrapper.style.display = 'block';
-                    if (loginWrapper) loginWrapper.style.display = 'none';
                     if (demoBar) demoBar.style.display = 'block';
                     if (heroSection) heroSection.classList.remove('has-demo-landing');
                 }
@@ -2883,23 +2811,6 @@
             currentAppView = 'landing';
             updateAppViewDisplay();
             window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function switchToLoginView(e) {
-            if (e && e.preventDefault) e.preventDefault();
-            currentAppView = 'login';
-            updateAppViewDisplay();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            
-            setTimeout(() => {
-                const pwInput = document.getElementById('standaloneCompanyPassword');
-                const emInput = document.getElementById('standaloneCompanyEmail');
-                if (emInput && (!emInput.value || emInput.value === '')) {
-                    emInput.focus();
-                } else if (pwInput) {
-                    pwInput.focus();
-                }
-            }, 120);
         }
 
         // ========== GERENCIAMENTO DO ACESSO OCULTO DEVELOPER (10 CLIQUES) ==========
@@ -4833,7 +4744,23 @@
         }
 
         function openAdminLogin() {
-            switchToLoginView();
+            const modal = document.getElementById('passwordModal');
+            if (modal) modal.classList.add('active');
+            const emailInput = document.getElementById('companyLoginEmail');
+            
+            if (emailInput) {
+                emailInput.value = '';
+            }
+            if (passwordInput) passwordInput.value = '';
+            if (passwordError) passwordError.style.display = 'none';
+
+            setTimeout(() => {
+                if (emailInput) {
+                    emailInput.focus();
+                } else if (passwordInput) {
+                    passwordInput.focus();
+                }
+            }, 100);
         }
 
         function loginAdminSuccess(targetComp = null, token = null) {
@@ -4841,10 +4768,6 @@
             AuthManager.loginCompanyOwner(comp, token);
             const modal = document.getElementById('passwordModal');
             if (modal) modal.classList.remove('active');
-            if (currentAppView === 'login') {
-                currentAppView = 'store';
-                updateAppViewDisplay();
-            }
             openAdminPanel();
             updateAdminHeaderUI();
             showNotification(`Login de empresa realizado com sucesso! 🏬✨ (${comp.name || 'Loja'})`, 'success');
@@ -9094,93 +9017,6 @@
                 if (emailInput) emailInput.value = '';
                 if (passwordError) passwordError.style.display = 'none';
             });
-
-            // Standalone Dedicated Company Login Form (www.donfood/login)
-            const standaloneLoginForm = document.getElementById('standaloneCompanyLoginForm');
-            if (standaloneLoginForm) {
-                standaloneLoginForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const emailInput = document.getElementById('standaloneCompanyEmail');
-                    const pwInput = document.getElementById('standaloneCompanyPassword');
-                    const errorEl = document.getElementById('standaloneCompanyError');
-                    const submitBtn = document.getElementById('btnStandaloneCompanySubmit');
-
-                    const enteredEmail = emailInput ? emailInput.value.trim().toLowerCase() : '';
-                    const enteredPassword = pwInput ? pwInput.value.trim() : '';
-
-                    if (!enteredPassword) return;
-
-                    if (submitBtn) {
-                        submitBtn.disabled = true;
-                        submitBtn.innerHTML = '🔄 Autenticando...';
-                    }
-
-                    // Tentar autenticação segura no backend primeiro
-                    try {
-                        const response = await fetch('/api/auth/company-login', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                email: enteredEmail,
-                                password: enteredPassword,
-                                companyId: activeCompanyId
-                            })
-                        });
-                        const res = await response.json();
-
-                        if (res && res.success && res.company) {
-                            const matched = companies.find(c => c.id === res.company.id) || res.company;
-                            switchActiveCompany(res.company.id);
-                            loginAdminSuccess(matched, res.token);
-                            if (errorEl) errorEl.style.display = 'none';
-                            if (submitBtn) {
-                                submitBtn.disabled = false;
-                                submitBtn.innerHTML = '🚀 Entrar na Minha Loja';
-                            }
-                            return;
-                        }
-                    } catch (netErr) {
-                        // Fallback modo local
-                    }
-
-                    // 1. Procurar empresa cadastrada que corresponda ao e-mail e à senha
-                    let matchedCompany = companies.find(c => {
-                        const cEmail = (c.email || '').trim().toLowerCase();
-                        const matchEmail = (cEmail === enteredEmail) || (!cEmail && (enteredEmail.includes('fb') || enteredEmail.includes('admin') || c.id === activeCompanyId));
-                        const matchPassword = c.adminPassword === enteredPassword;
-                        return matchEmail && matchPassword;
-                    });
-
-                    // 2. Se não achou por e-mail exato, verificar se a senha confere com qualquer empresa
-                    if (!matchedCompany) {
-                        matchedCompany = companies.find(c => c.adminPassword === enteredPassword);
-                        if (matchedCompany && enteredEmail) {
-                            matchedCompany.email = enteredEmail;
-                            saveData();
-                        }
-                    }
-
-                    if (matchedCompany) {
-                        switchActiveCompany(matchedCompany.id);
-                        loginAdminSuccess(matchedCompany);
-                        if (errorEl) errorEl.style.display = 'none';
-                    } else {
-                        if (errorEl) {
-                            errorEl.style.display = 'block';
-                            errorEl.textContent = '❌ E-mail ou senha incorretos! Por favor, verifique os dados cadastrados.';
-                        }
-                        if (pwInput) {
-                            pwInput.value = '';
-                            pwInput.focus();
-                        }
-                    }
-
-                    if (submitBtn) {
-                        submitBtn.disabled = false;
-                        submitBtn.innerHTML = '🚀 Entrar na Minha Loja';
-                    }
-                });
-            }
             
             adminClose.addEventListener('click', closeAdminPanel);
             adminOverlay.addEventListener('click', closeAdminPanel);
@@ -9722,12 +9558,9 @@
         window.openAdminPanel = openAdminPanel;
         window.toggleCompanyPasswordVisibility = toggleCompanyPasswordVisibility;
 
-        // Gerenciamento de Visualização SPA (Landing / Loja Demo / Login Empresa)
+        // Gerenciamento de Visualização SPA (Landing / Loja Demo)
         window.switchToStoreView = switchToStoreView;
         window.switchToLandingView = switchToLandingView;
-        window.switchToLoginView = switchToLoginView;
-        window.updateStandaloneCompanyLoginCard = updateStandaloneCompanyLoginCard;
-        window.handleStandaloneCompanySelectChange = handleStandaloneCompanySelectChange;
         window.updateHeaderNavForCurrentView = updateHeaderNavForCurrentView;
         window.updateAppViewDisplay = updateAppViewDisplay;
 
