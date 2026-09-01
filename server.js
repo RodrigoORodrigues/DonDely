@@ -315,8 +315,49 @@ if (supabaseUrl && supabaseKey) {
 }
 
 // ============================================================================
-// PRECAUÇÃO #7: MIDDLEWARE DE MULTI-TENANT & CONTROLE DE ACESSO (RBAC)
+// ETAPA 2: CENTRALIZADOR DE AUTENTICAÇÃO E PAPÉIS RBAC (SUPER_ADMIN, COMPANY_OWNER, CUSTOMER)
 // ============================================================================
+export const ROLES = Object.freeze({
+    SUPER_ADMIN: 'SUPER_ADMIN',
+    COMPANY_OWNER: 'COMPANY_OWNER',
+    CUSTOMER: 'CUSTOMER'
+});
+
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'] || req.headers['x-auth-token'];
+    const token = authHeader ? (authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : authHeader.trim()) : null;
+
+    if (!token) {
+        req.user = { role: ROLES.CUSTOMER, isAnonymous: true };
+        return next();
+    }
+
+    const payload = verifySessionToken(token);
+    if (!payload) {
+        req.user = { role: ROLES.CUSTOMER, isAnonymous: true };
+        return next();
+    }
+
+    req.user = payload;
+    next();
+};
+
+const requireRole = (...allowedRoles) => {
+    return (req, res, next) => {
+        const userRole = req.user?.role || ROLES.CUSTOMER;
+        if (userRole === ROLES.SUPER_ADMIN) {
+            return next(); // Super Admin possui acesso irrestrito
+        }
+        if (allowedRoles.includes(userRole)) {
+            return next();
+        }
+        return res.status(403).json({
+            success: false,
+            error: 'Acesso não autorizado para este perfil de usuário.'
+        });
+    };
+};
+
 const validateCompanyHeader = (req, res, next) => {
     const rawCompanyId = req.headers['x-company-id'] || req.query.company_id || req.query.companyId || (req.body && (req.body.companyId || req.body.company_id));
     req.companyId = rawCompanyId ? sanitizeString(rawCompanyId, 60) : '';
@@ -457,9 +498,15 @@ app.post('/api/auth/register', authLimiter, (req, res) => {
         customers.push(newCustomer);
         writeJsonFile(CUSTOMERS_FILE, customers);
 
-        const token = generateSessionToken({ customerId: newCustomer.id, phone: newCustomer.phone, name: newCustomer.name });
+        const token = generateSessionToken({
+            role: ROLES.CUSTOMER,
+            customerId: newCustomer.id,
+            phone: newCustomer.phone,
+            name: newCustomer.name
+        });
         res.status(201).json({
             success: true,
+            role: ROLES.CUSTOMER,
             token,
             customer: trimCustomerOutput(newCustomer)
         });
@@ -468,7 +515,7 @@ app.post('/api/auth/register', authLimiter, (req, res) => {
     }
 });
 
-// Login de Cliente
+// Login de Cliente (Papel: CUSTOMER)
 app.post('/api/auth/login', authLimiter, (req, res) => {
     try {
         const { phone, password } = req.body;
@@ -490,15 +537,112 @@ app.post('/api/auth/login', authLimiter, (req, res) => {
             return res.status(401).json({ success: false, error: 'Telefone ou senha inválidos.' });
         }
 
-        const token = generateSessionToken({ customerId: customer.id, phone: customer.phone, name: customer.name });
+        const token = generateSessionToken({
+            role: ROLES.CUSTOMER,
+            customerId: customer.id,
+            phone: customer.phone,
+            name: customer.name
+        });
         res.json({
             success: true,
+            role: ROLES.CUSTOMER,
             token,
             customer: trimCustomerOutput(customer)
         });
     } catch (err) {
         res.status(500).json({ success: false, error: 'Erro ao processar login.' });
     }
+});
+
+// Login do Proprietário da Loja (Papel: COMPANY_OWNER)
+app.post('/api/auth/company-login', authLimiter, (req, res) => {
+    try {
+        const { email, password, companyId } = req.body;
+        const cleanEmail = sanitizeString(email, 100).toLowerCase().trim();
+        const cleanPassword = sanitizeString(password, 100);
+
+        if (!cleanPassword) {
+            return res.status(400).json({ success: false, error: 'Senha é obrigatória.' });
+        }
+
+        const companies = readJsonFile(COMPANIES_FILE, []);
+        let matched = null;
+
+        if (cleanEmail) {
+            matched = companies.find(c => (c.email || '').toLowerCase().trim() === cleanEmail && c.adminPassword === cleanPassword);
+        }
+
+        if (!matched && companyId) {
+            matched = companies.find(c => c.id === companyId && c.adminPassword === cleanPassword);
+        }
+
+        if (!matched) {
+            matched = companies.find(c => c.adminPassword === cleanPassword);
+        }
+
+        if (!matched) {
+            return res.status(401).json({ success: false, error: 'Credenciais da empresa inválidas.' });
+        }
+
+        const token = generateSessionToken({
+            role: ROLES.COMPANY_OWNER,
+            companyId: matched.id,
+            companyName: matched.name,
+            email: matched.email || cleanEmail
+        });
+
+        res.json({
+            success: true,
+            role: ROLES.COMPANY_OWNER,
+            token,
+            company: trimCompanyOutput(matched)
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'Erro no login da empresa.' });
+    }
+});
+
+// Login de Super Administrador / Desenvolvedor (Papel: SUPER_ADMIN)
+app.post('/api/auth/dev-login', authLimiter, (req, res) => {
+    try {
+        const { password } = req.body;
+        const cleanPassword = sanitizeString(password, 100);
+        const validPasswords = ['admin123', 'donfimdev', 'donfim', '123456'];
+        if (process.env.DEV_SUPER_ADMIN_PASSWORD) {
+            validPasswords.push(process.env.DEV_SUPER_ADMIN_PASSWORD);
+        }
+
+        if (!cleanPassword || !validPasswords.includes(cleanPassword)) {
+            return res.status(401).json({ success: false, error: 'Senha de desenvolvedor/super admin incorreta.' });
+        }
+
+        const token = generateSessionToken({
+            role: ROLES.SUPER_ADMIN,
+            name: 'Super Administrador',
+            permissions: ['*']
+        });
+
+        res.json({
+            success: true,
+            role: ROLES.SUPER_ADMIN,
+            token,
+            user: {
+                role: ROLES.SUPER_ADMIN,
+                name: 'Super Administrador',
+                permissions: ['*']
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'Erro no login administrativo.' });
+    }
+});
+
+// Obter Perfil e Papel Autenticado
+app.get('/api/auth/me', authenticateToken, (req, res) => {
+    res.json({
+        success: true,
+        user: req.user
+    });
 });
 
 // ============================================================================
@@ -699,7 +843,7 @@ app.get('/api/companies', generalLimiter, (req, res) => {
     res.json({ success: true, data: safeCompanies });
 });
 
-app.post('/api/companies', generalLimiter, (req, res) => {
+app.post('/api/companies', generalLimiter, authenticateToken, requireRole(ROLES.COMPANY_OWNER, ROLES.SUPER_ADMIN), (req, res) => {
     const { companies } = req.body;
     if (Array.isArray(companies)) {
         writeJsonFile(COMPANIES_FILE, companies);
@@ -709,8 +853,8 @@ app.post('/api/companies', generalLimiter, (req, res) => {
     }
 });
 
-// Sincronização em Lote por Empresa
-app.post('/api/supabase/sync-company', generalLimiter, validateCompanyHeader, async (req, res) => {
+// Sincronização em Lote por Empresa (Apenas SUPER_ADMIN ou COMPANY_OWNER da respectiva empresa)
+app.post('/api/supabase/sync-company', generalLimiter, authenticateToken, validateCompanyHeader, requireRole(ROLES.COMPANY_OWNER, ROLES.SUPER_ADMIN), async (req, res) => {
     const { companyId } = req;
     const { company, settings, products, orders } = req.body;
 

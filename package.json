@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "node server.js",
     "start": "node server.js",
-    "lint": "node --check server.js && node --check app.js",
+    "lint": "node --check server.js && node --check app.js && node --check engines.js",
+    "test": "node --test test/*.test.js",
     "build": "echo \"Static HTML site, no build step required\""
   },
   "dependencies": {

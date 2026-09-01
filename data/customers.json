@@ -9,5 +9,60 @@
     "neighborhood": "",
     "reference": "",
     "created_at": "2026-08-25T05:02:16.021Z"
+  },
+  {
+    "id": "cust_1788279972491_cbefa602",
+    "name": "Cliente Teste Integrado",
+    "phone": "21999881674",
+    "passwordHash": "e2b7c480d8656b25153d7bd4f3207ef16a84c568e4c119e81ede7f5bce959070",
+    "salt": "5a8ea85e20fba6c4f134c499d1804665",
+    "address": "Rua das Flores, 123",
+    "neighborhood": "Centro",
+    "reference": "",
+    "created_at": "2026-09-01T16:26:12.491Z"
+  },
+  {
+    "id": "cust_1788279996791_a3c59e88",
+    "name": "Cliente Teste Integrado",
+    "phone": "21999885182",
+    "passwordHash": "d79cd0bf2b7fad679ec99b8ad84d37707a42a83e3f280dbfe77a44448a35c49c",
+    "salt": "ce9a6525a322df3655e75199cf29156c",
+    "address": "Rua das Flores, 123",
+    "neighborhood": "Centro",
+    "reference": "",
+    "created_at": "2026-09-01T16:26:36.791Z"
+  },
+  {
+    "id": "cust_1788280673515_30219a93",
+    "name": "Cliente Teste Integrado",
+    "phone": "21999889016",
+    "passwordHash": "795dc21c046a71bb81e4a3cab9dee62319b47062267d0938600016b1e33fbf51",
+    "salt": "6d4f05916d4852d32e60bf52cecb0b46",
+    "address": "Rua das Flores, 123",
+    "neighborhood": "Centro",
+    "reference": "",
+    "created_at": "2026-09-01T16:37:53.515Z"
+  },
+  {
+    "id": "cust_1788281353175_8a3b96a2",
+    "name": "Cliente Teste Integrado",
+    "phone": "21999883026",
+    "passwordHash": "c44b7b2802d22393f599fa0d066c0649b146a82d20e4338285ef631fa0e99302",
+    "salt": "682512a1c250299ca3646591003d1c09",
+    "address": "Rua das Flores, 123",
+    "neighborhood": "Centro",
+    "reference": "",
+    "created_at": "2026-09-01T16:49:13.175Z"
+  },
+  {
+    "id": "cust_1788281428537_ebccb140",
+    "name": "Cliente Teste Integrado",
+    "phone": "21999882074",
+    "passwordHash": "580139f43c6f321623dfd38e8c68b01d8e92c51f01e86023ff6a8e9dba8ab7ad",
+    "salt": "148fe1581ffe433887466cc049b22424",
+    "address": "Rua das Flores, 123",
+    "neighborhood": "Centro",
+    "reference": "",
+    "created_at": "2026-09-01T16:50:28.537Z"
   }
 ]
