@@ -1106,9 +1106,75 @@
                     </div>
                 </div>
 
-                <div id="loginDemoCard" style="display: none;"></div>
+                <!-- 1. JANELA / PAINEL DA EMPRESA DEMO (EXCLUSIVO DA DEMO) -->
+                <div id="loginDemoCard" style="display: none;">
+                    <div class="login-card-header">
+                        <div class="login-store-icon-avatar" style="background: linear-gradient(135deg, #FEF3C7, #FDE68A); color: #B45309; border: 2px solid #FCD34D;">
+                            🛍️
+                        </div>
+                        <h2 class="login-card-title">Loja Modelo Don Food</h2>
+                        <p class="login-card-subtitle">
+                            Você está visualizando o ambiente de demonstração
+                        </p>
+                    </div>
 
-                <!-- JANELA DE LOGIN COM INPUT EMAIL/TELEFONE E SENHA -->
+                    <!-- Formulário de Autenticação na Loja Demo -->
+                    <form id="demoLoginForm" class="dedicated-login-form" style="margin-bottom: 1.25rem;">
+                        <div class="form-group" style="text-align: left; margin-bottom: 0.9rem;">
+                            <label class="form-label" for="demoLoginEmail" style="font-size: 0.84rem; font-weight: 700; color: #1E293B;">📧 E-mail ou 📱 Telefone *</label>
+                            <input type="text" class="form-input dedicated-input" id="demoLoginEmail" placeholder="ex: contato@empresa.com ou (21) 99999-9999" required autocomplete="username">
+                        </div>
+
+                        <div class="form-group" style="text-align: left; margin-bottom: 1rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                                <label class="form-label" for="demoLoginPassword" style="font-size: 0.84rem; font-weight: 700; color: #1E293B; margin-bottom: 0;">🔑 Senha *</label>
+                                <span style="font-size: 0.75rem; color: #64748B;">Acesso restrito</span>
+                            </div>
+                            <div class="password-input-wrapper">
+                                <input type="password" class="form-input dedicated-input" id="demoLoginPassword" placeholder="••••••••" required autocomplete="current-password">
+                                <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('demoLoginPassword', this)" title="Mostrar ou ocultar senha" aria-label="Mostrar senha">👁️</button>
+                            </div>
+                        </div>
+
+                        <div class="password-error" id="demoLoginError" style="display: none; background: #FEF2F2; color: #DC2626; border: 1.5px solid #FCA5A5; padding: 0.75rem; border-radius: 10px; font-size: 0.85rem; font-weight: 700; margin-bottom: 1.1rem; text-align: center;">
+                            ❌ E-mail/telefone ou senha incorretos! Verifique os dados cadastrados.
+                        </div>
+
+                        <button type="submit" id="btnDemoLoginSubmit" class="btn-dedicated-login-submit" style="margin-bottom: 0.25rem;">
+                            🚀 Entrar no Painel da Loja
+                        </button>
+                    </form>
+
+                    <!-- Informações e contatos para testar o admin da Demo -->
+                    <div style="background: #FFFBEB; border: 1.5px dashed #FCD34D; border-radius: 12px; padding: 1rem; font-size: 0.85rem; color: #92400E; text-align: center; line-height: 1.5; margin-bottom: 1.25rem;">
+                        <div style="margin-bottom: 0.65rem; font-weight: 600;">
+                            💡 <strong>Loja de Demonstração:</strong> entre em contato para testar os recursos administrativos do Don Food!
+                        </div>
+                        <div style="display: inline-flex; align-items: center; justify-content: center; gap: 0.65rem; flex-wrap: wrap;">
+                            <a id="demoHintWhatsappLink" href="https://api.whatsapp.com/send?phone=5521973987378&text=Ol%C3%A1%21+Gostaria+de+testar+os+recursos+administrativos+do+Don+Food." target="_blank" rel="noopener noreferrer" class="demo-contact-chip" title="Conversar no WhatsApp: (21) 97398-7378" aria-label="WhatsApp" onclick="try { window.open(this.href, '_blank'); return false; } catch(e){ return true; }">
+                                <svg fill="currentColor" viewBox="0 0 24 24"><path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+                            </a>
+                            <a id="demoHintEmailLink" href="mailto:donfim@gmail.com?subject=Teste%20dos%20Recursos%20Administrativos%20Don%20Food" target="_blank" rel="noopener noreferrer" class="demo-contact-chip" title="Enviar um E-mail: donfim@gmail.com" aria-label="E-mail" onclick="try { window.location.href = this.href; } catch(e){}">
+                                <svg fill="currentColor" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+                            </a>
+                        </div>
+                    </div>
+
+
+
+                    <!-- LINK DE DESTAQUE: "JÁ FAÇO PARTE DO DONFOOD" -->
+                    <div class="login-already-partner-box">
+                        <p class="login-already-partner-prompt">
+                            Já tem sua empresa cadastrada no Don Food?
+                        </p>
+                        <button type="button" class="btn-already-partner-link" id="btnAlreadyPartnerLink" onclick="showRegisteredCompanyLoginForm()" title="Acessar painel de empresa cadastrada">
+                            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12.65 10A5.99 5.99 0 007 6c-3.31 0-6 2.69-6 6s2.69 6 6 6a5.99 5.99 0 005.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
+                            <span>Já faço parte do donfood</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. JANELA DE LOGIN DAS EMPRESAS CADASTRADAS -->
                 <div id="loginRegisteredCard" style="display: block;">
                     <div class="login-card-header">
                         <div class="login-store-icon-avatar" id="loginStoreIconAvatar">
@@ -1116,20 +1182,20 @@
                         </div>
                         <h2 class="login-card-title" id="loginCardTitle">Acessar Painel da Loja</h2>
                         <p class="login-card-subtitle" id="loginCardSubtitle">
-                            Digite o <strong>E-mail ou Telefone</strong> e a <strong>Senha</strong> de acesso
+                            Digite o <strong>E-mail ou Telefone</strong> e a <strong>Senha</strong> do seu estabelecimento
                         </p>
                     </div>
 
                     <!-- Formulário de Autenticação da Empresa Cadastrada -->
                     <form id="dedicatedLoginForm" class="dedicated-login-form">
-                        <div class="form-group" style="text-align: left; margin-bottom: 0.95rem;">
-                            <label class="form-label" for="dedicatedLoginEmail" style="font-size: 0.84rem; font-weight: 700; color: #1E293B;">📧 E-mail ou 📱 Telefone *</label>
-                            <input type="text" class="form-input dedicated-input" id="dedicatedLoginEmail" placeholder="Digite seu e-mail ou telefone" required autocomplete="username">
+                        <div class="form-group" style="text-align: left; margin-bottom: 0.9rem;">
+                            <label class="form-label" for="dedicatedLoginEmail" style="font-size: 0.84rem; font-weight: 700; color: #1E293B;">📧 E-mail ou 📱 Telefone da Empresa *</label>
+                            <input type="text" class="form-input dedicated-input" id="dedicatedLoginEmail" placeholder="ex: contato@empresa.com ou (21) 99999-9999" required autocomplete="username">
                         </div>
 
-                        <div class="form-group" style="text-align: left; margin-bottom: 1.1rem;">
+                        <div class="form-group" style="text-align: left; margin-bottom: 1rem;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
-                                <label class="form-label" for="dedicatedLoginPassword" style="font-size: 0.84rem; font-weight: 700; color: #1E293B; margin-bottom: 0;">🔑 Senha *</label>
+                                <label class="form-label" for="dedicatedLoginPassword" style="font-size: 0.84rem; font-weight: 700; color: #1E293B; margin-bottom: 0;">🔑 Senha da Empresa *</label>
                                 <span style="font-size: 0.75rem; color: #64748B;">Acesso restrito</span>
                             </div>
                             <div class="password-input-wrapper">
@@ -1147,6 +1213,10 @@
                         </button>
 
                         <div class="login-card-links">
+                            <button type="button" onclick="showDemoInfoPanel()" class="btn-link-action" id="btnBackToDemoFromLogin" style="display: none; color: #D97706; font-weight: 700;">
+                                ← Informações da Loja Demo
+                            </button>
+                            <span class="link-bullet" id="bulletBackToDemo" style="display: none;">•</span>
                             <button type="button" onclick="switchToStoreView('login')" class="btn-link-action" id="btnBackToStoreFromLogin">
                                 🛍️ Ir para o Cardápio
                             </button>

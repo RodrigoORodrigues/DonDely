@@ -3288,7 +3288,7 @@
             }
         }
 
-        let isRegisteredCompanyLoginActive = true;
+        let isRegisteredCompanyLoginActive = false;
 
         function showRegisteredCompanyLoginForm() {
             isRegisteredCompanyLoginActive = true;
@@ -3302,24 +3302,34 @@
         }
 
         function showDemoInfoPanel() {
-            isRegisteredCompanyLoginActive = true;
+            isRegisteredCompanyLoginActive = false;
             refreshDedicatedLoginUI();
         }
 
         function refreshDedicatedLoginUI() {
             const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
             const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
-            isRegisteredCompanyLoginActive = true;
+            
+            // Se a empresa ativa não for Demo, forçar sempre tela de login da empresa cadastrada
+            if (!isCurrentDemo) {
+                isRegisteredCompanyLoginActive = true;
+            }
 
-            // 1. Atualizar Fundo de Boas-Vindas e Textos da Hero Centralizada
+            // 1. Atualizar Fundo de Boas-Vindas e Textos da Hero
             const storeNameEl = document.getElementById('loginViewStoreName');
             const heroBadgeText = document.getElementById('loginHeroBadgeText');
             const heroSubtitle = document.getElementById('loginHeroSubtitle');
 
-            const displayName = (!isCurrentDemo && activeComp.name) ? `"${activeComp.name}"` : (settings.restaurantName ? `"${settings.restaurantName}"` : '"Don Food"');
-            if (storeNameEl) storeNameEl.textContent = displayName;
-            if (heroBadgeText) heroBadgeText.textContent = '🔐 PAINEL EXCLUSIVO DO LOJISTA';
-            if (heroSubtitle) heroSubtitle.textContent = 'Acesse o painel para gerenciar cardápio, acompanhar pedidos em tempo real e administrar seu estabelecimento.';
+            if (isCurrentDemo && !isRegisteredCompanyLoginActive) {
+                if (storeNameEl) storeNameEl.textContent = '"Don Food (Demonstração)"';
+                if (heroBadgeText) heroBadgeText.textContent = '🛍️ LOJA DE DEMONSTRAÇÃO DON FOOD';
+                if (heroSubtitle) heroSubtitle.textContent = 'Explore nosso cardápio modelo e veja como a plataforma Don Food potencializa as vendas do seu estabelecimento pelo WhatsApp.';
+            } else {
+                const displayName = (!isCurrentDemo && activeComp.name) ? `"${activeComp.name}"` : '"Don Food - Empresas Parceiras"';
+                if (storeNameEl) storeNameEl.textContent = displayName;
+                if (heroBadgeText) heroBadgeText.textContent = '🔐 PAINEL EXCLUSIVO DO LOJISTA';
+                if (heroSubtitle) heroSubtitle.textContent = 'Acesse o painel para gerenciar cardápio, acompanhar pedidos em tempo real, configurar taxas de entrega e personalizar a identidade visual da sua empresa.';
+            }
 
             // 2. Avatar / Ícone da Loja
             const avatarEl = document.getElementById('loginStoreIconAvatar');
@@ -3331,17 +3341,17 @@
                 }
             }
 
-            // 3. Título e Subtítulo do Card Centralizado de Login
+            // 3. Título e Subtítulo do Card de Empresa Cadastrada
             const cardTitleEl = document.getElementById('loginCardTitle');
             const cardSubtitleEl = document.getElementById('loginCardSubtitle');
             if (cardTitleEl) {
-                cardTitleEl.textContent = (!isCurrentDemo && activeComp.name) ? `Acessar Painel: ${activeComp.name}` : 'Acessar Painel da Loja';
+                cardTitleEl.textContent = (!isCurrentDemo && activeComp.name) ? `Acessar Painel: ${activeComp.name}` : 'Acessar Minha Loja';
             }
             if (cardSubtitleEl) {
-                cardSubtitleEl.innerHTML = 'Digite o <strong>E-mail ou Telefone</strong> e a <strong>Senha</strong> de acesso';
+                cardSubtitleEl.innerHTML = 'Digite o <strong>E-mail ou Telefone</strong> e a <strong>Senha</strong> do seu estabelecimento';
             }
 
-            // 4. Alternar Visualização entre Sessão Conectada e Formulário com Inputs
+            // 4. Alternar Visualização entre Conectado, Loja Demo e Login de Empresas Cadastradas
             const isOwner = AuthManager.isCompanyOwner(activeCompanyId) || AuthManager.isSuperAdmin();
             const alreadyLoggedBox = document.getElementById('loginAlreadyLoggedBox');
             const demoCard = document.getElementById('loginDemoCard');
@@ -3357,10 +3367,25 @@
                 if (alreadyStoreName) alreadyStoreName.textContent = activeComp.name || settings.restaurantName || 'Sua Loja';
             } else {
                 if (alreadyLoggedBox) alreadyLoggedBox.style.display = 'none';
-                if (demoCard) demoCard.style.display = 'none';
-                if (registeredCard) registeredCard.style.display = 'block';
-                if (btnBackToDemo) btnBackToDemo.style.display = 'none';
-                if (bulletBackToDemo) bulletBackToDemo.style.display = 'none';
+
+                if (isCurrentDemo && !isRegisteredCompanyLoginActive) {
+                    // Janela exclusiva da Loja Demo
+                    if (demoCard) demoCard.style.display = 'block';
+                    if (registeredCard) registeredCard.style.display = 'none';
+                } else {
+                    // Janela de Login das Empresas Cadastradas
+                    if (demoCard) demoCard.style.display = 'none';
+                    if (registeredCard) registeredCard.style.display = 'block';
+
+                    // Exibir botão de retorno à Demo se veio do contexto Demo
+                    if (isCurrentDemo) {
+                        if (btnBackToDemo) btnBackToDemo.style.display = 'inline-block';
+                        if (bulletBackToDemo) bulletBackToDemo.style.display = 'inline';
+                    } else {
+                        if (btnBackToDemo) btnBackToDemo.style.display = 'none';
+                        if (bulletBackToDemo) bulletBackToDemo.style.display = 'none';
+                    }
+                }
             }
 
             // 5. Limpar erros
@@ -3380,7 +3405,14 @@
                 switchActiveCompany(targetCompId);
             }
             
-            isRegisteredCompanyLoginActive = true;
+            const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
+            const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+
+            if (!isCurrentDemo || forceRegistered) {
+                isRegisteredCompanyLoginActive = true;
+            } else {
+                isRegisteredCompanyLoginActive = false;
+            }
 
             currentAppView = 'login';
             updateAppViewDisplay();
@@ -9869,6 +9901,45 @@
                             passwordEl.focus();
                         }
                     }
+                });
+            }
+
+            // Suporte ao formulário de login direto na Loja Demo (/login)
+            const demoForm = document.getElementById('demoLoginForm');
+            if (demoForm) {
+                demoForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const demoEmail = document.getElementById('demoLoginEmail');
+                    const demoPass = document.getElementById('demoLoginPassword');
+                    const demoError = document.getElementById('demoLoginError');
+                    const demoBtn = document.getElementById('btnDemoLoginSubmit');
+                    const dedicatedEmail = document.getElementById('dedicatedLoginEmail');
+                    const dedicatedPass = document.getElementById('dedicatedLoginPassword');
+                    const dedicatedError = document.getElementById('dedicatedLoginError');
+
+                    if (dedicatedEmail && demoEmail) dedicatedEmail.value = demoEmail.value;
+                    if (dedicatedPass && demoPass) dedicatedPass.value = demoPass.value;
+
+                    if (demoBtn) {
+                        demoBtn.disabled = true;
+                        demoBtn.innerHTML = '⏳ Entrando no Painel...';
+                    }
+                    if (demoError) demoError.style.display = 'none';
+
+                    if (dedicatedForm) {
+                        dedicatedForm.dispatchEvent(new Event('submit', { cancelable: true }));
+                    }
+
+                    setTimeout(() => {
+                        if (demoBtn) {
+                            demoBtn.disabled = false;
+                            demoBtn.innerHTML = '🚀 Entrar no Painel da Loja';
+                        }
+                        if (dedicatedError && demoError && dedicatedError.style.display === 'block') {
+                            demoError.style.display = 'block';
+                            demoError.textContent = dedicatedError.textContent;
+                        }
+                    }, 600);
                 });
             }
             

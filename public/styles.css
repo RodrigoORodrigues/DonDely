@@ -6348,31 +6348,22 @@
             position: relative;
             z-index: 2;
             width: 100%;
-            max-width: 1120px;
+            max-width: 1100px;
             margin: 0 auto;
             display: grid;
             grid-template-columns: 1.15fr 0.95fr;
-            gap: 3.5rem;
+            gap: 3rem;
             align-items: center;
-            justify-content: center;
         }
 
         .login-view-hero-text {
             color: #FFFFFF;
-            text-align: left;
-            padding-right: 1.5rem;
-            width: 100%;
-            max-width: 580px;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
+            padding-right: 1rem;
         }
 
         .login-welcome-badge {
             display: inline-flex;
             align-items: center;
-            justify-content: flex-start;
             gap: 0.5rem;
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(254, 215, 170, 0.35);
@@ -6393,7 +6384,6 @@
             letter-spacing: -0.02em;
             margin-bottom: 1.25rem;
             color: #FFFFFF;
-            text-align: left;
         }
 
         .login-highlight-store-name {
@@ -6404,16 +6394,14 @@
             -webkit-text-fill-color: transparent;
             word-break: break-word;
             margin-top: 0.25rem;
-            text-align: left;
         }
 
         .login-welcome-subtitle {
             font-size: 1.05rem;
             line-height: 1.6;
             color: #E2E8F0;
-            margin: 0 0 2rem 0;
+            margin-bottom: 2rem;
             max-width: 520px;
-            text-align: left;
         }
 
         .login-feature-pills {
@@ -6421,8 +6409,6 @@
             grid-template-columns: 1fr 1fr;
             gap: 0.85rem;
             max-width: 480px;
-            margin: 0;
-            width: 100%;
         }
 
         .login-pill-item {
@@ -6443,7 +6429,7 @@
             font-size: 1.2rem;
         }
 
-        /* CAIXA DE LOGIN LADO A LADO */
+        /* CAIXA DE LOGIN */
         .login-card-box {
             background: #FFFFFF;
             border-radius: 20px;
@@ -6452,7 +6438,6 @@
             width: 100%;
             max-width: 450px;
             margin: 0 auto;
-            text-align: left;
         }
 
         .login-card-header {
@@ -6645,15 +6630,15 @@
         .demo-contact-chip {
             display: inline-flex !important;
             align-items: center !important;
-            gap: 0.4rem !important;
+            justify-content: center !important;
+            width: 36px !important;
+            height: 36px !important;
+            padding: 0 !important;
+            border-radius: 50% !important;
+            border: 1.5px solid #FCD34D !important;
             color: #92400E !important;
             background: #FEF3C7 !important;
-            padding: 0.35rem 0.75rem !important;
-            border-radius: 50px !important;
-            border: 1.5px solid #FCD34D !important;
             text-decoration: none !important;
-            font-weight: 700 !important;
-            font-size: 0.78rem !important;
             cursor: pointer !important;
             transition: all 0.2s ease !important;
             box-shadow: 0 1px 3px rgba(180, 83, 9, 0.08) !important;
@@ -6677,8 +6662,8 @@
         }
 
         .demo-contact-chip svg {
-            width: 14px !important;
-            height: 14px !important;
+            width: 18px !important;
+            height: 18px !important;
             flex-shrink: 0 !important;
             cursor: pointer !important;
             pointer-events: auto !important;
@@ -6733,33 +6718,19 @@
                 grid-template-columns: 1fr;
                 gap: 2rem;
                 text-align: center;
-                max-width: 540px;
             }
 
             .login-view-hero-text {
                 padding-right: 0;
-                text-align: center;
-                align-items: center;
-                margin: 0 auto;
-            }
-
-            .login-welcome-badge {
-                justify-content: center;
             }
 
             .login-welcome-title {
                 font-size: 1.9rem;
-                text-align: center;
-            }
-
-            .login-highlight-store-name {
-                text-align: center;
             }
 
             .login-welcome-subtitle {
                 margin: 0 auto 1.5rem auto;
                 font-size: 0.95rem;
-                text-align: center;
             }
 
             .login-feature-pills {
