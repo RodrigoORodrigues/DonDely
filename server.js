@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
@@ -263,11 +264,30 @@ function trimCustomerOutput(customer) {
 }
 
 // ============================================================================
-// PERSISTÊNCIA LOCAL SEGURA (JSON FILES)
+// PERSISTÊNCIA LOCAL SEGURA (JSON FILES COM FALLBACK EM MEMÓRIA & TMP)
 // ============================================================================
-const DATA_DIR = path.join(__dirname, 'data');
-if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+let DATA_DIR = path.join(__dirname, 'data');
+let isDataDirWritable = false;
+
+try {
+    if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    const testFile = path.join(DATA_DIR, `.write_test_${Date.now()}`);
+    fs.writeFileSync(testFile, 'ok', 'utf-8');
+    fs.unlinkSync(testFile);
+    isDataDirWritable = true;
+} catch (e) {
+    // Ambiente Serverless ou Somente-Leitura (Vercel / Lambda)
+    DATA_DIR = path.join(os.tmpdir(), 'donfood_data');
+    try {
+        if (!fs.existsSync(DATA_DIR)) {
+            fs.mkdirSync(DATA_DIR, { recursive: true });
+        }
+        isDataDirWritable = true;
+    } catch (err2) {
+        console.warn('ℹ️ Armazenamento em memória temporária ativado.');
+    }
 }
 
 const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
@@ -275,25 +295,51 @@ const COMPANIES_FILE = path.join(DATA_DIR, 'companies.json');
 const CUSTOMERS_FILE = path.join(DATA_DIR, 'customers.json');
 const DEMO_LEADS_FILE = path.join(DATA_DIR, 'demo_leads.json');
 
+// Memória cache para suportar ambientes sem escrita em disco
+const memoryStorage = new Map();
+
 function readJsonFile(filePath, defaultValue = []) {
+    const baseName = path.basename(filePath);
     try {
-        if (!fs.existsSync(filePath)) {
-            fs.writeFileSync(filePath, JSON.stringify(defaultValue, null, 2), 'utf-8');
-            return defaultValue;
+        if (fs.existsSync(filePath)) {
+            const raw = fs.readFileSync(filePath, 'utf-8');
+            const parsed = JSON.parse(raw || '[]');
+            memoryStorage.set(baseName, parsed);
+            return parsed;
         }
-        const raw = fs.readFileSync(filePath, 'utf-8');
-        return JSON.parse(raw || '[]');
+
+        // Tentar buscar do diretório base do projeto se estiver rodando em /tmp
+        const seedPath = path.join(__dirname, 'data', baseName);
+        if (seedPath !== filePath && fs.existsSync(seedPath)) {
+            try {
+                const raw = fs.readFileSync(seedPath, 'utf-8');
+                const parsed = JSON.parse(raw || '[]');
+                writeJsonFile(filePath, parsed);
+                return parsed;
+            } catch (seedErr) {}
+        }
+
+        if (memoryStorage.has(baseName)) {
+            return memoryStorage.get(baseName);
+        }
+
+        writeJsonFile(filePath, defaultValue);
+        return defaultValue;
     } catch (err) {
-        console.error(`[Segurança] Erro ao ler ${path.basename(filePath)}:`, err.message);
+        if (memoryStorage.has(baseName)) {
+            return memoryStorage.get(baseName);
+        }
         return defaultValue;
     }
 }
 
 function writeJsonFile(filePath, data) {
+    const baseName = path.basename(filePath);
+    memoryStorage.set(baseName, data);
     try {
         fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
     } catch (err) {
-        console.error(`[Segurança] Erro ao gravar ${path.basename(filePath)}:`, err.message);
+        // Silencioso em caso de restrição de escrita, garantindo consistência em memória
     }
 }
 
@@ -390,12 +436,16 @@ app.get('/api/supabase/status', generalLimiter, (req, res) => {
 
 // Configuração segura do cliente Supabase para o frontend (apenas URL base e Chave Anon pública)
 app.get('/api/supabase/config', generalLimiter, (req, res) => {
-    const rawUrl = process.env.SUPABASE_URL || '';
-    const cleanUrl = rawUrl.replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '');
-    res.json({
-        supabaseUrl: cleanUrl,
-        supabaseAnonKey: process.env.SUPABASE_ANON_KEY || ''
-    });
+    try {
+        const rawUrl = process.env.SUPABASE_URL || '';
+        const cleanUrl = typeof rawUrl === 'string' ? rawUrl.replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '') : '';
+        res.json({
+            supabaseUrl: cleanUrl,
+            supabaseAnonKey: process.env.SUPABASE_ANON_KEY || ''
+        });
+    } catch (err) {
+        res.json({ supabaseUrl: '', supabaseAnonKey: '' });
+    }
 });
 
 // ============================================================================
@@ -432,29 +482,36 @@ function broadcastRealtimeOrder(eventType, orderData) {
 }
 
 app.get('/api/orders/stream', (req, res) => {
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache, no-transform');
-    res.setHeader('Connection', 'keep-alive');
-    if (typeof res.flushHeaders === 'function') res.flushHeaders();
+    try {
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache, no-transform');
+        res.setHeader('Connection', 'keep-alive');
+        res.setHeader('X-Accel-Buffering', 'no');
+        if (typeof res.flushHeaders === 'function') res.flushHeaders();
 
-    const client = { id: Date.now() + Math.random(), res, companyId: req.query.company_id || '' };
-    realtimeOrderClients.add(client);
+        const client = { id: Date.now() + Math.random(), res, companyId: req.query.company_id || '' };
+        realtimeOrderClients.add(client);
 
-    res.write(`data: ${JSON.stringify({ eventType: 'CONNECTED', timestamp: new Date().toISOString() })}\n\n`);
+        res.write(`data: ${JSON.stringify({ eventType: 'CONNECTED', timestamp: new Date().toISOString() })}\n\n`);
 
-    const heartbeat = setInterval(() => {
-        try {
-            res.write(`: heartbeat\n\n`);
-        } catch (err) {
+        const heartbeat = setInterval(() => {
+            try {
+                res.write(`: heartbeat\n\n`);
+            } catch (err) {
+                clearInterval(heartbeat);
+                realtimeOrderClients.delete(client);
+            }
+        }, 20000);
+
+        req.on('close', () => {
             clearInterval(heartbeat);
             realtimeOrderClients.delete(client);
-        }
-    }, 20000);
-
-    req.on('close', () => {
-        clearInterval(heartbeat);
-        realtimeOrderClients.delete(client);
-    });
+        });
+    } catch (err) {
+        try {
+            res.status(200).json({ success: false, message: 'SSE fallback' });
+        } catch (e) {}
+    }
 });
 
 app.get('/api/realtime/orders', (req, res) => {
@@ -667,18 +724,25 @@ app.get('/api/orders', orderReadLimiter, validateCompanyHeader, async (req, res)
     try {
         const { companyId } = req;
         const customerPhone = sanitizeString(req.query.phone || '', 30).replace(/\D/g, '');
-        const allOrders = readJsonFile(ORDERS_FILE, []);
+        let allOrders = [];
+        try {
+            allOrders = readJsonFile(ORDERS_FILE, []);
+        } catch (e) {
+            allOrders = [];
+        }
 
-        let filtered = allOrders;
+        let filtered = Array.isArray(allOrders) ? allOrders : [];
 
         if (customerPhone) {
             // Filtrar pedidos deste cliente específico (em qualquer loja)
-            filtered = filtered.filter(o => o.customerPhone && o.customerPhone.replace(/\D/g, '') === customerPhone);
+            filtered = filtered.filter(o => o && o.customerPhone && o.customerPhone.replace(/\D/g, '') === customerPhone);
         } else if (companyId && companyId !== 'all') {
             // Isolamento por empresa
             filtered = filtered.filter(o => 
-                o.companyId === companyId || 
-                (!o.companyId && (companyId === 'company-demo-don' || companyId === 'company-fb-default'))
+                o && (
+                    o.companyId === companyId || 
+                    (!o.companyId && (companyId === 'company-demo-don' || companyId === 'company-fb-default'))
+                )
             );
         }
 
@@ -691,10 +755,10 @@ app.get('/api/orders', orderReadLimiter, validateCompanyHeader, async (req, res)
                     .eq('company_id', companyId)
                     .order('created_at', { ascending: false });
                 
-                if (!error && supaOrders && supaOrders.length > 0) {
+                if (!error && Array.isArray(supaOrders) && supaOrders.length > 0) {
                     const map = new Map();
-                    supaOrders.forEach(o => map.set(o.id, o));
-                    filtered.forEach(o => map.set(o.id, o));
+                    supaOrders.forEach(o => { if (o && o.id) map.set(o.id, o); });
+                    filtered.forEach(o => { if (o && o.id) map.set(o.id, o); });
                     filtered = Array.from(map.values());
                 }
             } catch (supaErr) {
@@ -702,9 +766,10 @@ app.get('/api/orders', orderReadLimiter, validateCompanyHeader, async (req, res)
             }
         }
 
-        res.json({ success: true, data: filtered });
+        return res.json({ success: true, data: filtered });
     } catch (err) {
-        res.status(500).json({ success: false, error: 'Não foi possível carregar os pedidos.' });
+        console.warn('[Orders GET Fallback]:', err.message);
+        return res.json({ success: true, data: [], fallback: true });
     }
 });
 
@@ -988,6 +1053,39 @@ app.delete('/api/dev/leads/:id', generalLimiter, (req, res) => {
     }
 });
 
+// Servir estilos e arquivos estáticos prioritários
+app.get('/styles.css', (req, res) => {
+    res.type('text/css');
+    const localPath = path.join(__dirname, 'styles.css');
+    if (fs.existsSync(localPath)) {
+        return res.sendFile(localPath);
+    }
+    const pubPath = path.join(__dirname, 'public', 'styles.css');
+    if (fs.existsSync(pubPath)) {
+        return res.sendFile(pubPath);
+    }
+    res.send('/* styles.css */');
+});
+
+// Stubs para extensões de terceiros do navegador (evitando erros 404 no console)
+app.get(['/laydate.css', '/layer.css', '/code.css'], (req, res) => {
+    res.type('text/css').send('/* Browser Extension Safe Stub */');
+});
+
+app.get('/favicon.ico', (req, res) => {
+    const favPath = path.join(__dirname, 'favicon.ico');
+    if (fs.existsSync(favPath)) {
+        res.type('image/x-icon');
+        return res.sendFile(favPath);
+    }
+    const pubFav = path.join(__dirname, 'public', 'favicon.ico');
+    if (fs.existsSync(pubFav)) {
+        res.type('image/x-icon');
+        return res.sendFile(pubFav);
+    }
+    res.status(204).end();
+});
+
 // Servir arquivos estáticos do frontend com controle de cache em tempo real
 app.use(express.static(__dirname, {
     maxAge: 0,
@@ -1017,7 +1115,12 @@ app.use((err, req, res, next) => {
     });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Servidor Don Food ativo na porta ${PORT}`);
-    console.log(`🛡️ 20 Precauções de Segurança e Estabilidade implementadas com sucesso.`);
-});
+// Inicialização segura compatível com Cloud Run, Servidores Node e Vercel Serverless
+if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`🚀 Servidor Don Food ativo na porta ${PORT}`);
+        console.log(`🛡️ 20 Precauções de Segurança e Estabilidade implementadas com sucesso.`);
+    });
+}
+
+export default app;

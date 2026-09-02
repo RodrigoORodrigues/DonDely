@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 450" width="100%" height="100%">
+  <defs>
+    <!-- Ground Shadow -->
+    <radialGradient id="cup300Shadow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="rgba(0,0,0,0.25)"/>
+      <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
+    </radialGradient>
+
+    <!-- Acai Gradients -->
+    <linearGradient id="acai300Base" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B0748"/>
+      <stop offset="40%" stop-color="#24032C"/>
+      <stop offset="80%" stop-color="#18011D"/>
+      <stop offset="100%" stop-color="#2D0637"/>
+    </linearGradient>
+
+    <linearGradient id="condensedMilk300" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFDF0"/>
+      <stop offset="40%" stop-color="#FEF3C7"/>
+      <stop offset="80%" stop-color="#FDE68A"/>
+      <stop offset="100%" stop-color="#F59E0B" stop-opacity="0.8"/>
+    </linearGradient>
+
+    <linearGradient id="strawberry300Grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF2E55"/>
+      <stop offset="50%" stop-color="#E11D48"/>
+      <stop offset="100%" stop-color="#881337"/>
+    </linearGradient>
+
+    <linearGradient id="banana300" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FEFCE8"/>
+      <stop offset="60%" stop-color="#FEF08A"/>
+      <stop offset="100%" stop-color="#FACC15"/>
+    </linearGradient>
+
+    <clipPath id="cup300Clip">
+      <path d="M110 160 L135 390 Q137 400 150 400 L250 400 Q263 400 265 390 L290 160 Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- Ground Shadow -->
+  <ellipse cx="200" cy="410" rx="90" ry="14" fill="url(#cup300Shadow)"/>
+
+  <!-- Cup Group with Clip -->
+  <g>
+    <!-- Background of cup filled with Açaí -->
+    <path d="M110 160 L135 390 Q137 400 150 400 L250 400 Q263 400 265 390 L290 160 Z" fill="url(#acai300Base)"/>
+
+    <!-- Layered Cream & Condense Milk Swirls inside Açaí -->
+    <g clip-path="url(#cup300Clip)">
+      <path d="M130 360 Q160 345 190 355 Q230 370 270 350 L270 395 L130 395 Z" fill="url(#condensedMilk300)" opacity="0.85"/>
+      <path d="M120 260 Q150 240 180 270 Q220 300 280 250 L285 300 Q240 325 180 290 Q140 280 120 300 Z" fill="url(#condensedMilk300)" opacity="0.9"/>
+      <path d="M115 195 Q150 180 190 205 Q230 225 285 190 L285 225 Q230 245 180 220 Q140 200 115 225 Z" fill="#FFFFFF" opacity="0.85"/>
+    </g>
+
+    <!-- Plastic Ribs -->
+    <path d="M118 215 L282 215" stroke="rgba(255,255,255,0.25)" stroke-width="2" fill="none"/>
+    <path d="M123 270 L277 270" stroke="rgba(255,255,255,0.2)" stroke-width="2" fill="none"/>
+    <path d="M129 325 L271 325" stroke="rgba(255,255,255,0.2)" stroke-width="2" fill="none"/>
+  </g>
+
+  <!-- Cup Rim -->
+  <ellipse cx="200" cy="160" rx="90" ry="12" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="4"/>
+  <ellipse cx="200" cy="160" rx="88" ry="10" fill="rgba(255,255,255,0.15)"/>
+
+  <!-- Overflowing Açaí Top -->
+  <path d="M112 160 Q140 130 180 140 Q220 120 255 135 Q280 145 288 160 Q250 172 200 172 Q150 172 112 160 Z" fill="url(#acai300Base)"/>
+
+  <!-- Nutella / Drizzle -->
+  <path d="M135 160 Q138 190 142 205 Q145 210 148 206 Q150 198 147 180 Z" fill="url(#condensedMilk300)"/>
+  <path d="M250 160 Q252 185 255 198 Q258 202 260 198 Q262 190 259 175 Z" fill="url(#condensedMilk300)"/>
+
+  <!-- Banana Slices -->
+  <g transform="translate(130, 105) rotate(-20)">
+    <ellipse cx="30" cy="22" rx="28" ry="20" fill="url(#banana300)" stroke="#EAB308" stroke-width="1.8"/>
+    <ellipse cx="30" cy="22" rx="23" ry="15" fill="#FEF9C3"/>
+    <circle cx="30" cy="22" r="3" fill="#CA8A04"/>
+  </g>
+  <g transform="translate(195, 115) rotate(15)">
+    <ellipse cx="28" cy="20" rx="26" ry="18" fill="url(#banana300)" stroke="#EAB308" stroke-width="1.8"/>
+    <ellipse cx="28" cy="20" rx="21" ry="14" fill="#FEF9C3"/>
+    <circle cx="28" cy="20" r="3" fill="#CA8A04"/>
+  </g>
+
+  <!-- Fresh Strawberry on Top -->
+  <g transform="translate(170, 48) rotate(5)">
+    <path d="M35 10 Q60 30 50 65 Q42 80 35 90 Q28 80 20 65 Q10 30 35 10 Z" fill="url(#strawberry300Grad)"/>
+    <circle cx="28" cy="35" r="1.5" fill="#FEF08A"/>
+    <circle cx="40" cy="40" r="1.5" fill="#FEF08A"/>
+    <circle cx="25" cy="52" r="1.5" fill="#FEF08A"/>
+    <circle cx="38" cy="58" r="1.5" fill="#FEF08A"/>
+    <!-- Leaves -->
+    <path d="M35 12 Q20 5 12 18 Q26 18 30 22 Q35 8 35 12 Q35 8 40 22 Q46 18 58 18 Q50 5 35 12 Z" fill="#15803D"/>
+    <path d="M35 14 Q30 7 24 13 Q32 16 35 19 Q38 16 46 13 Q40 7 35 14 Z" fill="#22C55E"/>
+  </g>
+
+  <!-- Granola / Ninho Sprinkles -->
+  <g fill="#F59E0B">
+    <circle cx="150" cy="148" r="3"/>
+    <circle cx="170" cy="155" r="2.5"/>
+    <circle cx="230" cy="150" r="3"/>
+    <circle cx="245" cy="158" r="2.5"/>
+  </g>
+  <g fill="#FFFBEB">
+    <circle cx="160" cy="152" r="2"/>
+    <circle cx="220" cy="154" r="2"/>
+    <circle cx="238" cy="145" r="2"/>
+  </g>
+</svg>

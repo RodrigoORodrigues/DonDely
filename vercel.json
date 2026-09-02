@@ -14,11 +14,19 @@
       "use": "@vercel/static"
     },
     {
+      "src": "*.css",
+      "use": "@vercel/static"
+    },
+    {
       "src": "*.png",
       "use": "@vercel/static"
     },
     {
       "src": "*.svg",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "*.ico",
       "use": "@vercel/static"
     },
     {
@@ -32,16 +40,36 @@
       "dest": "server.js"
     },
     {
+      "src": "/styles.css",
+      "dest": "/styles.css"
+    },
+    {
+      "src": "/app.js",
+      "dest": "/app.js"
+    },
+    {
+      "src": "/favicon.ico",
+      "dest": "/favicon.ico"
+    },
+    {
+      "src": "/super_barca.svg",
+      "dest": "/super_barca.svg"
+    },
+    {
+      "src": "/acai_300ml.svg",
+      "dest": "/acai_300ml.svg"
+    },
+    {
+      "src": "/acai_copo.svg",
+      "dest": "/acai_copo.svg"
+    },
+    {
       "src": "/Donfimtech.png",
       "dest": "/Donfimtech.png"
     },
     {
       "src": "/donfimtech.png",
       "dest": "/donfimtech.png"
-    },
-    {
-      "src": "/app.js",
-      "dest": "/app.js"
     },
     {
       "src": "/manifest.json",

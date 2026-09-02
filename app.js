@@ -1364,6 +1364,9 @@
             connectOrdersRealtimeStream();
         }
 
+        let sseReconnectTimer = null;
+        let sseFailures = 0;
+
         function connectOrdersRealtimeStream() {
             if (typeof EventSource === 'undefined') return;
             if (sseOrderStream) {
@@ -1374,31 +1377,48 @@
                 const compId = activeCompanyId || 'company-demo-don';
                 sseOrderStream = new EventSource(`/api/orders/stream?company_id=${encodeURIComponent(compId)}`);
 
+                sseOrderStream.onopen = () => {
+                    sseFailures = 0;
+                };
+
                 sseOrderStream.onmessage = (event) => {
                     try {
                         if (!event.data) return;
                         const msg = JSON.parse(event.data);
                         if (msg.eventType === 'CONNECTED') {
-                            console.log('⚡ [Stream Realtime Conectado com Sucesso]');
+                            sseFailures = 0;
                             return;
                         }
                         if (msg.eventType && msg.data) {
                             handleOrderRealtimeChange(msg.eventType, msg.data);
                         }
-                    } catch(err) {
-                        console.warn('Erro ao decodificar stream realtime:', err);
-                    }
+                    } catch(err) {}
                 };
 
                 sseOrderStream.onerror = () => {
-                    // O EventSource reconecta automaticamente
+                    sseFailures++;
+                    if (sseFailures > 2) {
+                        try { sseOrderStream.close(); } catch(e) {}
+                        if (!sseReconnectTimer) {
+                            sseReconnectTimer = setTimeout(() => {
+                                sseReconnectTimer = null;
+                                connectOrdersRealtimeStream();
+                            }, 30000);
+                        }
+                    }
                 };
             } catch(e) {}
         }
 
+        let orderFetchBackoffUntil = 0;
+        let orderFetchFailures = 0;
+
         // Sincronização em tempo real de pedidos com o servidor central
         async function fetchOrdersFromServer(silent = true) {
             if (isFetchingOrders) return;
+            const now = Date.now();
+            if (now < orderFetchBackoffUntil) return;
+
             isFetchingOrders = true;
             try {
                 const targetCompanyId = activeCompanyId || 'company-demo-don';
@@ -1407,8 +1427,15 @@
                         'x-company-id': targetCompanyId
                     }
                 });
-                if (!res.ok) throw new Error('Falha na resposta do servidor de pedidos');
+                if (!res.ok) {
+                    orderFetchFailures++;
+                    orderFetchBackoffUntil = Date.now() + Math.min(25000, 5000 * orderFetchFailures);
+                    return;
+                }
                 const json = await res.json();
+                orderFetchFailures = 0;
+                orderFetchBackoffUntil = 0;
+
                 if (json && json.success && Array.isArray(json.data)) {
                     const serverOrders = json.data;
 
@@ -1451,6 +1478,8 @@
                     }
                 }
             } catch (err) {
+                orderFetchFailures++;
+                orderFetchBackoffUntil = Date.now() + Math.min(25000, 5000 * orderFetchFailures);
                 if (!silent) console.warn('Aviso sincronização pedidos:', err.message);
             } finally {
                 isFetchingOrders = false;
@@ -3259,7 +3288,7 @@
             }
         }
 
-        let isRegisteredCompanyLoginActive = false;
+        let isRegisteredCompanyLoginActive = true;
 
         function showRegisteredCompanyLoginForm() {
             isRegisteredCompanyLoginActive = true;
@@ -3273,34 +3302,24 @@
         }
 
         function showDemoInfoPanel() {
-            isRegisteredCompanyLoginActive = false;
+            isRegisteredCompanyLoginActive = true;
             refreshDedicatedLoginUI();
         }
 
         function refreshDedicatedLoginUI() {
             const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
             const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
-            
-            // Se a empresa ativa não for Demo, forçar sempre tela de login da empresa cadastrada
-            if (!isCurrentDemo) {
-                isRegisteredCompanyLoginActive = true;
-            }
+            isRegisteredCompanyLoginActive = true;
 
-            // 1. Atualizar Fundo de Boas-Vindas e Textos da Hero
+            // 1. Atualizar Fundo de Boas-Vindas e Textos da Hero Centralizada
             const storeNameEl = document.getElementById('loginViewStoreName');
             const heroBadgeText = document.getElementById('loginHeroBadgeText');
             const heroSubtitle = document.getElementById('loginHeroSubtitle');
 
-            if (isCurrentDemo && !isRegisteredCompanyLoginActive) {
-                if (storeNameEl) storeNameEl.textContent = '"Don Food (Demonstração)"';
-                if (heroBadgeText) heroBadgeText.textContent = '🛍️ LOJA DE DEMONSTRAÇÃO DON FOOD';
-                if (heroSubtitle) heroSubtitle.textContent = 'Explore nosso cardápio modelo e veja como a plataforma Don Food potencializa as vendas do seu estabelecimento pelo WhatsApp.';
-            } else {
-                const displayName = (!isCurrentDemo && activeComp.name) ? `"${activeComp.name}"` : '"Don Food - Empresas Parceiras"';
-                if (storeNameEl) storeNameEl.textContent = displayName;
-                if (heroBadgeText) heroBadgeText.textContent = '🔐 PAINEL EXCLUSIVO DO LOJISTA';
-                if (heroSubtitle) heroSubtitle.textContent = 'Acesse o painel para gerenciar cardápio, acompanhar pedidos em tempo real, configurar taxas de entrega e personalizar a identidade visual da sua empresa.';
-            }
+            const displayName = (!isCurrentDemo && activeComp.name) ? `"${activeComp.name}"` : (settings.restaurantName ? `"${settings.restaurantName}"` : '"Don Food"');
+            if (storeNameEl) storeNameEl.textContent = displayName;
+            if (heroBadgeText) heroBadgeText.textContent = '🔐 PAINEL EXCLUSIVO DO LOJISTA';
+            if (heroSubtitle) heroSubtitle.textContent = 'Acesse o painel para gerenciar cardápio, acompanhar pedidos em tempo real e administrar seu estabelecimento.';
 
             // 2. Avatar / Ícone da Loja
             const avatarEl = document.getElementById('loginStoreIconAvatar');
@@ -3312,17 +3331,17 @@
                 }
             }
 
-            // 3. Título e Subtítulo do Card de Empresa Cadastrada
+            // 3. Título e Subtítulo do Card Centralizado de Login
             const cardTitleEl = document.getElementById('loginCardTitle');
             const cardSubtitleEl = document.getElementById('loginCardSubtitle');
             if (cardTitleEl) {
-                cardTitleEl.textContent = (!isCurrentDemo && activeComp.name) ? `Acessar Painel: ${activeComp.name}` : 'Acessar Minha Loja';
+                cardTitleEl.textContent = (!isCurrentDemo && activeComp.name) ? `Acessar Painel: ${activeComp.name}` : 'Acessar Painel da Loja';
             }
             if (cardSubtitleEl) {
-                cardSubtitleEl.innerHTML = 'Digite o <strong>E-mail ou Telefone</strong> e a <strong>Senha</strong> do seu estabelecimento';
+                cardSubtitleEl.innerHTML = 'Digite o <strong>E-mail ou Telefone</strong> e a <strong>Senha</strong> de acesso';
             }
 
-            // 4. Alternar Visualização entre Conectado, Loja Demo e Login de Empresas Cadastradas
+            // 4. Alternar Visualização entre Sessão Conectada e Formulário com Inputs
             const isOwner = AuthManager.isCompanyOwner(activeCompanyId) || AuthManager.isSuperAdmin();
             const alreadyLoggedBox = document.getElementById('loginAlreadyLoggedBox');
             const demoCard = document.getElementById('loginDemoCard');
@@ -3338,25 +3357,10 @@
                 if (alreadyStoreName) alreadyStoreName.textContent = activeComp.name || settings.restaurantName || 'Sua Loja';
             } else {
                 if (alreadyLoggedBox) alreadyLoggedBox.style.display = 'none';
-
-                if (isCurrentDemo && !isRegisteredCompanyLoginActive) {
-                    // Janela exclusiva da Loja Demo
-                    if (demoCard) demoCard.style.display = 'block';
-                    if (registeredCard) registeredCard.style.display = 'none';
-                } else {
-                    // Janela de Login das Empresas Cadastradas
-                    if (demoCard) demoCard.style.display = 'none';
-                    if (registeredCard) registeredCard.style.display = 'block';
-
-                    // Exibir botão de retorno à Demo se veio do contexto Demo
-                    if (isCurrentDemo) {
-                        if (btnBackToDemo) btnBackToDemo.style.display = 'inline-block';
-                        if (bulletBackToDemo) bulletBackToDemo.style.display = 'inline';
-                    } else {
-                        if (btnBackToDemo) btnBackToDemo.style.display = 'none';
-                        if (bulletBackToDemo) bulletBackToDemo.style.display = 'none';
-                    }
-                }
+                if (demoCard) demoCard.style.display = 'none';
+                if (registeredCard) registeredCard.style.display = 'block';
+                if (btnBackToDemo) btnBackToDemo.style.display = 'none';
+                if (bulletBackToDemo) bulletBackToDemo.style.display = 'none';
             }
 
             // 5. Limpar erros
@@ -3376,14 +3380,7 @@
                 switchActiveCompany(targetCompId);
             }
             
-            const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
-            const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
-
-            if (!isCurrentDemo || forceRegistered) {
-                isRegisteredCompanyLoginActive = true;
-            } else {
-                isRegisteredCompanyLoginActive = false;
-            }
+            isRegisteredCompanyLoginActive = true;
 
             currentAppView = 'login';
             updateAppViewDisplay();

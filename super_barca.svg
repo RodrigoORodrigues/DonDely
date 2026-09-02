@@ -1,0 +1,185 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" width="100%" height="100%">
+  <defs>
+    <!-- Background Ground Shadow -->
+    <radialGradient id="barcaGroundShadow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="rgba(0,0,0,0.3)"/>
+      <stop offset="60%" stop-color="rgba(0,0,0,0.12)"/>
+      <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
+    </radialGradient>
+
+    <!-- Barca Boat Body Gradient (Acrylic / Black Plastic Boat) -->
+    <linearGradient id="barcaBody" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2D123D"/>
+      <stop offset="40%" stop-color="#190724"/>
+      <stop offset="100%" stop-color="#0A020F"/>
+    </linearGradient>
+
+    <linearGradient id="barcaRim" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#E2E8F0" stop-opacity="0.8"/>
+      <stop offset="25%" stop-color="#94A3B8" stop-opacity="0.4"/>
+      <stop offset="50%" stop-color="#FFFFFF" stop-opacity="0.95"/>
+      <stop offset="75%" stop-color="#64748B" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#E2E8F0" stop-opacity="0.8"/>
+    </linearGradient>
+
+    <!-- Açaí Filling Deep Purples -->
+    <linearGradient id="barcaAcai" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4C0C5E"/>
+      <stop offset="35%" stop-color="#31053D"/>
+      <stop offset="75%" stop-color="#1D0125"/>
+      <stop offset="100%" stop-color="#2D0637"/>
+    </linearGradient>
+
+    <!-- Condensed Milk Swirl -->
+    <linearGradient id="leiteCondensado" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFBEB"/>
+      <stop offset="45%" stop-color="#FEF3C7"/>
+      <stop offset="85%" stop-color="#FDE68A"/>
+      <stop offset="100%" stop-color="#F59E0B"/>
+    </linearGradient>
+
+    <!-- Strawberry Fruit -->
+    <linearGradient id="barcaStrawberry" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF3366"/>
+      <stop offset="50%" stop-color="#E11D48"/>
+      <stop offset="100%" stop-color="#881337"/>
+    </linearGradient>
+
+    <!-- Banana Slice -->
+    <linearGradient id="barcaBanana" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FEFCE8"/>
+      <stop offset="60%" stop-color="#FEF08A"/>
+      <stop offset="100%" stop-color="#FACC15"/>
+    </linearGradient>
+
+    <!-- Kiwi Slice -->
+    <linearGradient id="barcaKiwi" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#84CC16"/>
+      <stop offset="60%" stop-color="#65A30D"/>
+      <stop offset="100%" stop-color="#4D7C0F"/>
+    </linearGradient>
+
+    <!-- Wafer Roll Chocolate -->
+    <linearGradient id="waferRoll" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#D97706"/>
+      <stop offset="35%" stop-color="#B45309"/>
+      <stop offset="70%" stop-color="#78350F"/>
+      <stop offset="100%" stop-color="#451A03"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Ground Shadow -->
+  <ellipse cx="300" cy="365" rx="260" ry="24" fill="url(#barcaGroundShadow)"/>
+
+  <!-- Barca Boat Hull (Formato de Barca Clássica de Açaí) -->
+  <g>
+    <!-- Base Hull -->
+    <path d="M40 220 C70 300, 160 345, 300 345 C440 345, 530 300, 560 220 C530 260, 430 295, 300 295 C170 295, 70 260, 40 220 Z" fill="url(#barcaBody)"/>
+    
+    <!-- Outer Rim Highlight -->
+    <path d="M35 210 C70 255, 175 285, 300 285 C425 285, 530 255, 565 210 C530 240, 425 268, 300 268 C175 268, 70 240, 35 210 Z" fill="url(#barcaRim)"/>
+  </g>
+
+  <!-- Deep Açaí Mountain Inside Boat -->
+  <path d="M45 210 C100 150, 200 135, 300 135 C400 135, 500 150, 555 210 C510 245, 410 270, 300 270 C190 270, 90 245, 45 210 Z" fill="url(#barcaAcai)"/>
+
+  <!-- Cream Swirls & Leite Ninho / Leite Condensado Loops -->
+  <path d="M70 215 Q140 180 220 205 Q300 230 380 185 Q460 170 530 205 Q450 230 300 235 Q150 240 70 215 Z" fill="url(#leiteCondensado)" opacity="0.85"/>
+  <path d="M120 190 Q200 160 300 180 Q400 165 480 190 Q400 205 300 205 Q200 210 120 190 Z" fill="#FFFFFF" opacity="0.7"/>
+
+  <!-- TOPPING: BANANA SLICES (Left Section) -->
+  <g transform="translate(100, 160) rotate(-15)">
+    <ellipse cx="25" cy="20" rx="24" ry="17" fill="url(#barcaBanana)" stroke="#CA8A04" stroke-width="1.5"/>
+    <ellipse cx="25" cy="20" rx="19" ry="13" fill="#FEF9C3"/>
+    <circle cx="25" cy="20" r="3" fill="#CA8A04"/>
+  </g>
+  <g transform="translate(140, 170) rotate(-5)">
+    <ellipse cx="25" cy="20" rx="24" ry="17" fill="url(#barcaBanana)" stroke="#CA8A04" stroke-width="1.5"/>
+    <ellipse cx="25" cy="20" rx="19" ry="13" fill="#FEF9C3"/>
+    <circle cx="25" cy="20" r="3" fill="#CA8A04"/>
+  </g>
+  <g transform="translate(180, 180) rotate(8)">
+    <ellipse cx="25" cy="20" rx="24" ry="17" fill="url(#barcaBanana)" stroke="#CA8A04" stroke-width="1.5"/>
+    <ellipse cx="25" cy="20" rx="19" ry="13" fill="#FEF9C3"/>
+    <circle cx="25" cy="20" r="3" fill="#CA8A04"/>
+  </g>
+
+  <!-- TOPPING: KIWI SLICES (Center-Right) -->
+  <g transform="translate(370, 175) rotate(12)">
+    <ellipse cx="28" cy="22" rx="27" ry="19" fill="url(#barcaKiwi)" stroke="#3F6212" stroke-width="1.5"/>
+    <ellipse cx="28" cy="22" rx="12" ry="8" fill="#ECFCCB"/>
+    <!-- Kiwi Black Seeds -->
+    <circle cx="22" cy="18" r="1.5" fill="#18181B"/>
+    <circle cx="28" cy="15" r="1.5" fill="#18181B"/>
+    <circle cx="34" cy="18" r="1.5" fill="#18181B"/>
+    <circle cx="35" cy="25" r="1.5" fill="#18181B"/>
+    <circle cx="28" cy="28" r="1.5" fill="#18181B"/>
+    <circle cx="21" cy="25" r="1.5" fill="#18181B"/>
+  </g>
+  <g transform="translate(420, 165) rotate(22)">
+    <ellipse cx="28" cy="22" rx="27" ry="19" fill="url(#barcaKiwi)" stroke="#3F6212" stroke-width="1.5"/>
+    <ellipse cx="28" cy="22" rx="12" ry="8" fill="#ECFCCB"/>
+    <circle cx="22" cy="18" r="1.5" fill="#18181B"/>
+    <circle cx="28" cy="15" r="1.5" fill="#18181B"/>
+    <circle cx="34" cy="18" r="1.5" fill="#18181B"/>
+    <circle cx="35" cy="25" r="1.5" fill="#18181B"/>
+    <circle cx="28" cy="28" r="1.5" fill="#18181B"/>
+    <circle cx="21" cy="25" r="1.5" fill="#18181B"/>
+  </g>
+
+  <!-- TOPPING: FRESH STRAWBERRIES (Center Section) -->
+  <g transform="translate(240, 115) rotate(-8)">
+    <path d="M35 10 Q60 30 50 65 Q42 80 35 90 Q28 80 20 65 Q10 30 35 10 Z" fill="url(#barcaStrawberry)"/>
+    <circle cx="30" cy="35" r="1.5" fill="#FEF08A"/>
+    <circle cx="42" cy="40" r="1.5" fill="#FEF08A"/>
+    <circle cx="26" cy="52" r="1.5" fill="#FEF08A"/>
+    <circle cx="38" cy="58" r="1.5" fill="#FEF08A"/>
+    <circle cx="32" cy="72" r="1.5" fill="#FEF08A"/>
+    <!-- Leaves -->
+    <path d="M35 12 Q20 5 12 18 Q26 18 30 22 Q35 8 35 12 Q35 8 40 22 Q46 18 58 18 Q50 5 35 12 Z" fill="#16A34A"/>
+  </g>
+
+  <g transform="translate(300, 120) rotate(14)">
+    <path d="M32 10 Q55 28 46 60 Q38 75 32 84 Q26 75 18 60 Q9 28 32 10 Z" fill="url(#barcaStrawberry)"/>
+    <circle cx="26" cy="32" r="1.4" fill="#FEF08A"/>
+    <circle cx="38" cy="38" r="1.4" fill="#FEF08A"/>
+    <circle cx="24" cy="50" r="1.4" fill="#FEF08A"/>
+    <circle cx="35" cy="55" r="1.4" fill="#FEF08A"/>
+    <!-- Leaves -->
+    <path d="M32 12 Q18 5 10 18 Q24 18 28 22 Q32 8 32 12 Q32 8 36 22 Q42 18 54 18 Q46 5 32 12 Z" fill="#16A34A"/>
+  </g>
+
+  <!-- TOPPING: CRISPY WAFER ROLLS / TUBINHO CROCANTE -->
+  <g transform="translate(430, 80) rotate(35)">
+    <rect x="0" y="0" width="130" height="18" rx="9" fill="url(#waferRoll)"/>
+    <!-- Diagonal Stripes -->
+    <path d="M20 0 L30 18 M50 0 L60 18 M80 0 L90 18 M110 0 L120 18" stroke="#FEF3C7" stroke-width="3" opacity="0.75"/>
+    <ellipse cx="125" cy="9" rx="4" ry="7" fill="#3B0748"/>
+  </g>
+  <g transform="translate(420, 105) rotate(28)">
+    <rect x="0" y="0" width="120" height="16" rx="8" fill="url(#waferRoll)"/>
+    <path d="M20 0 L30 16 M50 0 L60 16 M80 0 L90 16" stroke="#FEF3C7" stroke-width="2.5" opacity="0.75"/>
+    <ellipse cx="115" cy="8" rx="3.5" ry="6" fill="#3B0748"/>
+  </g>
+
+  <!-- GRANOLA & CONFETES SCATTER -->
+  <g fill="#F59E0B">
+    <circle cx="160" cy="225" r="3.5"/>
+    <circle cx="175" cy="235" r="2.5"/>
+    <circle cx="220" cy="230" r="3"/>
+    <circle cx="260" cy="220" r="3.5"/>
+    <circle cx="350" cy="225" r="3"/>
+    <circle cx="470" cy="215" r="3.5"/>
+    <circle cx="490" cy="225" r="2.5"/>
+  </g>
+  <g fill="#EC4899">
+    <circle cx="195" cy="235" r="3"/>
+    <circle cx="320" cy="225" r="3.5"/>
+    <circle cx="395" cy="230" r="3"/>
+  </g>
+  <g fill="#3B82F6">
+    <circle cx="235" cy="225" r="3"/>
+    <circle cx="340" cy="232" r="3.5"/>
+    <circle cx="450" cy="225" r="3"/>
+  </g>
+</svg>

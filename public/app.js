@@ -505,6 +505,7 @@
         // ========== VARIÁVEIS GLOBAIS MULTI-EMPRESA ==========
         let companies = [];
         let activeCompanyId = 'company-fb-default';
+        let currentAppView = 'landing'; // 'landing' | 'store'
 
         let products = [];
         let cart = [];
@@ -519,6 +520,509 @@
         let customerOrders = [];
         let isFetchingOrders = false;
         let knownOrderIds = new Set();
+
+        // ============================================================================
+        // ETAPA 2: CENTRALIZADOR DE AUTENTICAÇÃO E PAPÉIS RBAC (SUPER_ADMIN, COMPANY_OWNER, CUSTOMER)
+        // ============================================================================
+        const ROLES = Object.freeze({
+            SUPER_ADMIN: 'SUPER_ADMIN',
+            COMPANY_OWNER: 'COMPANY_OWNER',
+            CUSTOMER: 'CUSTOMER'
+        });
+
+        const AuthManager = {
+            getRole() {
+                if (sessionStorage.getItem('isDevLoggedIn') === 'true') {
+                    return ROLES.SUPER_ADMIN;
+                }
+                if (sessionStorage.getItem('isAdminLoggedIn') === 'true') {
+                    return ROLES.COMPANY_OWNER;
+                }
+                return ROLES.CUSTOMER;
+            },
+            isSuperAdmin() {
+                return this.getRole() === ROLES.SUPER_ADMIN;
+            },
+            isCompanyOwner(companyId = null) {
+                if (this.isSuperAdmin()) return true; // Super Admin tem privilégio irrestrito de gestão
+                if (this.getRole() !== ROLES.COMPANY_OWNER) return false;
+                if (!companyId) return true;
+                const currentLoggedComp = sessionStorage.getItem('loggedCompanyId') || activeCompanyId;
+                return currentLoggedComp === companyId;
+            },
+            isCustomer() {
+                return this.getRole() === ROLES.CUSTOMER;
+            },
+            isCustomerLoggedIn() {
+                return !!loggedCustomer;
+            },
+            getAuthHeader() {
+                const superToken = sessionStorage.getItem('devAuthToken');
+                if (superToken) return `Bearer ${superToken}`;
+                const companyToken = sessionStorage.getItem('companyAuthToken');
+                if (companyToken) return `Bearer ${companyToken}`;
+                const customerToken = sessionStorage.getItem('customerAuthToken');
+                if (customerToken) return `Bearer ${customerToken}`;
+                return null;
+            },
+            getCurrentUser() {
+                const role = this.getRole();
+                if (role === ROLES.SUPER_ADMIN) {
+                    return {
+                        role: ROLES.SUPER_ADMIN,
+                        name: 'Super Administrador / Dev',
+                        email: 'admin@donfood.com',
+                        permissions: ['ALL_COMPANIES', 'MANAGE_DATABASE', 'MIGRATE_CUSTOMERS', 'CREATE_COMPANY', 'EDIT_COMPANY', 'VIEW_METRICS']
+                    };
+                }
+                if (role === ROLES.COMPANY_OWNER) {
+                    const comp = companies.find(c => c.id === activeCompanyId) || settings;
+                    return {
+                        role: ROLES.COMPANY_OWNER,
+                        name: comp.name || settings.restaurantName || 'Proprietário da Loja',
+                        companyId: activeCompanyId,
+                        email: comp.email || '',
+                        whatsapp: comp.whatsappNumber || '',
+                        permissions: ['MANAGE_PRODUCTS', 'MANAGE_SETTINGS', 'MANAGE_ORDERS', 'VIEW_REPORTS', 'MANAGE_DELIVERY']
+                    };
+                }
+                return {
+                    role: ROLES.CUSTOMER,
+                    name: loggedCustomer ? loggedCustomer.name : 'Visitante',
+                    phone: loggedCustomer ? loggedCustomer.phone : null,
+                    address: loggedCustomer ? loggedCustomer.address : null,
+                    isGuest: !loggedCustomer,
+                    permissions: ['VIEW_MENU', 'PLACE_ORDER', 'TRACK_ORDER', 'MANAGE_PROFILE']
+                };
+            },
+            loginSuperAdmin(token = null) {
+                sessionStorage.setItem('isDevLoggedIn', 'true');
+                sessionStorage.setItem('currentRole', ROLES.SUPER_ADMIN);
+                if (token) sessionStorage.setItem('devAuthToken', token);
+                updateAdminHeaderUI();
+            },
+            logoutSuperAdmin() {
+                sessionStorage.removeItem('isDevLoggedIn');
+                sessionStorage.removeItem('devAuthToken');
+                sessionStorage.removeItem('currentRole');
+                closeDevPanelModal();
+                updateAdminHeaderUI();
+                showNotification('Sessão de Super Administrador encerrada.', 'info');
+            },
+            loginCompanyOwner(company, token = null) {
+                isAdminLoggedIn = true;
+                sessionStorage.setItem('isAdminLoggedIn', 'true');
+                sessionStorage.setItem('loggedCompanyId', company.id);
+                sessionStorage.setItem('currentRole', ROLES.COMPANY_OWNER);
+                if (token) sessionStorage.setItem('companyAuthToken', token);
+                updateAdminHeaderUI();
+            },
+            logoutCompanyOwner() {
+                isAdminLoggedIn = false;
+                sessionStorage.removeItem('isAdminLoggedIn');
+                sessionStorage.removeItem('loggedCompanyId');
+                sessionStorage.removeItem('companyAuthToken');
+                sessionStorage.removeItem('currentRole');
+                closeAdminPanel();
+                updateAdminHeaderUI();
+                updateMobileHeaderMenuUI();
+                showNotification('Sessão de empresa encerrada com sucesso.', 'info');
+            },
+            loginCustomer(customer, token = null) {
+                loggedCustomer = customer;
+                localStorage.setItem('loggedCustomer', JSON.stringify(customer));
+                if (token) sessionStorage.setItem('customerAuthToken', token);
+                updateCustomerHeaderUI();
+                updateAdminHeaderUI();
+            },
+            logoutCustomer() {
+                loggedCustomer = null;
+                localStorage.removeItem('loggedCustomer');
+                sessionStorage.removeItem('customerAuthToken');
+                updateCustomerHeaderUI();
+                updateAdminHeaderUI();
+            },
+            guardAction(requiredRole, actionCallback, fallbackMessage = 'Acesso restrito.') {
+                if (requiredRole === ROLES.SUPER_ADMIN && !this.isSuperAdmin()) {
+                    showNotification(fallbackMessage || 'Ação restrita ao Super Administrador!', 'warning');
+                    openDevPasswordModal();
+                    return false;
+                }
+                if (requiredRole === ROLES.COMPANY_OWNER && !this.isCompanyOwner()) {
+                    showNotification(fallbackMessage || 'Ação restrita ao Administrador da Empresa!', 'warning');
+                    openAdminLogin();
+                    return false;
+                }
+                if (typeof actionCallback === 'function') {
+                    actionCallback();
+                }
+                return true;
+            }
+        };
+
+        // ============================================================================
+        // ETAPA 3: MODULARIZAÇÃO, FUNÇÕES PURAS E VALIDAÇÃO DEFENSIVA
+        // ============================================================================
+        const DefensiveUtils = {
+            safeArray(val, fallback = []) {
+                return Array.isArray(val) ? val : fallback;
+            },
+            safeObject(val, fallback = {}) {
+                return (val && typeof val === 'object' && !Array.isArray(val)) ? val : fallback;
+            },
+            safeString(val, maxLen = 0, fallback = '') {
+                if (val === null || val === undefined) return fallback;
+                const str = String(val).trim();
+                return maxLen > 0 ? str.slice(0, maxLen) : str;
+            },
+            safeNumber(val, fallback = 0, min = null, max = null) {
+                const parsed = typeof val === 'number' ? val : parseFloat(val);
+                let num = isNaN(parsed) ? fallback : parsed;
+                if (min !== null && num < min) num = min;
+                if (max !== null && num > max) num = max;
+                return num;
+            },
+            safeInteger(val, fallback = 0, min = null, max = null) {
+                const parsed = typeof val === 'number' ? Math.floor(val) : parseInt(val, 10);
+                let num = isNaN(parsed) ? fallback : parsed;
+                if (min !== null && num < min) num = min;
+                if (max !== null && num > max) num = max;
+                return num;
+            },
+            formatCurrency(val) {
+                const num = this.safeNumber(val, 0);
+                return `R$ ${num.toFixed(2).replace('.', ',')}`;
+            },
+            escapeHtml(str) {
+                if (str === null || str === undefined) return '';
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            },
+            sanitizePhone(phone) {
+                return this.safeString(phone).replace(/\D/g, '');
+            }
+        };
+
+        // Funções Puras de Cálculo de Frete e Regiões
+        const DeliveryFeeEngine = {
+            calculateDeliveryFee({
+                selectedNeighborhoodId = null,
+                customNeighborhoodName = '',
+                neighborhoodsList = [],
+                defaultFee = 5.00,
+                defaultTime = '30 - 45 min',
+                customerData = null
+            } = {}) {
+                const safeList = DefensiveUtils.safeArray(neighborhoodsList);
+                const safeDefFee = DefensiveUtils.safeNumber(defaultFee, 5.00, 0);
+                const safeDefTime = DefensiveUtils.safeString(defaultTime, 50, '30 - 45 min');
+
+                let fee = safeDefFee;
+                let time = safeDefTime;
+                let neighborhoodName = '';
+                let neighborhoodZone = '';
+                let neighborhoodZoneName = '';
+                let selectedId = selectedNeighborhoodId;
+
+                // 1. Caso 'other' (bairro customizado digitado)
+                if (selectedId === 'other') {
+                    neighborhoodName = DefensiveUtils.safeString(customNeighborhoodName) || 
+                                       (customerData && DefensiveUtils.safeString(customerData.neighborhood)) || 
+                                       'Outro Bairro';
+                    neighborhoodZone = 'outra';
+                    neighborhoodZoneName = 'Outra Região';
+                    return { fee, time, neighborhoodName, neighborhoodZone, neighborhoodZoneName, selectedId };
+                }
+
+                // 2. Procura pelo ID ou nome exato na lista ativa
+                if (selectedId) {
+                    const found = safeList.find(n => n && (n.id === selectedId || (n.name && n.name.toLowerCase() === String(selectedId).toLowerCase())));
+                    if (found) {
+                        fee = DefensiveUtils.safeNumber(found.fee, safeDefFee, 0);
+                        time = DefensiveUtils.safeString(found.time, 50, safeDefTime);
+                        neighborhoodName = DefensiveUtils.safeString(found.name);
+                        neighborhoodZone = DefensiveUtils.safeString(found.zone);
+                        neighborhoodZoneName = DefensiveUtils.safeString(found.zoneName) || 
+                            (found.zone === 'centro' ? 'Centro' : 
+                            (found.zone === 'zona_sul' ? 'Zona Sul' : 
+                            (found.zone === 'zona_norte' ? 'Zona Norte' : 'Outra Região')));
+                        return { fee, time, neighborhoodName, neighborhoodZone, neighborhoodZoneName, selectedId: found.id || selectedId };
+                    }
+                }
+
+                // 3. Fallback para os dados do cliente em cache
+                if (customerData && customerData.neighborhood) {
+                    const custName = DefensiveUtils.safeString(customerData.neighborhood);
+                    const custId = DefensiveUtils.safeString(customerData.neighborhoodId);
+                    const found = safeList.find(n => n && ((n.name && n.name.toLowerCase() === custName.toLowerCase()) || n.id === custId));
+                    if (found) {
+                        fee = DefensiveUtils.safeNumber(found.fee, safeDefFee, 0);
+                        time = DefensiveUtils.safeString(found.time, 50, safeDefTime);
+                        neighborhoodName = DefensiveUtils.safeString(found.name);
+                        neighborhoodZone = DefensiveUtils.safeString(found.zone);
+                        neighborhoodZoneName = DefensiveUtils.safeString(found.zoneName) || '';
+                        return { fee, time, neighborhoodName, neighborhoodZone, neighborhoodZoneName, selectedId: found.id || custId };
+                    }
+                    neighborhoodName = custName;
+                }
+
+                return { fee, time, neighborhoodName, neighborhoodZone, neighborhoodZoneName, selectedId };
+            }
+        };
+
+        // Funções Puras de Validação e Cálculo de Cupons de Desconto
+        const CouponEngine = {
+            validateAndCalculateCoupon({
+                couponCode = '',
+                subtotal = 0,
+                availableCoupons = []
+            } = {}) {
+                const safeSubtotal = DefensiveUtils.safeNumber(subtotal, 0, 0);
+                const safeCode = DefensiveUtils.safeString(couponCode, 30).toUpperCase();
+                const list = DefensiveUtils.safeArray(availableCoupons);
+
+                if (!safeCode) {
+                    return {
+                        isValid: false,
+                        code: '',
+                        discount: 0,
+                        discountValue: 0,
+                        description: '',
+                        error: 'Informe o código do cupom.'
+                    };
+                }
+
+                const found = list.find(c => c && DefensiveUtils.safeString(c.code).toUpperCase() === safeCode);
+
+                if (!found) {
+                    return {
+                        isValid: false,
+                        code: safeCode,
+                        discount: 0,
+                        discountValue: 0,
+                        description: '',
+                        error: `Cupom "${safeCode}" não encontrado.`
+                    };
+                }
+
+                if (found.active === false) {
+                    return {
+                        isValid: false,
+                        code: found.code,
+                        discount: 0,
+                        discountValue: 0,
+                        description: found.description || '',
+                        error: `O cupom "${found.code}" está inativo ou pausado.`
+                    };
+                }
+
+                const discountPercent = DefensiveUtils.safeNumber(found.discount, 0, 0, 100);
+                const discountValue = (safeSubtotal * discountPercent) / 100;
+
+                return {
+                    isValid: true,
+                    code: found.code,
+                    discount: discountPercent,
+                    discountValue: Math.min(safeSubtotal, discountValue),
+                    description: found.description || '',
+                    error: null
+                };
+            }
+        };
+
+        // Funções Puras de Cálculo Geral de Carrinho e Pedido
+        const CartOrderCalculator = {
+            calculateSubtotal(items = []) {
+                const safeItems = DefensiveUtils.safeArray(items);
+                return safeItems.reduce((sum, item) => {
+                    const price = DefensiveUtils.safeNumber(item ? item.price : 0, 0, 0);
+                    const qty = DefensiveUtils.safeInteger(item ? item.quantity : 1, 1, 1, 999);
+                    return sum + (price * qty);
+                }, 0);
+            },
+            countTotalItems(items = []) {
+                const safeItems = DefensiveUtils.safeArray(items);
+                return safeItems.reduce((sum, item) => {
+                    return sum + DefensiveUtils.safeInteger(item ? item.quantity : 1, 1, 1, 999);
+                }, 0);
+            },
+            calculateFullOrderBreakdown({
+                cart = [],
+                appliedCoupon = null,
+                deliveryInfo = null,
+                availableCoupons = []
+            } = {}) {
+                const safeCart = DefensiveUtils.safeArray(cart);
+                const totalItems = this.countTotalItems(safeCart);
+                const subtotal = this.calculateSubtotal(safeCart);
+
+                let couponInfo = {
+                    isValid: false,
+                    code: null,
+                    discount: 0,
+                    discountValue: 0
+                };
+
+                if (appliedCoupon && appliedCoupon.code) {
+                    const calc = CouponEngine.validateAndCalculateCoupon({
+                        couponCode: appliedCoupon.code,
+                        subtotal,
+                        availableCoupons
+                    });
+                    if (calc.isValid) {
+                        couponInfo = calc;
+                    }
+                }
+
+                const deliveryFee = deliveryInfo ? DefensiveUtils.safeNumber(deliveryInfo.fee, 0, 0) : 0;
+                const deliveryTime = deliveryInfo ? DefensiveUtils.safeString(deliveryInfo.time, 50, '30 - 45 min') : '30 - 45 min';
+                const finalTotal = Math.max(0, subtotal - couponInfo.discountValue + deliveryFee);
+
+                return {
+                    totalItems,
+                    subtotal,
+                    couponInfo,
+                    discountValue: couponInfo.discountValue,
+                    deliveryFee,
+                    deliveryTime,
+                    finalTotal
+                };
+            }
+        };
+
+        // Funções Puras de Montagem e Formatação de Pedidos
+        const OrderMessageBuilder = {
+            buildOrderRecord({
+                orderId = null,
+                cart = [],
+                customerData = {},
+                paymentMethodLabel = 'Pix',
+                cashChangeFor = '',
+                appliedCoupon = null,
+                company = {},
+                settings = {},
+                deliveryInfo = {},
+                availableCoupons = []
+            } = {}) {
+                const breakdown = CartOrderCalculator.calculateFullOrderBreakdown({
+                    cart,
+                    appliedCoupon,
+                    deliveryInfo,
+                    availableCoupons
+                });
+
+                const generatedId = orderId || ('#' + Math.floor(1000 + Math.random() * 9000));
+                const compId = DefensiveUtils.safeString(company.id || settings.activeCompanyId, 60, 'company-demo-don');
+                const compName = DefensiveUtils.safeString(company.name || settings.restaurantName, 100, 'Don Food');
+                const compWa = DefensiveUtils.safeString(company.whatsappNumber || settings.whatsappNumber, 30);
+
+                const custObj = DefensiveUtils.safeObject(customerData);
+                const safeItems = DefensiveUtils.safeArray(cart).map(item => ({
+                    name: DefensiveUtils.safeString(item.name, 120, 'Item'),
+                    details: DefensiveUtils.safeString(item.details, 500, ''),
+                    quantity: DefensiveUtils.safeInteger(item.quantity, 1, 1, 99),
+                    price: DefensiveUtils.safeNumber(item.price, 0, 0)
+                }));
+
+                return {
+                    id: generatedId,
+                    companyId: compId,
+                    companyName: compName,
+                    companyWhatsapp: compWa,
+                    customerName: DefensiveUtils.safeString(custObj.name, 100, 'Cliente'),
+                    customerNeighborhood: DefensiveUtils.safeString(custObj.neighborhood || deliveryInfo.neighborhoodName, 100, 'Centro'),
+                    customerNeighborhoodZone: DefensiveUtils.safeString(custObj.neighborhoodZone || deliveryInfo.neighborhoodZoneName, 100, ''),
+                    customerAddress: DefensiveUtils.safeString(custObj.address, 200, ''),
+                    customerReference: DefensiveUtils.safeString(custObj.reference, 200, ''),
+                    customerPhone: DefensiveUtils.safeString(custObj.phone, 30, ''),
+                    paymentMethod: paymentMethodLabel,
+                    cashChangeFor: cashChangeFor ? DefensiveUtils.safeString(cashChangeFor, 50) : null,
+                    deliveryTime: breakdown.deliveryTime,
+                    date: new Date().toLocaleString('pt-BR'),
+                    couponCode: breakdown.couponInfo.isValid ? breakdown.couponInfo.code : null,
+                    couponDiscount: breakdown.couponInfo.isValid ? breakdown.couponInfo.discount : 0,
+                    discountValue: breakdown.discountValue,
+                    items: safeItems,
+                    subtotal: breakdown.subtotal,
+                    deliveryFee: breakdown.deliveryFee,
+                    total: breakdown.finalTotal,
+                    status: 'RECEIVED',
+                    created_at: new Date().toISOString()
+                };
+            },
+
+            formatWhatsAppMessage({ order, restaurantName = 'Don Food' }) {
+                if (!order) return '';
+                const o = DefensiveUtils.safeObject(order);
+                const safeRestName = DefensiveUtils.safeString(restaurantName || o.companyName, 100, 'Don Food');
+                
+                let message = `*💜 Novo Pedido ${o.id || ''} - ${safeRestName}*\n\n`;
+                
+                // Dados do cliente
+                message += `*📋 DADOS DO CLIENTE & ENTREGA*\n`;
+                message += `👤 Nome: ${DefensiveUtils.safeString(o.customerName)}\n`;
+                if (o.customerNeighborhood) {
+                    message += `🛵 Bairro / Região: ${o.customerNeighborhood}${o.customerNeighborhoodZone ? ` (${o.customerNeighborhoodZone})` : ''}\n`;
+                }
+                message += `📍 Endereço: ${DefensiveUtils.safeString(o.customerAddress)}\n`;
+                if (o.customerReference) {
+                    message += `🎯 Ponto de Referência: ${o.customerReference}\n`;
+                }
+                message += `📱 Telefone: ${DefensiveUtils.safeString(o.customerPhone)}\n\n`;
+
+                // Forma de Pagamento e Previsão de Entrega
+                message += `*💳 FORMA DE PAGAMENTO*\n`;
+                message += `• ${DefensiveUtils.safeString(o.paymentMethod, 100, 'Pix')}\n\n`;
+
+                message += `*⏱️ PREVISÃO DE ENTREGA*\n`;
+                message += `• ~${DefensiveUtils.safeString(o.deliveryTime, 50, '30 - 45 min')}\n\n`;
+                
+                // Pedido
+                message += `*🛒 ITENS DO PEDIDO*\n`;
+                DefensiveUtils.safeArray(o.items).forEach(item => {
+                    const qty = DefensiveUtils.safeInteger(item.quantity, 1);
+                    const price = DefensiveUtils.safeNumber(item.price, 0);
+                    message += `• *${qty}x ${DefensiveUtils.safeString(item.name)}*\n`;
+                    if (item.details) {
+                        message += `   🥣 _Ingredientes: ${DefensiveUtils.safeString(item.details)}_\n`;
+                    }
+                    message += `   Valor unitário: ${DefensiveUtils.formatCurrency(price)}\n`;
+                    message += `   Subtotal: ${DefensiveUtils.formatCurrency(price * qty)}\n\n`;
+                });
+
+                message += `------------------------------\n`;
+                message += `Subtotal: ${DefensiveUtils.formatCurrency(o.subtotal)}\n`;
+                if (o.discountValue > 0 && o.couponCode) {
+                    message += `🏷️ *Cupom de Desconto:* ${o.couponCode} (${o.couponDiscount}% OFF = -${DefensiveUtils.formatCurrency(o.discountValue)})\n`;
+                }
+                message += `Taxa de Entrega: ${DefensiveUtils.formatCurrency(o.deliveryFee)}\n`;
+                message += `*💰 TOTAL: ${DefensiveUtils.formatCurrency(o.total)}*\n\n`;
+                message += 'Aguardo confirmação! Obrigado! 😊';
+
+                return message;
+            }
+        };
+
+        // Função para alternar visualização de senha de empresas no Painel Dev (apenas para SUPER_ADMIN)
+        function toggleCompanyPasswordVisibility(companyId, realPassword) {
+            if (!AuthManager.isSuperAdmin()) {
+                showNotification('Apenas Super Administradores podem visualizar senhas.', 'warning');
+                return;
+            }
+            const valEl = document.getElementById(`compPassVal_${companyId}`);
+            if (!valEl) return;
+            if (valEl.dataset.revealed === 'true') {
+                valEl.textContent = '••••••••';
+                valEl.dataset.revealed = 'false';
+            } else {
+                valEl.textContent = realPassword || 'admin123';
+                valEl.dataset.revealed = 'true';
+            }
+        }
 
         // Alerta sonoro agradável e nítido (chime) para novos pedidos recebidos no painel da empresa
         function playNewOrderSound() {
@@ -860,6 +1364,9 @@
             connectOrdersRealtimeStream();
         }
 
+        let sseReconnectTimer = null;
+        let sseFailures = 0;
+
         function connectOrdersRealtimeStream() {
             if (typeof EventSource === 'undefined') return;
             if (sseOrderStream) {
@@ -870,31 +1377,48 @@
                 const compId = activeCompanyId || 'company-demo-don';
                 sseOrderStream = new EventSource(`/api/orders/stream?company_id=${encodeURIComponent(compId)}`);
 
+                sseOrderStream.onopen = () => {
+                    sseFailures = 0;
+                };
+
                 sseOrderStream.onmessage = (event) => {
                     try {
                         if (!event.data) return;
                         const msg = JSON.parse(event.data);
                         if (msg.eventType === 'CONNECTED') {
-                            console.log('⚡ [Stream Realtime Conectado com Sucesso]');
+                            sseFailures = 0;
                             return;
                         }
                         if (msg.eventType && msg.data) {
                             handleOrderRealtimeChange(msg.eventType, msg.data);
                         }
-                    } catch(err) {
-                        console.warn('Erro ao decodificar stream realtime:', err);
-                    }
+                    } catch(err) {}
                 };
 
                 sseOrderStream.onerror = () => {
-                    // O EventSource reconecta automaticamente
+                    sseFailures++;
+                    if (sseFailures > 2) {
+                        try { sseOrderStream.close(); } catch(e) {}
+                        if (!sseReconnectTimer) {
+                            sseReconnectTimer = setTimeout(() => {
+                                sseReconnectTimer = null;
+                                connectOrdersRealtimeStream();
+                            }, 30000);
+                        }
+                    }
                 };
             } catch(e) {}
         }
 
+        let orderFetchBackoffUntil = 0;
+        let orderFetchFailures = 0;
+
         // Sincronização em tempo real de pedidos com o servidor central
         async function fetchOrdersFromServer(silent = true) {
             if (isFetchingOrders) return;
+            const now = Date.now();
+            if (now < orderFetchBackoffUntil) return;
+
             isFetchingOrders = true;
             try {
                 const targetCompanyId = activeCompanyId || 'company-demo-don';
@@ -903,8 +1427,15 @@
                         'x-company-id': targetCompanyId
                     }
                 });
-                if (!res.ok) throw new Error('Falha na resposta do servidor de pedidos');
+                if (!res.ok) {
+                    orderFetchFailures++;
+                    orderFetchBackoffUntil = Date.now() + Math.min(25000, 5000 * orderFetchFailures);
+                    return;
+                }
                 const json = await res.json();
+                orderFetchFailures = 0;
+                orderFetchBackoffUntil = 0;
+
                 if (json && json.success && Array.isArray(json.data)) {
                     const serverOrders = json.data;
 
@@ -947,6 +1478,8 @@
                     }
                 }
             } catch (err) {
+                orderFetchFailures++;
+                orderFetchBackoffUntil = Date.now() + Math.min(25000, 5000 * orderFetchFailures);
                 if (!silent) console.warn('Aviso sincronização pedidos:', err.message);
             } finally {
                 isFetchingOrders = false;
@@ -1014,6 +1547,12 @@
             fetchOrdersFromServer(true);
             // Iniciar canal Supabase Realtime para a tabela orders
             initSupabaseRealtimeOrders();
+
+            // Roteamento dinâmico via URL (permite troca sem recarregar tela inteira)
+            window.addEventListener('popstate', () => {
+                loadData();
+                renderAll();
+            });
         }
 
         // ========== APLICADOR DESSA PALETA DE CORES DINÂMICA ==========
@@ -1413,7 +1952,7 @@
                 <div class="promo-header">
                     ${badge ? `<span class="promo-badge">${badge}</span>` : ''}
                     ${title ? `<div class="promo-title-box"><h2 class="promo-title">${title}</h2></div>` : ''}
-                    ${subtitle ? `<p class="promo-subtitle" style="color: #FEF08A; font-weight: 600; margin-top: 0.35rem;">${subtitle}</p>` : ''}
+                    ${subtitle ? `<p class="promo-subtitle" style="color: #111827; font-weight: 800; font-size: 1.05rem; margin-top: 0.5rem; text-shadow: none;">${subtitle}</p>` : ''}
                 </div>
 
                 <div class="promo-carousel-wrapper" id="promoCarouselWrapper">
@@ -1424,7 +1963,7 @@
                                 <div class="promo-option-card ${originalIdx === 0 ? 'highlight' : ''}" data-original-index="${originalIdx}" data-index="${idx}">
                                     <div class="promo-option-icon">${card.icon || ''}</div>
                                     <div class="promo-option-title">${card.title || ''}</div>
-                                    <small style="color: #CBD5E1;">${card.desc || ''}</small>
+                                    <small style="color: #374151; font-weight: 600;">${card.desc || ''}</small>
                                 </div>
                             `;
                         }).join('')}
@@ -1563,36 +2102,46 @@
 
             let categoriesList = [];
 
-            if (extrasData.categories && Array.isArray(extrasData.categories) && extrasData.categories.length > 0) {
+            if (Array.isArray(extrasData.categories) && extrasData.categories.length > 0) {
                 categoriesList = extrasData.categories;
-            } else if (extrasData.chips && Array.isArray(extrasData.chips)) {
+            } else if (Array.isArray(extrasData.chips)) {
                 categoriesList = [{
                     name: extrasData.categoryName || (defaultData.categories && defaultData.categories[0] ? defaultData.categories[0].name : 'Acompanhamentos'),
                     chips: extrasData.chips
                 }];
-            } else if (defaultData.categories && Array.isArray(defaultData.categories)) {
+            } else if (Array.isArray(defaultData.categories)) {
                 categoriesList = defaultData.categories;
             }
 
-            const categoriesContent = categoriesList.map(cat => `
+            const categoriesContent = DefensiveUtils.safeArray(categoriesList).map(cat => {
+                if (!cat) return '';
+                const chips = DefensiveUtils.safeArray(cat.chips);
+                return `
                 <div style="margin-bottom: 2rem;">
-                    ${cat.name ? `<div class="ingredients-category-title">${cat.name}</div>` : ''}
+                    ${cat.name ? `<div class="ingredients-category-title">${DefensiveUtils.escapeHtml(cat.name)}</div>` : ''}
                     <div class="ingredients-grid">
-                        ${(cat.chips || []).map(chip => `
+                        ${chips.map(chip => {
+                            if (!chip) return '';
+                            const icon = DefensiveUtils.escapeHtml(chip.icon || '✨');
+                            const name = DefensiveUtils.escapeHtml(chip.name || '');
+                            const price = chip.price ? `<span class="ingredient-chip-price">${DefensiveUtils.escapeHtml(chip.price)}</span>` : '';
+                            return `
                             <div class="ingredient-chip">
-                                <span>${chip.icon || '✨'}</span> ${chip.name || ''}
-                                ${chip.price ? `<span class="ingredient-chip-price">${chip.price}</span>` : ''}
+                                <span>${icon}</span> ${name}
+                                ${price}
                             </div>
-                        `).join('')}
+                        `;
+                        }).join('')}
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
 
             sectionEl.innerHTML = `
                 <div style="text-align: center; margin-bottom: 2rem;">
-                    ${badge ? `<span style="background: var(--primary); color: var(--white); font-weight: 800; padding: 0.4rem 1.2rem; border-radius: 30px; font-size: 0.85rem; display: inline-block; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">${badge}</span>` : ''}
-                    ${title ? `<h3 style="font-size: 1.6rem; color: var(--primary-dark); font-weight: 800; margin-top: 0.5rem;">${title}</h3>` : ''}
-                    ${desc ? `<p style="color: var(--gray-600); max-width: 600px; margin: 0.5rem auto 0; font-size: 0.95rem;">${desc}</p>` : ''}
+                    ${badge ? `<span style="background: var(--primary); color: var(--white); font-weight: 800; padding: 0.4rem 1.2rem; border-radius: 30px; font-size: 0.85rem; display: inline-block; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">${DefensiveUtils.escapeHtml(badge)}</span>` : ''}
+                    ${title ? `<h3 style="font-size: 1.6rem; color: var(--primary-dark); font-weight: 800; margin-top: 0.5rem;">${DefensiveUtils.escapeHtml(title)}</h3>` : ''}
+                    ${desc ? `<p style="color: var(--gray-600); max-width: 600px; margin: 0.5rem auto 0; font-size: 0.95rem;">${DefensiveUtils.escapeHtml(desc)}</p>` : ''}
                 </div>
                 ${categoriesContent}
             `;
@@ -1993,10 +2542,10 @@
                 );
             }
 
-            // Fallback por pathname se for rota direta como /demo ou /acai-fb
+            // Fallback por pathname se for rota direta como /demo ou /acai-fb (excluindo /login e assets)
             if (!targetCompany && window.location.pathname && window.location.pathname !== '/' && window.location.pathname !== '/index.html') {
                 const pathSlug = window.location.pathname.replace(/^\/+/, '').split('/')[0].toLowerCase();
-                if (pathSlug && !pathSlug.endsWith('.js') && !pathSlug.endsWith('.css') && !pathSlug.endsWith('.png') && !pathSlug.endsWith('.jpg') && !pathSlug.endsWith('.svg') && !pathSlug.endsWith('.json') && !pathSlug.endsWith('.sql') && pathSlug !== 'api') {
+                if (pathSlug && !pathSlug.endsWith('.js') && !pathSlug.endsWith('.css') && !pathSlug.endsWith('.png') && !pathSlug.endsWith('.jpg') && !pathSlug.endsWith('.svg') && !pathSlug.endsWith('.json') && !pathSlug.endsWith('.sql') && pathSlug !== 'api' && pathSlug !== 'login') {
                     targetCompany = companies.find(c => 
                         (c.slug && c.slug.toLowerCase() === pathSlug) || 
                         (c.id && c.id.toLowerCase() === pathSlug)
@@ -2028,22 +2577,26 @@
 
             // 3. Atualizar Visibilidade do Banner de Demonstração e Landing Page Showcase
             const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
-            const demoBar = document.getElementById('demoNoticeBar');
-            if (demoBar) {
-                demoBar.style.display = isCurrentDemo ? 'block' : 'none';
-            }
-            const demoHero = document.getElementById('demoLandingHero');
-            const heroSection = document.getElementById('inicio');
-            if (demoHero) {
-                demoHero.style.display = isCurrentDemo ? 'block' : 'none';
-            }
-            if (heroSection) {
-                if (isCurrentDemo) {
-                    heroSection.classList.add('has-demo-landing');
+            
+            // Determinar visualização inicial (Landing Showcase vs Loja vs Tela de Login Dedicada)
+            const pathLower = (window.location.pathname || '').toLowerCase();
+            const viewParam = (urlParams.get('view') || urlParams.get('pagina') || '').toLowerCase();
+            const hashLower = (window.location.hash || '').toLowerCase();
+            const isLoginRoute = pathLower === '/login' || pathLower.endsWith('/login') || viewParam === 'login' || hashLower === '#login';
+
+            if (isLoginRoute) {
+                currentAppView = 'login';
+            } else if (!isCurrentDemo) {
+                currentAppView = 'store';
+            } else {
+                if (hashLower === '#loja-demo' || hashLower === '#cardapio' || hashLower === '#inicio') {
+                    currentAppView = 'store';
                 } else {
-                    heroSection.classList.remove('has-demo-landing');
+                    currentAppView = 'landing';
                 }
             }
+
+            updateAppViewDisplay();
 
             // 3. Carregar Configurações, Produtos e Pedidos ISOLADOS por Empresa (Database Isolation)
             settings = {
@@ -2205,6 +2758,719 @@
             `).join('');
         }
 
+        // ========== MÁSCARA TELEFÔNICA (DDD + NÚMERO) ==========
+        function maskPhoneInput(input) {
+            if (!input) return;
+            let v = input.value.replace(/\D/g, '');
+            if (v.length > 11) v = v.substring(0, 11);
+            if (v.length > 10) {
+                input.value = `(${v.substring(0,2)}) ${v.substring(2,7)}-${v.substring(7)}`;
+            } else if (v.length > 6) {
+                input.value = `(${v.substring(0,2)}) ${v.substring(2,6)}-${v.substring(6)}`;
+            } else if (v.length > 2) {
+                input.value = `(${v.substring(0,2)}) ${v.substring(2)}`;
+            } else if (v.length > 0) {
+                input.value = `(${v}`;
+            } else {
+                input.value = '';
+            }
+        }
+
+        // ========== GERENCIADOR DE TESTE GRÁTIS 24H NA LOJA DEMO (CAPTURA DE LEADS) ==========
+        const DemoTrialManager = {
+            STORAGE_KEY: 'donfood_demo_trial',
+            LEADS_KEY: 'donfood_demo_leads',
+
+            isTrialActive() {
+                try {
+                    const raw = localStorage.getItem(this.STORAGE_KEY);
+                    if (!raw) return false;
+                    const data = JSON.parse(raw);
+                    if (!data || !data.expiresAt) return false;
+                    return Number(data.expiresAt) > Date.now();
+                } catch {
+                    return false;
+                }
+            },
+
+            getTrialData() {
+                try {
+                    const raw = localStorage.getItem(this.STORAGE_KEY);
+                    if (!raw) return null;
+                    return JSON.parse(raw);
+                } catch {
+                    return null;
+                }
+            },
+
+            getRemainingTimeFormatted() {
+                const data = this.getTrialData();
+                if (!data || !data.expiresAt) return 'Expirado';
+                const diff = Number(data.expiresAt) - Date.now();
+                if (diff <= 0) return 'Expirado';
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                return `${hours}h ${minutes}min`;
+            },
+
+            async unlock(phone, name) {
+                const cleanPhone = (phone || '').replace(/\D/g, '');
+                if (!cleanPhone || cleanPhone.length < 10) {
+                    throw new Error('Número de WhatsApp inválido (mínimo 10 dígitos com DDD).');
+                }
+
+                const now = Date.now();
+                const expiresAt = now + 24 * 60 * 60 * 1000;
+                const leadRecord = {
+                    id: 'lead_' + now + '_' + Math.random().toString(36).substring(2, 6),
+                    phone: phone.trim(),
+                    cleanPhone: cleanPhone,
+                    name: (name || '').trim() || 'Interessado Demo',
+                    unlockedAt: now,
+                    expiresAt: expiresAt,
+                    createdAt: new Date().toISOString(),
+                    status: 'ACTIVE_TRIAL'
+                };
+
+                // Salvar localmente no navegador
+                localStorage.setItem(this.STORAGE_KEY, JSON.stringify(leadRecord));
+
+                // Salvar lista acumulada de leads no localStorage
+                try {
+                    const existingLeadsRaw = localStorage.getItem(this.LEADS_KEY);
+                    let leadsList = existingLeadsRaw ? JSON.parse(existingLeadsRaw) : [];
+                    const idx = leadsList.findIndex(l => (l.phone || '').replace(/\D/g, '') === cleanPhone);
+                    if (idx >= 0) {
+                        leadsList[idx] = { ...leadsList[idx], ...leadRecord, unlockCount: (leadsList[idx].unlockCount || 1) + 1 };
+                    } else {
+                        leadsList.unshift(leadRecord);
+                    }
+                    localStorage.setItem(this.LEADS_KEY, JSON.stringify(leadsList));
+                } catch (e) {
+                    console.error('Erro ao armazenar lead localmente:', e);
+                }
+
+                // Sincronizar com servidor Node.js backend
+                try {
+                    await fetch('/api/demo/unlock', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            phone: phone.trim(),
+                            name: (name || '').trim(),
+                            storeSlug: 'demo',
+                            source: 'store-demo'
+                        })
+                    });
+                } catch (err) {
+                    console.warn('Sincronização com backend offline.');
+                }
+
+                return leadRecord;
+            },
+
+            updateDemoBannerUI() {
+                const noticeBar = document.getElementById('demoNoticeBar');
+                if (!noticeBar) return;
+
+                const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
+                const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+
+                if (!isCurrentDemo || currentAppView !== 'store') {
+                    noticeBar.style.display = 'none';
+                    return;
+                }
+
+                noticeBar.style.display = 'block';
+
+                const isUnlocked = this.isTrialActive();
+                const trialData = this.getTrialData();
+
+                if (isUnlocked && trialData) {
+                    const remaining = this.getRemainingTimeFormatted();
+                    noticeBar.innerHTML = `
+                        <div class="demo-notice-glow-box" style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95)); border: 1.5px solid #6EE7B7; color: white;">
+                            <div style="display: flex; align-items: center; gap: 0.6rem;">
+                                <span style="font-size: 1.25rem;">⏱️</span>
+                                <div>
+                                    <strong style="display: block; font-size: 0.92rem; color: #FFFFFF;">Área do Cliente Liberada (Teste Grátis 24h)</strong>
+                                    <small style="color: #ECFDF5; font-size: 0.8rem;">Tempo restante: <strong>${remaining}</strong> • Contato: <strong>${trialData.phone}</strong></small>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                                <button type="button" onclick="switchToLandingView(event)" class="btn-admin" style="font-size: 0.82rem; padding: 5px 14px; font-weight: 700; border-radius: 50px; background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.4); cursor: pointer;">
+                                    ← Apresentação
+                                </button>
+                                <button type="button" onclick="openAcquireAppModal()" class="btn-acquire-header" style="font-size: 0.82rem; padding: 5px 14px; font-weight: 700; border-radius: 50px; background: #FFFFFF; color: #047857; box-shadow: 0 2px 10px rgba(0,0,0,0.15);">
+                                    💎 Quero Este Sistema
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    noticeBar.innerHTML = `
+                        <div class="demo-notice-glow-box" style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; background: linear-gradient(135deg, #9A3412, #7C2D12); border: 1.5px solid #FDBA74; color: white;">
+                            <div style="display: flex; align-items: center; gap: 0.6rem;">
+                                <span style="font-size: 1.25rem;">🔒</span>
+                                <div>
+                                    <strong style="display: block; font-size: 0.92rem; color: #FFFFFF;">Loja de Demonstração Don Food (Modo Visual)</strong>
+                                    <small style="color: #FED7AA; font-size: 0.8rem;">Libere o cardápio interativo e teste grátis por 24 horas.</small>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                                <button type="button" onclick="openDemoLeadModal()" class="btn-admin" style="font-size: 0.85rem; padding: 6px 16px; font-weight: 800; border-radius: 50px; background: linear-gradient(135deg, #F59E0B, #D97706); color: white; border: none; cursor: pointer; box-shadow: 0 3px 12px rgba(245, 158, 11, 0.4);">
+                                    🔓 Desbloquear Teste 24h
+                                </button>
+                                <button type="button" onclick="switchToLandingView(event)" class="btn-admin" style="font-size: 0.82rem; padding: 5px 14px; font-weight: 700; border-radius: 50px; background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3); cursor: pointer;">
+                                    ← Apresentação
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+        };
+
+        function openDemoLeadModal() {
+            const modal = document.getElementById('demoLeadCaptureModal');
+            if (modal) {
+                modal.classList.add('active');
+                const phoneInput = document.getElementById('demoLeadPhoneInput');
+                if (phoneInput) {
+                    setTimeout(() => phoneInput.focus(), 100);
+                }
+            }
+        }
+
+        function closeDemoLeadModal() {
+            const modal = document.getElementById('demoLeadCaptureModal');
+            if (modal) modal.classList.remove('active');
+        }
+
+        async function handleDemoLeadUnlockSubmit(e) {
+            if (e) e.preventDefault();
+            const phoneInput = document.getElementById('demoLeadPhoneInput');
+            const nameInput = document.getElementById('demoLeadNameInput');
+            const errorEl = document.getElementById('demoLeadError');
+            const btnSubmit = document.getElementById('btnDemoUnlockSubmit');
+
+            const phone = phoneInput ? phoneInput.value.trim() : '';
+            const name = nameInput ? nameInput.value.trim() : '';
+            const cleanPhone = phone.replace(/\D/g, '');
+
+            if (!cleanPhone || cleanPhone.length < 10) {
+                if (errorEl) {
+                    errorEl.style.display = 'block';
+                    errorEl.textContent = '❌ Por favor, digite um número de WhatsApp válido com DDD (mínimo 10 dígitos).';
+                }
+                if (phoneInput) phoneInput.focus();
+                return;
+            }
+
+            if (btnSubmit) {
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = '⏳ Liberando Acesso...';
+            }
+
+            try {
+                await DemoTrialManager.unlock(phone, name);
+                if (errorEl) errorEl.style.display = 'none';
+                closeDemoLeadModal();
+                DemoTrialManager.updateDemoBannerUI();
+                showNotification(`🎉 Teste liberado com sucesso por 24 horas! Aproveite para montar pedidos e testar o cardápio.`, 'success');
+            } catch (err) {
+                if (errorEl) {
+                    errorEl.style.display = 'block';
+                    errorEl.textContent = `❌ ${err.message || 'Erro ao liberar teste.'}`;
+                }
+            } finally {
+                if (btnSubmit) {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = '🔓 Desbloquear Acesso por 24 Horas';
+                }
+            }
+        }
+
+        function openDemoAdminBlockedModal() {
+            const modal = document.getElementById('demoAdminBlockedModal');
+            if (modal) modal.classList.add('active');
+        }
+
+        function closeDemoAdminBlockedModal() {
+            const modal = document.getElementById('demoAdminBlockedModal');
+            if (modal) modal.classList.remove('active');
+        }
+
+        // ========== GESTÃO DE LEADS CAPTURADOS NO PAINEL DEV ==========
+        let devLeadsData = [];
+
+        async function fetchDevLeads() {
+            try {
+                const response = await fetch('/api/dev/leads');
+                const res = await response.json();
+                if (res && res.success && Array.isArray(res.data)) {
+                    devLeadsData = res.data;
+                } else {
+                    const local = localStorage.getItem(DemoTrialManager.LEADS_KEY);
+                    devLeadsData = local ? JSON.parse(local) : [];
+                }
+            } catch {
+                const local = localStorage.getItem(DemoTrialManager.LEADS_KEY);
+                devLeadsData = local ? JSON.parse(local) : [];
+            }
+
+            renderDevLeadsList();
+        }
+
+        function renderDevLeadsList() {
+            const listEl = document.getElementById('devLeadsList');
+            const totalEl = document.getElementById('devMetricTotalLeads');
+            const activeEl = document.getElementById('devMetricActiveLeads');
+            const expiredEl = document.getElementById('devMetricExpiredLeads');
+            const countBadge = document.getElementById('devLeadsCount');
+            const searchInput = document.getElementById('devLeadsSearchInput');
+            const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+            const now = Date.now();
+            let total = devLeadsData.length;
+            let active = 0;
+            let expired = 0;
+
+            devLeadsData.forEach(lead => {
+                const exp = lead.trialExpiresAt || lead.expiresAt;
+                if (exp && Number(exp) > now) {
+                    active++;
+                } else {
+                    expired++;
+                }
+            });
+
+            if (totalEl) totalEl.textContent = total;
+            if (activeEl) activeEl.textContent = active;
+            if (expiredEl) expiredEl.textContent = expired;
+            if (countBadge) countBadge.textContent = total;
+
+            if (!listEl) return;
+
+            let filtered = devLeadsData.filter(lead => {
+                if (!searchTerm) return true;
+                const nameMatch = (lead.name || '').toLowerCase().includes(searchTerm);
+                const phoneMatch = (lead.phone || '').includes(searchTerm) || (lead.cleanPhone || '').includes(searchTerm);
+                return nameMatch || phoneMatch;
+            });
+
+            if (filtered.length === 0) {
+                listEl.innerHTML = `
+                    <div style="background: white; border: 1px dashed var(--gray-300); border-radius: 10px; padding: 2rem; text-align: center; color: var(--gray-500);">
+                        <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">🎯</span>
+                        <strong style="color: var(--gray-700);">Nenhum contato encontrado</strong>
+                        <p style="font-size: 0.85rem; margin: 0.25rem 0 0 0;">Quando visitantes inserirem o telefone na Loja Demo, eles aparecerão aqui automaticamente.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            listEl.innerHTML = filtered.map(lead => {
+                const exp = lead.trialExpiresAt || lead.expiresAt;
+                const isLeadActive = exp ? (Number(exp) > now) : false;
+                const remainingHours = exp ? Math.max(0, Math.round((Number(exp) - now) / 3600000)) : 0;
+                const cleanPhone = (lead.phone || '').replace(/\D/g, '');
+                const formattedDate = lead.createdAt ? new Date(lead.createdAt).toLocaleString('pt-BR') : 'Data não informada';
+                const leadName = lead.name || 'Interessado Demo';
+                const whatsappMsg = encodeURIComponent(`Olá, ${leadName}! Vi que você testou o cardápio digital do Don Food. O que achou da experiência? Posso tirar alguma dúvida ou apresentar as condições para o seu estabelecimento?`);
+
+                return `
+                    <div style="background: white; border: 1px solid var(--gray-200); border-radius: 10px; padding: 0.85rem; display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <div style="width: 42px; height: 42px; background: ${isLeadActive ? '#ECFDF5' : '#F1F5F9'}; color: ${isLeadActive ? '#059669' : '#64748B'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                                📱
+                            </div>
+                            <div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                                    <strong style="color: #1E1B4B; font-size: 0.95rem;">${lead.phone}</strong>
+                                    <span style="font-size: 0.75rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 20px; background: ${isLeadActive ? '#DCFCE7' : '#F1F5F9'}; color: ${isLeadActive ? '#15803D' : '#64748B'};">
+                                        ${isLeadActive ? `🟢 Ativo (${remainingHours}h restantes)` : '⏳ Expirado'}
+                                    </span>
+                                </div>
+                                <div style="font-size: 0.82rem; color: #4B5563; margin-top: 0.15rem;">
+                                    <span>👤 <strong>${leadName}</strong></span> • <small style="color: #64748B;">Cadastrado em: ${formattedDate}</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 0.4rem; align-items: center;">
+                            <a href="https://wa.me/55${cleanPhone}?text=${whatsappMsg}" target="_blank" class="btn-admin" style="background: #25D366; color: white; font-weight: 700; font-size: 0.8rem; padding: 0.4rem 0.8rem; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem;" title="Iniciar conversa comercial no WhatsApp">
+                                💬 WhatsApp
+                            </a>
+                            <button type="button" class="btn-admin" onclick="copyLeadPhone('${lead.phone}')" style="background: var(--gray-100); color: var(--gray-700); font-size: 0.8rem; padding: 0.4rem 0.6rem; border-radius: 8px;" title="Copiar Telefone">
+                                📋
+                            </button>
+                            <button type="button" class="btn-admin" onclick="deleteDevLead('${lead.id || cleanPhone}')" style="background: #FEE2E2; color: #DC2626; font-size: 0.8rem; padding: 0.4rem 0.6rem; border-radius: 8px;" title="Excluir Lead">
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterDevLeadsList() {
+            renderDevLeadsList();
+        }
+
+        function copyLeadPhone(phone) {
+            if (!phone) return;
+            navigator.clipboard.writeText(phone);
+            showNotification(`Telefone ${phone} copiado! 📋`, 'success');
+        }
+
+        function copyAllLeadPhones() {
+            if (!devLeadsData || devLeadsData.length === 0) {
+                showNotification('Nenhum telefone para copiar.', 'warning');
+                return;
+            }
+            const phones = devLeadsData.map(l => l.phone).filter(Boolean).join('\n');
+            navigator.clipboard.writeText(phones);
+            showNotification(`📋 ${devLeadsData.length} telefones copiados para a área de transferência!`, 'success');
+        }
+
+        function exportLeadsCSV() {
+            if (!devLeadsData || devLeadsData.length === 0) {
+                showNotification('Nenhum contato para exportar.', 'warning');
+                return;
+            }
+
+            let csv = "Telefone;Nome;Data_Criacao;Status;Horas_Restantes\n";
+            const now = Date.now();
+            devLeadsData.forEach(l => {
+                const exp = l.trialExpiresAt || l.expiresAt;
+                const isActive = exp ? (Number(exp) > now) : false;
+                const hours = exp ? Math.max(0, Math.round((Number(exp) - now) / 3600000)) : 0;
+                csv += `"${l.phone || ''}";"${l.name || ''}";"${l.createdAt || ''}";"${isActive ? 'ATIVO' : 'EXPIRADO'}";"${hours}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `leads_donfood_demo_${new Date().toISOString().slice(0,10)}.csv`;
+            link.click();
+            URL.revokeObjectURL(url);
+            showNotification('📥 Planilha de leads exportada com sucesso!', 'success');
+        }
+
+        async function deleteDevLead(id) {
+            if (!confirm('Deseja realmente remover este contato da lista de leads?')) return;
+
+            try {
+                await fetch(`/api/dev/leads/${id}`, { method: 'DELETE' });
+            } catch {}
+
+            devLeadsData = devLeadsData.filter(l => l.id !== id && l.cleanPhone !== id);
+            try {
+                localStorage.setItem(DemoTrialManager.LEADS_KEY, JSON.stringify(devLeadsData));
+            } catch {}
+
+            renderDevLeadsList();
+            showNotification('Contato removido da lista.', 'info');
+        }
+
+        // ========== GERENCIAMENTO DE VISUALIZAÇÃO (LANDING vs LOJA DEMO vs LOGIN DEDICADO) ==========
+        function updateHeaderNavForCurrentView() {
+            const mainHeaderNav = document.getElementById('mainHeaderNav');
+            if (!mainHeaderNav) return;
+
+            const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
+            const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+
+            if (currentAppView === 'login') {
+                mainHeaderNav.innerHTML = `
+                    <a href="javascript:void(0)" onclick="switchToStoreView('header')" class="nav-link" style="color: #EA580C; font-weight: 800; display: inline-flex; align-items: center; gap: 0.35rem;">🛍️ Ir para o Cardápio</a>
+                    <a href="javascript:void(0)" onclick="switchToLandingView(event)" class="nav-link" style="color: #4F46E5; font-weight: 700; display: inline-flex; align-items: center; gap: 0.3rem;">🏠 Apresentação Don Food</a>
+                `;
+            } else if (isCurrentDemo) {
+                if (currentAppView === 'landing') {
+                    mainHeaderNav.innerHTML = `
+                        <a href="#demoLandingHero" onclick="switchToLandingView(event)" class="nav-link">Início</a>
+                        <a href="#demoComparativo" class="nav-link">0% Comissões</a>
+                        <a href="#demoDemonstracao" class="nav-link">Recursos</a>
+                        <a href="#demoEconomia" class="nav-link">Economia</a>
+                        <a href="#demoDepoimentos" class="nav-link">Depoimentos</a>
+                        <a href="javascript:void(0)" onclick="switchToStoreView('header')" class="nav-link" id="navLinkLojaDemo" style="color: #EA580C; font-weight: 800; background: #FFF7ED; padding: 0.35rem 0.85rem; border-radius: 20px; border: 1.5px solid #FDBA74; display: inline-flex; align-items: center; gap: 0.35rem; box-shadow: 0 2px 6px rgba(234, 88, 12, 0.15);">🛍️ Loja Demo</a>
+                    `;
+                } else {
+                    mainHeaderNav.innerHTML = `
+                        <a href="javascript:void(0)" onclick="switchToLandingView(event)" class="nav-link" style="color: #4F46E5; font-weight: 700; display: inline-flex; align-items: center; gap: 0.3rem;">← Apresentação Don Food</a>
+                        <a href="#inicio" class="nav-link">Início</a>
+                        <a href="#cardapio" class="nav-link" style="color: #EA580C; font-weight: 800;">Cardápio</a>
+                    `;
+                }
+            } else {
+                mainHeaderNav.innerHTML = `
+                    <a href="#inicio" class="nav-link">Início</a>
+                    <a href="#cardapio" class="nav-link">Cardápio</a>
+                `;
+            }
+        }
+
+        function updateAppViewDisplay() {
+            const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
+            const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+
+            const demoHero = document.getElementById('demoLandingHero');
+            const storeWrapper = document.getElementById('storeViewWrapper');
+            const loginWrapper = document.getElementById('loginViewWrapper');
+            const demoBar = document.getElementById('demoNoticeBar');
+            const heroSection = document.getElementById('inicio');
+
+            // Atualiza classe do body para sincronia visual com CSS
+            document.body.classList.remove('view-landing', 'view-store', 'view-login');
+            document.body.classList.add('view-' + currentAppView);
+
+            if (currentAppView === 'login') {
+                if (demoHero) demoHero.style.display = 'none';
+                if (storeWrapper) storeWrapper.style.display = 'none';
+                if (loginWrapper) loginWrapper.style.display = 'block';
+                if (demoBar) demoBar.style.display = 'none';
+                if (heroSection) heroSection.classList.remove('has-demo-landing');
+                refreshDedicatedLoginUI();
+            } else if (!isCurrentDemo) {
+                currentAppView = 'store';
+                document.body.classList.remove('view-landing', 'view-login');
+                document.body.classList.add('view-store');
+                if (demoHero) demoHero.style.display = 'none';
+                if (storeWrapper) storeWrapper.style.display = 'block';
+                if (loginWrapper) loginWrapper.style.display = 'none';
+                if (demoBar) demoBar.style.display = 'none';
+                if (heroSection) heroSection.classList.remove('has-demo-landing');
+            } else {
+                if (currentAppView === 'landing') {
+                    if (demoHero) demoHero.style.display = 'block';
+                    if (storeWrapper) storeWrapper.style.display = 'none';
+                    if (loginWrapper) loginWrapper.style.display = 'none';
+                    if (demoBar) demoBar.style.display = 'none';
+                    if (heroSection) heroSection.classList.add('has-demo-landing');
+                } else {
+                    if (demoHero) demoHero.style.display = 'none';
+                    if (storeWrapper) storeWrapper.style.display = 'block';
+                    if (loginWrapper) loginWrapper.style.display = 'none';
+                    if (demoBar) demoBar.style.display = 'block';
+                    if (heroSection) heroSection.classList.remove('has-demo-landing');
+                    DemoTrialManager.updateDemoBannerUI();
+                }
+            }
+
+            updateHeaderNavForCurrentView();
+
+            // Atualizar visibilidade das ações do cabeçalho (Carrinho, Quero Testar, Cliente, Empresa)
+            const cartBtn = document.getElementById('cartBtn');
+            const btnAcquireHeader = document.getElementById('btnAcquireHeader');
+            const customerContainer = document.getElementById('customerHeaderContainer');
+            const adminContainer = document.getElementById('adminHeaderContainer');
+            const mobileMenu = document.getElementById('mobileHeaderMenuContainer');
+
+            if (currentAppView === 'landing' || currentAppView === 'login') {
+                if (cartBtn) cartBtn.style.display = 'none';
+                if (btnAcquireHeader) btnAcquireHeader.style.display = 'none';
+                if (customerContainer) customerContainer.style.display = 'none';
+                if (adminContainer) adminContainer.style.display = 'none';
+                if (mobileMenu) mobileMenu.style.display = 'none';
+            } else {
+                if (cartBtn) cartBtn.style.display = 'flex';
+                if (mobileMenu) mobileMenu.style.display = '';
+                if (btnAcquireHeader) {
+                    btnAcquireHeader.style.display = isCurrentDemo ? 'inline-flex' : 'none';
+                    if (isCurrentDemo) btnAcquireHeader.textContent = 'Quero Testar';
+                }
+                if (customerContainer) customerContainer.style.display = 'block';
+                if (adminContainer) adminContainer.style.display = 'flex';
+                updateCustomerHeaderUI();
+            }
+        }
+
+        let isRegisteredCompanyLoginActive = true;
+
+        function showRegisteredCompanyLoginForm() {
+            isRegisteredCompanyLoginActive = true;
+            refreshDedicatedLoginUI();
+            setTimeout(() => {
+                const emailInput = document.getElementById('dedicatedLoginEmail');
+                if (emailInput) {
+                    emailInput.focus();
+                }
+            }, 100);
+        }
+
+        function showDemoInfoPanel() {
+            isRegisteredCompanyLoginActive = true;
+            refreshDedicatedLoginUI();
+        }
+
+        function refreshDedicatedLoginUI() {
+            const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
+            const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+            isRegisteredCompanyLoginActive = true;
+
+            // 1. Atualizar Fundo de Boas-Vindas e Textos da Hero Centralizada
+            const storeNameEl = document.getElementById('loginViewStoreName');
+            const heroBadgeText = document.getElementById('loginHeroBadgeText');
+            const heroSubtitle = document.getElementById('loginHeroSubtitle');
+
+            const displayName = (!isCurrentDemo && activeComp.name) ? `"${activeComp.name}"` : (settings.restaurantName ? `"${settings.restaurantName}"` : '"Don Food"');
+            if (storeNameEl) storeNameEl.textContent = displayName;
+            if (heroBadgeText) heroBadgeText.textContent = '🔐 PAINEL EXCLUSIVO DO LOJISTA';
+            if (heroSubtitle) heroSubtitle.textContent = 'Acesse o painel para gerenciar cardápio, acompanhar pedidos em tempo real e administrar seu estabelecimento.';
+
+            // 2. Avatar / Ícone da Loja
+            const avatarEl = document.getElementById('loginStoreIconAvatar');
+            if (avatarEl) {
+                if (!isCurrentDemo && settings.logo && (settings.logo.startsWith('http') || settings.logo.startsWith('data:image'))) {
+                    avatarEl.innerHTML = `<img src="${settings.logo}" alt="Logo" style="width: 100%; height: 100%; object-fit: cover; border-radius: 18px;">`;
+                } else {
+                    avatarEl.textContent = '🏬';
+                }
+            }
+
+            // 3. Título e Subtítulo do Card Centralizado de Login
+            const cardTitleEl = document.getElementById('loginCardTitle');
+            const cardSubtitleEl = document.getElementById('loginCardSubtitle');
+            if (cardTitleEl) {
+                cardTitleEl.textContent = (!isCurrentDemo && activeComp.name) ? `Acessar Painel: ${activeComp.name}` : 'Acessar Painel da Loja';
+            }
+            if (cardSubtitleEl) {
+                cardSubtitleEl.innerHTML = 'Digite o <strong>E-mail ou Telefone</strong> e a <strong>Senha</strong> de acesso';
+            }
+
+            // 4. Alternar Visualização entre Sessão Conectada e Formulário com Inputs
+            const isOwner = AuthManager.isCompanyOwner(activeCompanyId) || AuthManager.isSuperAdmin();
+            const alreadyLoggedBox = document.getElementById('loginAlreadyLoggedBox');
+            const demoCard = document.getElementById('loginDemoCard');
+            const registeredCard = document.getElementById('loginRegisteredCard');
+            const alreadyStoreName = document.getElementById('loginAlreadyStoreName');
+            const btnBackToDemo = document.getElementById('btnBackToDemoFromLogin');
+            const bulletBackToDemo = document.getElementById('bulletBackToDemo');
+
+            if (isOwner) {
+                if (alreadyLoggedBox) alreadyLoggedBox.style.display = 'block';
+                if (demoCard) demoCard.style.display = 'none';
+                if (registeredCard) registeredCard.style.display = 'none';
+                if (alreadyStoreName) alreadyStoreName.textContent = activeComp.name || settings.restaurantName || 'Sua Loja';
+            } else {
+                if (alreadyLoggedBox) alreadyLoggedBox.style.display = 'none';
+                if (demoCard) demoCard.style.display = 'none';
+                if (registeredCard) registeredCard.style.display = 'block';
+                if (btnBackToDemo) btnBackToDemo.style.display = 'none';
+                if (bulletBackToDemo) bulletBackToDemo.style.display = 'none';
+            }
+
+            // 5. Limpar erros
+            const errorEl = document.getElementById('dedicatedLoginError');
+            if (errorEl) errorEl.style.display = 'none';
+        }
+
+        function handleDedicatedCompanyChange(selectEl) {
+            if (!selectEl || !selectEl.value) return;
+            switchActiveCompany(selectEl.value);
+            refreshDedicatedLoginUI();
+        }
+
+        function switchToLoginView(e, targetCompId = null, forceRegistered = false) {
+            if (e && e.preventDefault) e.preventDefault();
+            if (targetCompId) {
+                switchActiveCompany(targetCompId);
+            }
+            
+            isRegisteredCompanyLoginActive = true;
+
+            currentAppView = 'login';
+            updateAppViewDisplay();
+            
+            // Sincronizar URL para /login sem recarregar
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                if (activeComp && activeComp.slug && !activeComp.isDemo) {
+                    urlParams.set('empresa', activeComp.slug);
+                }
+                const newQuery = urlParams.toString() ? '?' + urlParams.toString() : '';
+                window.history.pushState({ view: 'login' }, '', '/login' + newQuery);
+            } catch (err) {
+                // Fallback silencioso para navegadores com restrições de histórico
+            }
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            // Focar no campo de e-mail/telefone em branco se estiver no modo de login cadastrado
+            setTimeout(() => {
+                if (isRegisteredCompanyLoginActive) {
+                    const emailInput = document.getElementById('dedicatedLoginEmail');
+                    const passwordInput = document.getElementById('dedicatedLoginPassword');
+                    if (emailInput) {
+                        emailInput.value = '';
+                        emailInput.focus();
+                    }
+                    if (passwordInput) {
+                        passwordInput.value = '';
+                    }
+                }
+            }, 150);
+        }
+
+        function switchToStoreView(source) {
+            currentAppView = 'store';
+            updateAppViewDisplay();
+
+            // Atualizar URL de volta à loja/cardápio
+            try {
+                const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
+                const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+                const urlParams = new URLSearchParams(window.location.search);
+                if (activeComp && activeComp.slug && !activeComp.isDemo) {
+                    urlParams.set('empresa', activeComp.slug);
+                } else {
+                    urlParams.delete('empresa');
+                }
+                const newQuery = urlParams.toString() ? '?' + urlParams.toString() : '';
+                window.history.pushState({ view: 'store' }, '', '/' + newQuery);
+
+                if (isCurrentDemo && !DemoTrialManager.isTrialActive()) {
+                    setTimeout(() => {
+                        openDemoLeadModal();
+                    }, 350);
+                }
+            } catch (err) {}
+
+            if (source === 'cardapio' || window.location.hash === '#cardapio') {
+                setTimeout(() => {
+                    const cardapioEl = document.getElementById('cardapio');
+                    if (cardapioEl) cardapioEl.scrollIntoView({ behavior: 'smooth' });
+                }, 60);
+            } else {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        function switchToLandingView(e) {
+            if (e && e.preventDefault) e.preventDefault();
+            currentAppView = 'landing';
+            updateAppViewDisplay();
+
+            try {
+                window.history.pushState({ view: 'landing' }, '', '/');
+            } catch (err) {}
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function openAdminPanelFromLogin() {
+            switchToStoreView('admin');
+            openAdminPanel();
+        }
+
+        function logoutAdminFromLogin() {
+            logoutAdmin();
+            refreshDedicatedLoginUI();
+        }
+
         // ========== GERENCIAMENTO DO ACESSO OCULTO DEVELOPER (10 CLIQUES) ==========
         function handleDevLogoClick(e) {
             if (e) e.preventDefault();
@@ -2241,7 +3507,7 @@
         });
 
         function openDevPasswordModal() {
-            if (sessionStorage.getItem('isDevLoggedIn') === 'true') {
+            if (AuthManager.isSuperAdmin()) {
                 openDevPanelModal();
                 return;
             }
@@ -2261,24 +3527,49 @@
             if (modal) modal.classList.remove('active');
         }
 
-        function handleDevPasswordSubmit(e) {
+        async function handleDevPasswordSubmit(e) {
             if (e) e.preventDefault();
             const input = document.getElementById('devPasswordInput').value.trim();
+            const err = document.getElementById('devPasswordError');
+
+            try {
+                const response = await fetch('/api/auth/dev-login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: input })
+                });
+                const res = await response.json();
+
+                if (res && res.success) {
+                    AuthManager.loginSuperAdmin(res.token);
+                    closeDevPasswordModal();
+                    openDevPanelModal();
+                    showNotification('Acesso Super Administrador concedido! 🛠️', 'success');
+                    return;
+                }
+            } catch (netErr) {
+                // Fallback offline se necessário
+            }
+
             if (input === 'admin123' || input === 'donfimdev' || input === 'donfim' || input === '123456') {
-                sessionStorage.setItem('isDevLoggedIn', 'true');
+                AuthManager.loginSuperAdmin(null);
                 closeDevPasswordModal();
                 openDevPanelModal();
-                showNotification('Acesso Desenvolvedor concedido! 🛠️', 'success');
+                showNotification('Acesso Super Administrador concedido! 🛠️', 'success');
             } else {
-                const err = document.getElementById('devPasswordError');
                 if (err) err.style.display = 'block';
             }
         }
 
         function openDevPanelModal() {
+            if (!AuthManager.isSuperAdmin()) {
+                openDevPasswordModal();
+                return;
+            }
             const modal = document.getElementById('devPanelModal');
             if (modal) modal.classList.add('active');
             renderDevCompanyList();
+            fetchDevLeads(); // Carregar contatos da demo em segundo plano
             switchDevTab('companies');
         }
 
@@ -2288,24 +3579,29 @@
         }
 
         function logoutDev() {
-            sessionStorage.removeItem('isDevLoggedIn');
-            closeDevPanelModal();
-            showNotification('Sessão de Desenvolvedor encerrada.', 'info');
+            AuthManager.logoutSuperAdmin();
         }
 
         function switchDevTab(tab) {
+            if (!AuthManager.isSuperAdmin()) {
+                openDevPasswordModal();
+                return;
+            }
             const compTab = document.getElementById('devTabCompanies');
+            const leadsTab = document.getElementById('devTabLeads');
             const custTab = document.getElementById('devTabCustomers');
             const migrateTab = document.getElementById('devTabMigrate');
             const createTab = document.getElementById('devTabCreate');
             const supTab = document.getElementById('devTabSupabase');
             const compBtn = document.getElementById('devTabCompaniesBtn');
+            const leadsBtn = document.getElementById('devTabLeadsBtn');
             const custBtn = document.getElementById('devTabCustomersBtn');
             const migrateBtn = document.getElementById('devTabMigrateBtn');
             const createBtn = document.getElementById('devTabCreateBtn');
             const supBtn = document.getElementById('devTabSupabaseBtn');
 
             if (compTab) compTab.style.display = tab === 'companies' ? 'block' : 'none';
+            if (leadsTab) leadsTab.style.display = tab === 'leads' ? 'block' : 'none';
             if (custTab) custTab.style.display = tab === 'customers' ? 'block' : 'none';
             if (migrateTab) migrateTab.style.display = tab === 'migrate' ? 'block' : 'none';
             if (createTab) createTab.style.display = tab === 'create' ? 'block' : 'none';
@@ -2314,6 +3610,10 @@
             if (compBtn) {
                 compBtn.style.background = tab === 'companies' ? '#4F46E5' : 'var(--gray-200)';
                 compBtn.style.color = tab === 'companies' ? 'white' : 'var(--gray-800)';
+            }
+            if (leadsBtn) {
+                leadsBtn.style.background = tab === 'leads' ? '#4F46E5' : 'var(--gray-200)';
+                leadsBtn.style.color = tab === 'leads' ? 'white' : 'var(--gray-800)';
             }
             if (custBtn) {
                 custBtn.style.background = tab === 'customers' ? '#4F46E5' : 'var(--gray-200)';
@@ -2332,7 +3632,9 @@
                 supBtn.style.color = tab === 'supabase' ? 'white' : 'var(--gray-800)';
             }
 
-            if (tab === 'customers') {
+            if (tab === 'leads') {
+                fetchDevLeads();
+            } else if (tab === 'customers') {
                 populateDevCustomerFilter();
                 renderDevCustomerList();
             } else if (tab === 'migrate') {
@@ -3090,10 +4392,18 @@
         }
 
         function downloadSupabaseSQL() {
+            if (!AuthManager.isSuperAdmin()) {
+                showNotification('Acesso restrito ao Super Administrador.', 'warning');
+                openDevPasswordModal();
+                return;
+            }
             window.open('/supabase_schema.sql', '_blank');
         }
 
         function renderDevCompanyList() {
+            if (!AuthManager.isSuperAdmin()) {
+                return;
+            }
             const container = document.getElementById('devCompanyList');
             const countBadge = document.getElementById('devCompanyCount');
             if (countBadge) countBadge.textContent = companies.length;
@@ -3106,6 +4416,7 @@
                 const compEmail = comp.email || 'donfim@gmail.com';
                 const compSlug = getCompanySlug(comp);
                 const officialUrl = getCompanyOfficialUrl(comp);
+                const safePassword = comp.adminPassword || 'admin123';
 
                 return `
                     <div style="background: ${isActive ? '#EEF2FF' : '#F8FAFC'}; border: 1.5px solid ${isActive ? '#6366F1' : '#E2E8F0'}; border-radius: 10px; padding: 0.85rem 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
@@ -3117,10 +4428,13 @@
                                     ${isDemo ? '<span style="background: #EA580C; color: white; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 10px;">✨ DEMO PRINCIPAL</span>' : ''}
                                     ${isDefaultFB ? '<span style="background: #8B26A0; color: white; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 10px;">PADRÃO FB</span>' : ''}
                                 </div>
-                                <div style="font-size: 0.8rem; color: var(--gray-600); display: flex; gap: 0.8rem; flex-wrap: wrap;">
+                                <div style="font-size: 0.8rem; color: var(--gray-600); display: flex; gap: 0.8rem; flex-wrap: wrap; align-items: center;">
                                     <span>📧 E-mail: <strong>${compEmail}</strong></span>
                                     <span>📱 WhatsApp: <strong>${comp.whatsappNumber}</strong></span>
-                                    <span>🔑 Senha: <strong>${comp.adminPassword}</strong></span>
+                                    <span style="display: inline-flex; align-items: center; gap: 4px; background: #F1F5F9; padding: 2px 6px; border-radius: 4px;">
+                                        🔑 Senha: <strong id="compPassVal_${comp.id}" data-revealed="false">••••••••</strong>
+                                        <button type="button" onclick="toggleCompanyPasswordVisibility('${comp.id}', '${safePassword}')" style="background: none; border: none; cursor: pointer; font-size: 0.85rem; padding: 0 2px;" title="Revelar/Ocultar Senha">👁️</button>
+                                    </span>
                                     <span>📦 Itens: <strong>${comp.products?.length || 0}</strong></span>
                                 </div>
                             </div>
@@ -3384,6 +4698,7 @@
             renderDynamicIngredientsSection();
             updateMenuSubtitle();
             renderPresetCatalog();
+            updateAppViewDisplay();
         }
 
         // ========== RENDERIZAR CONFIGURAÇÕES ==========
@@ -3553,7 +4868,7 @@
                 logoIcon.innerHTML = `<img src="${settings.logoUrl}" alt="${settings.restaurantName}" onerror="if(this.src.indexOf('Logo_Don.png') === -1) { this.src = '/Logo_Don.png'; }">`;
                 logoIcon.style.background = 'transparent';
 
-                // Configurações do Hero (Imagem invés do texto)
+                // Configurações do Hero (Imagem redonda com o nome da empresa abaixo)
                 heroLogo.src = settings.logoUrl;
                 heroLogo.alt = settings.restaurantName;
                 heroLogo.onerror = function() {
@@ -3562,7 +4877,8 @@
                     }
                 };
                 heroLogo.style.display = 'block'; // Mostra a imagem
-                heroRestaurantName.style.display = 'none'; // Esconde o texto H1
+                heroRestaurantName.textContent = settings.restaurantName;
+                heroRestaurantName.style.display = 'block'; // Mostra o nome da empresa abaixo da logo
             } else {
                 // Caso não tenha logoUrl definida
                 logoIcon.innerHTML = '';
@@ -3591,15 +4907,28 @@
             document.getElementById('whatsappBtn').href = whatsappUrl;
             document.getElementById('whatsappFab').href = whatsappUrl;
             
-            // Atualizar card hero com produto de destaque
-            const featuredProduct = products.find(p => p.name.toLowerCase().includes('barca')) || products.find(p => p.available);
+            // Atualizar card hero com produto de destaque (Gourmet & Alta Conversão)
+            const featuredProduct = products.find(p => p.name.toLowerCase().includes('barca') || p.name.toLowerCase().includes('burger') || p.name.toLowerCase().includes('duplo') || p.name.toLowerCase().includes('pizza')) || products.find(p => p.available);
             if (featuredProduct) {
+                const isCustom = featuredProduct.isCustomizable || (featuredProduct.name || '').toLowerCase().includes('açaí') || (featuredProduct.name || '').toLowerCase().includes('barca');
                 document.getElementById('heroCard').innerHTML = `
-                    <div style="position: absolute; top: 12px; right: 12px; background: #EAB308; color: #000; font-weight: 800; font-size: 0.75rem; padding: 4px 12px; border-radius: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 2;">🔥 O MAIS PEDIDO!</div>
-                    <img src="${featuredProduct.image}" alt="${featuredProduct.name}" onerror="this.onerror=null; this.src='super_barca.svg';">
+                    <div style="position: absolute; top: 14px; right: 14px; background: linear-gradient(135deg, #F59E0B 0%, #EA580C 100%); color: #FFFFFF; font-weight: 900; font-size: 0.78rem; padding: 5px 14px; border-radius: 50px; box-shadow: 0 4px 12px rgba(234, 88, 12, 0.4); z-index: 2; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid rgba(255,255,255,0.4);">
+                        🔥 O Mais Pedido!
+                    </div>
+                    <div class="hero-card-img-wrap">
+                        <img src="${featuredProduct.image}" alt="${featuredProduct.name}" onerror="this.onerror=null; this.src='super_barca.svg';">
+                    </div>
                     <h3>${featuredProduct.name}</h3>
                     <p>${featuredProduct.description}</p>
-                    <div class="hero-card-price">R$ ${featuredProduct.price.toFixed(2).replace('.', ',')}</div>
+                    <div class="hero-card-footer">
+                        <div>
+                            <span style="font-size: 0.72rem; color: #FED7AA; text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 2px;">Valor Especial</span>
+                            <div class="hero-card-price">R$ ${featuredProduct.price.toFixed(2).replace('.', ',')}</div>
+                        </div>
+                        <button type="button" onclick="${isCustom ? `openAcaiCustomizer(${featuredProduct.id})` : `addToCart(${featuredProduct.id})`}" class="btn-admin" style="background: linear-gradient(135deg, #F59E0B 0%, #EA580C 100%); color: #FFFFFF; font-weight: 800; font-size: 0.92rem; padding: 0.7rem 1.35rem; border-radius: 50px; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(234, 88, 12, 0.4); display: inline-flex; align-items: center; gap: 0.4rem; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)';" onmouseout="this.style.transform='scale(1)';">
+                            ${isCustom ? '⚡ Personalizar' : '🛒 Quero Esse'}
+                        </button>
+                    </div>
                 `;
             }
         }
@@ -3636,14 +4965,16 @@
 
         // ========== RENDERIZAR PRODUTOS ==========
         function renderProducts() {
-            if (products.length === 0) {
+            const safeProducts = DefensiveUtils.safeArray(products);
+            if (safeProducts.length === 0) {
                 productsGrid.innerHTML = '<p style="text-align: center; color: var(--gray-600); grid-column: 1/-1;">Nenhum produto cadastrado ainda.</p>';
                 return;
             }
             
             const presetKey = getActiveCompanyPresetType();
 
-            productsGrid.innerHTML = products.map(product => {
+            productsGrid.innerHTML = safeProducts.map(product => {
+                if (!product) return '';
                 let isCustomizable = false;
                 if (product.isCustomizable === false || product.isAcai === false) {
                     isCustomizable = false;
@@ -3657,18 +4988,23 @@
                 const badgeHtml = !product.available 
                     ? '<span class="product-badge">Esgotado</span>' 
                     : (product.tag 
-                        ? `<span class="product-badge" style="background:#EAB308; color:#000; font-weight:800; border: 1px solid #CA8A04;">${product.tag}</span>` 
+                        ? `<span class="product-badge" style="background:#EAB308; color:#000; font-weight:800; border: 1px solid #CA8A04;">${DefensiveUtils.escapeHtml(product.tag)}</span>` 
                         : (isCustomizable ? '<span class="product-badge" style="background:var(--primary);">Acompanhamentos</span>' : ''));
+
+                const price = DefensiveUtils.safeNumber(product.price, 0);
+                const cleanName = DefensiveUtils.escapeHtml(product.name || 'Produto');
+                const cleanDesc = DefensiveUtils.escapeHtml(product.description || '');
+                const cleanImg = DefensiveUtils.escapeHtml(product.image || 'acai_300ml.svg');
 
                 return `
                 <div class="product-card">
-                    <img src="${product.image}" alt="${product.name}" class="product-image" onerror="this.onerror=null; this.src='acai_300ml.svg';">
+                    <img src="${cleanImg}" alt="${cleanName}" class="product-image" onerror="this.onerror=null; this.src='acai_300ml.svg';">
                     ${badgeHtml}
                     <div class="product-info">
-                        <h3 class="product-name">${product.name}</h3>
-                        <p class="product-description">${product.description}</p>
+                        <h3 class="product-name">${cleanName}</h3>
+                        <p class="product-description">${cleanDesc}</p>
                         <div class="product-footer">
-                            <span class="product-price">R$ ${product.price.toFixed(2).replace('.', ',')}</span>
+                            <span class="product-price">${DefensiveUtils.formatCurrency(price)}</span>
                             <button 
                                 class="btn-add-cart" 
                                 onclick="${isCustomizable ? `openAcaiCustomizer(${product.id})` : `addToCart(${product.id})`}"
@@ -3703,6 +5039,14 @@
 
         // ========== INTERACTIVE PRODUCT CUSTOMIZER (POR CATEGORIA) ==========
         function openAcaiCustomizer(productId) {
+            const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
+            const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+            if (isCurrentDemo && !DemoTrialManager.isTrialActive()) {
+                openDemoLeadModal();
+                showNotification('📱 Digite seu número para liberar o cardápio e testar a montagem por 24h!', 'info');
+                return;
+            }
+
             const product = products.find(p => p.id === productId);
             if (!product || !product.available) return;
 
@@ -3970,34 +5314,44 @@
             const grid = document.getElementById('presetCatalogGrid');
             if (!grid) return;
 
-            const currentCatalog = getPresetCatalogForActiveCompany();
-            const filterLower = filterText.toLowerCase();
-            const filtered = currentCatalog.filter(p => 
-                p.name.toLowerCase().includes(filterLower) || 
-                p.description.toLowerCase().includes(filterLower) ||
-                (p.tag && p.tag.toLowerCase().includes(filterLower))
-            );
+            const currentCatalog = DefensiveUtils.safeArray(getPresetCatalogForActiveCompany());
+            const filterLower = (filterText || '').toLowerCase().trim();
+            const filtered = currentCatalog.filter(p => {
+                if (!p) return false;
+                const name = (p.name || '').toLowerCase();
+                const desc = (p.description || '').toLowerCase();
+                const tag = (p.tag || '').toLowerCase();
+                return name.includes(filterLower) || desc.includes(filterLower) || tag.includes(filterLower);
+            });
 
             if (filtered.length === 0) {
                 grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--gray-600); font-size: 0.85rem; padding: 1rem;">Nenhum produto encontrado na listagem pronta desta categoria.</p>';
                 return;
             }
 
+            const currentProducts = DefensiveUtils.safeArray(products);
             grid.innerHTML = filtered.map(item => {
-                const alreadyAdded = products.some(p => p.name.toLowerCase().trim() === item.name.toLowerCase().trim());
+                const itemName = (item.name || '').toLowerCase().trim();
+                const alreadyAdded = currentProducts.some(p => p && (p.name || '').toLowerCase().trim() === itemName);
+                const price = DefensiveUtils.safeNumber(item.price, 0);
+                const cleanName = DefensiveUtils.escapeHtml(item.name || 'Item');
+                const cleanDesc = DefensiveUtils.escapeHtml(item.description || '');
+                const cleanImg = DefensiveUtils.escapeHtml(item.image || 'acai_300ml.svg');
+                const itemId = DefensiveUtils.escapeHtml(item.id || '');
+
                 return `
                     <div class="preset-card">
                         <div>
-                            <img src="${item.image}" alt="${item.name}" onerror="this.onerror=null; this.src='acai_300ml.svg';">
-                            <div class="preset-card-title">${item.name}</div>
-                            <div class="preset-card-desc">${item.description}</div>
+                            <img src="${cleanImg}" alt="${cleanName}" onerror="this.onerror=null; this.src='acai_300ml.svg';">
+                            <div class="preset-card-title">${cleanName}</div>
+                            <div class="preset-card-desc">${cleanDesc}</div>
                         </div>
                         <div class="preset-card-footer">
-                            <span class="preset-card-price">R$ ${item.price.toFixed(2).replace('.', ',')}</span>
+                            <span class="preset-card-price">${DefensiveUtils.formatCurrency(price)}</span>
                             <button 
                                 type="button" 
                                 class="btn-add-preset ${alreadyAdded ? 'added' : ''}" 
-                                onclick="addPresetToProducts('${item.id}')"
+                                onclick="addPresetToProducts('${itemId}')"
                             >
                                 ${alreadyAdded ? '✓ Adicionado' : '➕ Inserir'}
                             </button>
@@ -4052,10 +5406,32 @@
             }
         }
 
-        // ========== AUTH & HEADER ADMIN ==========
+        // ========== AUTH & HEADER ADMIN (RBAC: COMPANY_OWNER) ==========
         let isAdminLoggedIn = false;
 
+        function openAdminPanel() {
+            const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
+            const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+            if (isCurrentDemo && !AuthManager.isSuperAdmin()) {
+                openDemoAdminBlockedModal();
+                return;
+            }
+            if (!AuthManager.isCompanyOwner(activeCompanyId)) {
+                openAdminLogin();
+                return;
+            }
+            if (adminPanel) adminPanel.classList.add('active');
+            if (adminOverlay) adminOverlay.classList.add('active');
+            renderPresetCatalog();
+        }
+
         function openAdminLogin() {
+            const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
+            const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+            if (isCurrentDemo && !AuthManager.isSuperAdmin()) {
+                openDemoAdminBlockedModal();
+                return;
+            }
             const modal = document.getElementById('passwordModal');
             if (modal) modal.classList.add('active');
             const emailInput = document.getElementById('companyLoginEmail');
@@ -4075,37 +5451,55 @@
             }, 100);
         }
 
-        function loginAdminSuccess() {
-            isAdminLoggedIn = true;
-            sessionStorage.setItem('isAdminLoggedIn', 'true');
+        function loginAdminSuccess(targetComp = null, token = null) {
+            const comp = targetComp || companies.find(c => c.id === activeCompanyId) || settings;
+            AuthManager.loginCompanyOwner(comp, token);
             const modal = document.getElementById('passwordModal');
             if (modal) modal.classList.remove('active');
-            adminPanel.classList.add('active');
-            adminOverlay.classList.add('active');
+            openAdminPanel();
             updateAdminHeaderUI();
-            renderPresetCatalog();
-            showNotification('Login de empresa realizado com sucesso! 🏬✨', 'success');
+            showNotification(`Login de empresa realizado com sucesso! 🏬✨ (${comp.name || 'Loja'})`, 'success');
         }
 
         function logoutAdmin() {
-            isAdminLoggedIn = false;
-            sessionStorage.removeItem('isAdminLoggedIn');
-            closeAdminPanel();
-            updateAdminHeaderUI();
-            updateMobileHeaderMenuUI();
-            showNotification('Sessão de empresa encerrada com sucesso.', 'info');
+            AuthManager.logoutCompanyOwner();
         }
 
         function updateAdminHeaderUI() {
             const container = document.getElementById('adminHeaderContainer');
+            const cartBtn = document.getElementById('cartBtn');
+            const btnAcquireHeader = document.getElementById('btnAcquireHeader');
+            const mobileMenu = document.getElementById('mobileHeaderMenuContainer');
+
+            const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
+            const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+
+            if (currentAppView === 'landing' || currentAppView === 'login') {
+                if (container) {
+                    container.style.display = 'none';
+                    container.innerHTML = '';
+                }
+                if (cartBtn) cartBtn.style.display = 'none';
+                if (btnAcquireHeader) btnAcquireHeader.style.display = 'none';
+                if (mobileMenu) mobileMenu.style.display = 'none';
+                return;
+            }
+
+            if (cartBtn) cartBtn.style.display = 'flex';
+            if (mobileMenu) mobileMenu.style.display = '';
+
+            if (btnAcquireHeader) {
+                btnAcquireHeader.style.display = isCurrentDemo ? 'inline-flex' : 'none';
+                if (isCurrentDemo) btnAcquireHeader.textContent = 'Quero Testar';
+            }
+
             if (container) {
                 if (loggedCustomer) {
                     // Quando logado como cliente, não exibir a parte de login de empresa
                     container.innerHTML = '';
                     container.style.display = 'none';
-                } else if (isAdminLoggedIn) {
+                } else if (AuthManager.isCompanyOwner(activeCompanyId) || AuthManager.isSuperAdmin()) {
                     container.style.display = 'flex';
-                    const activeComp = companies.find(c => c.id === activeCompanyId) || settings;
                     const activeCompId = activeCompanyId || 'company-demo-don';
                     const currentOrders = customerOrders.filter(o => 
                         o.companyId === activeCompId || 
@@ -4113,16 +5507,18 @@
                     );
                     const receivedCount = currentOrders.filter(o => (o.status || 'RECEIVED') === 'RECEIVED').length;
                     const hasNewBadge = receivedCount > 0;
+                    const roleLabel = AuthManager.isSuperAdmin() ? 'SUPER ADMIN' : 'LOJA';
 
                     container.innerHTML = `
                         <div class="admin-header-pill-group">
-                            <span class="admin-logged-store-badge" title="${activeComp.name || settings.restaurantName}">
+                            <span class="admin-logged-store-badge" title="${activeComp.name || settings.restaurantName} (${roleLabel})">
+                                <span style="font-size: 0.65rem; background: ${AuthManager.isSuperAdmin() ? '#7C3AED' : '#4F46E5'}; color: white; padding: 1px 5px; border-radius: 6px; margin-right: 4px; font-weight: 800;">${roleLabel}</span>
                                 <strong>${activeComp.name || settings.restaurantName}</strong>
                             </span>
-                            <button class="admin-header-bell-btn ${hasNewBadge ? 'has-new' : ''}" onclick="adminPanel.classList.add('active'); adminOverlay.classList.add('active'); filterAdminOrdersByStatus('RECEIVED');" title="${receivedCount} pedido(s) aguardando atendimento">
+                            <button class="admin-header-bell-btn ${hasNewBadge ? 'has-new' : ''}" onclick="openAdminPanel(); filterAdminOrdersByStatus('RECEIVED');" title="${receivedCount} pedido(s) aguardando atendimento">
                                 ${receivedCount > 0 ? `<strong>${receivedCount}</strong>` : '🔔'}
                             </button>
-                            <button class="btn-admin-header-panel" onclick="adminPanel.classList.add('active'); adminOverlay.classList.add('active'); renderPresetCatalog();" title="Abrir Painel Administrativo">
+                            <button class="btn-admin-header-panel" onclick="openAdminPanel()" title="Abrir Painel Administrativo">
                                 Painel
                             </button>
                             <button class="btn-admin-header-logout" onclick="logoutAdmin()" title="Sair da Empresa">
@@ -4133,12 +5529,13 @@
                 } else {
                     container.style.display = 'flex';
                     container.innerHTML = `
-                        <button class="btn-admin-header-login" onclick="openAdminLogin()" title="Painel de Login da Empresa">
+                        <button class="btn-admin-header-login" onclick="switchToLoginView()" title="Painel de Login da Empresa">
                             Login Empresa
                         </button>
                     `;
                 }
             }
+
             updateMobileHeaderMenuUI();
         }
 
@@ -4520,7 +5917,7 @@
             const container = document.getElementById('adminCouponsList');
             if (!container) return;
 
-            const coupons = settings.coupons || [];
+            const coupons = DefensiveUtils.safeArray(settings.coupons);
 
             if (coupons.length === 0) {
                 container.innerHTML = `
@@ -4531,30 +5928,38 @@
                 return;
             }
 
-            container.innerHTML = coupons.map(c => `
-                <div class="coupon-admin-card ${c.active === false ? 'inactive' : ''}">
+            container.innerHTML = coupons.map(c => {
+                if (!c) return '';
+                const code = DefensiveUtils.escapeHtml(c.code || '');
+                const discount = DefensiveUtils.safeNumber(c.discount, 0);
+                const desc = c.description ? `<div style="width: 100%; font-size: 0.76rem; color: var(--gray-600); margin-top: -2px;">${DefensiveUtils.escapeHtml(c.description)}</div>` : '';
+                const isActive = c.active !== false;
+
+                return `
+                <div class="coupon-admin-card ${!isActive ? 'inactive' : ''}">
                     <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
                         <span style="font-weight: 800; font-size: 0.88rem; color: var(--primary-dark); letter-spacing: 0.5px;">
-                            🏷️ ${c.code}
+                            🏷️ ${code}
                         </span>
-                        <span style="background: ${c.active !== false ? '#10B981' : '#94A3B8'}; color: white; font-size: 0.72rem; font-weight: 800; padding: 2px 7px; border-radius: 20px;">
-                            ${c.discount}% OFF
+                        <span style="background: ${isActive ? '#10B981' : '#94A3B8'}; color: white; font-size: 0.72rem; font-weight: 800; padding: 2px 7px; border-radius: 20px;">
+                            ${discount}% OFF
                         </span>
-                        <span style="font-size: 0.75rem; color: ${c.active !== false ? '#059669' : '#64748B'}; font-weight: 600;">
-                            ${c.active !== false ? '🟢 Ativo' : '⚪ Inativo'}
+                        <span style="font-size: 0.75rem; color: ${isActive ? '#059669' : '#64748B'}; font-weight: 600;">
+                            ${isActive ? '🟢 Ativo' : '⚪ Inativo'}
                         </span>
                     </div>
-                    ${c.description ? `<div style="width: 100%; font-size: 0.76rem; color: var(--gray-600); margin-top: -2px;">${c.description}</div>` : ''}
+                    ${desc}
                     <div style="display: flex; gap: 0.35rem; align-items: center; margin-left: auto;">
-                        <button type="button" class="btn-admin" onclick="toggleCouponActive('${c.code}')" style="padding: 0.25rem 0.55rem; font-size: 0.75rem; background: ${c.active !== false ? '#F59E0B' : '#10B981'}; color: white;">
-                            ${c.active !== false ? '⏸️ Pausar' : '▶️ Ativar'}
+                        <button type="button" class="btn-admin" onclick="toggleCouponActive('${code}')" style="padding: 0.25rem 0.55rem; font-size: 0.75rem; background: ${isActive ? '#F59E0B' : '#10B981'}; color: white;">
+                            ${isActive ? '⏸️ Pausar' : '▶️ Ativar'}
                         </button>
-                        <button type="button" onclick="deleteCoupon('${c.code}')" title="Excluir Cupom" style="background: #FEE2E2; color: #DC2626; border: 1px solid #FCA5A5; border-radius: 6px; padding: 0.25rem 0.5rem; font-size: 0.8rem; cursor: pointer;">
+                        <button type="button" onclick="deleteCoupon('${code}')" title="Excluir Cupom" style="background: #FEE2E2; color: #DC2626; border: 1px solid #FCA5A5; border-radius: 6px; padding: 0.25rem 0.5rem; font-size: 0.8rem; cursor: pointer;">
                             🗑️
                         </button>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
 
         function handleAdminCreateCoupon(e) {
@@ -4700,14 +6105,15 @@
             const container = document.getElementById('adminNeighborhoodsList');
             if (!container) return;
 
-            const list = settings.deliveryNeighborhoods || DEFAULT_DELIVERY_NEIGHBORHOODS;
+            const rawList = settings.deliveryNeighborhoods || DEFAULT_DELIVERY_NEIGHBORHOODS;
+            const list = DefensiveUtils.safeArray(rawList);
 
             // Atualizar contadores
             const countAll = list.length;
-            const countCentro = list.filter(n => n.zone === 'centro').length;
-            const countZonaSul = list.filter(n => n.zone === 'zona_sul').length;
-            const countZonaNorte = list.filter(n => n.zone === 'zona_norte').length;
-            const countOutros = list.filter(n => n.zone !== 'centro' && n.zone !== 'zona_sul' && n.zone !== 'zona_norte').length;
+            const countCentro = list.filter(n => n && n.zone === 'centro').length;
+            const countZonaSul = list.filter(n => n && n.zone === 'zona_sul').length;
+            const countZonaNorte = list.filter(n => n && n.zone === 'zona_norte').length;
+            const countOutros = list.filter(n => n && n.zone !== 'centro' && n.zone !== 'zona_sul' && n.zone !== 'zona_norte').length;
 
             const elAll = document.getElementById('countAllNeighborhoods');
             const elCentro = document.getElementById('countCentroNeighborhoods');
@@ -4722,7 +6128,7 @@
             if (elOutros) elOutros.textContent = countOutros;
 
             // Filtragem
-            let filtered = list;
+            let filtered = list.filter(n => !!n);
             if (currentNeighborhoodFilterZone !== 'all') {
                 if (currentNeighborhoodFilterZone === 'outra') {
                     filtered = filtered.filter(n => n.zone !== 'centro' && n.zone !== 'zona_sul' && n.zone !== 'zona_norte');
@@ -4749,14 +6155,16 @@
 
             container.innerHTML = filtered.map(n => {
                 const isActive = n.active !== false;
-                const feeVal = typeof n.fee === 'number' ? n.fee.toFixed(2) : parseFloat(n.fee || 0).toFixed(2);
-                const timeVal = n.time || '30 - 45 min';
+                const feeVal = DefensiveUtils.safeNumber(n.fee, 0).toFixed(2);
+                const timeVal = DefensiveUtils.escapeHtml(n.time || '30 - 45 min');
+                const name = DefensiveUtils.escapeHtml(n.name || 'Bairro');
+                const id = DefensiveUtils.escapeHtml(n.id || '');
 
                 return `
-                    <div class="neighborhood-item-card ${!isActive ? 'inactive' : ''}" id="card-neighborhood-${n.id}">
+                    <div class="neighborhood-item-card ${!isActive ? 'inactive' : ''}" id="card-neighborhood-${id}">
                         <div class="neighborhood-info">
                             <div class="neighborhood-name-text">
-                                <span>${n.name}</span>
+                                <span>${name}</span>
                                 ${getZoneBadgeHTML(n.zone, n.zoneName)}
                             </div>
                         </div>
@@ -4769,7 +6177,7 @@
                                     step="0.50" 
                                     min="0" 
                                     value="${feeVal}" 
-                                    onchange="updateNeighborhoodField('${n.id}', 'fee', this.value)"
+                                    onchange="updateNeighborhoodField('${id}', 'fee', this.value)"
                                     style="width: 65px;"
                                 >
                             </div>
@@ -4780,7 +6188,7 @@
                                     type="text" 
                                     value="${timeVal}" 
                                     placeholder="30 - 45 min" 
-                                    onchange="updateNeighborhoodField('${n.id}', 'time', this.value)"
+                                    onchange="updateNeighborhoodField('${id}', 'time', this.value)"
                                     style="width: 90px;"
                                 >
                             </div>
@@ -4788,7 +6196,7 @@
                             <button 
                                 type="button" 
                                 class="btn-icon btn-toggle" 
-                                onclick="toggleNeighborhoodActive('${n.id}')" 
+                                onclick="toggleNeighborhoodActive('${id}')" 
                                 title="${isActive ? 'Bairro ativo para entregas (clique para pausar)' : 'Bairro pausado (clique para ativar)'}"
                                 style="width: 32px; height: 32px; font-size: 0.9rem;"
                             >
@@ -4798,7 +6206,7 @@
                             <button 
                                 type="button" 
                                 class="btn-icon btn-delete" 
-                                onclick="deleteNeighborhood('${n.id}')" 
+                                onclick="deleteNeighborhood('${id}')" 
                                 title="Excluir bairro"
                                 style="width: 32px; height: 32px; font-size: 0.85rem;"
                             >
@@ -5617,6 +7025,14 @@
 
         // ========== GERENCIAR CARRINHO ==========
         function addToCart(productId) {
+            const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
+            const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+            if (isCurrentDemo && !DemoTrialManager.isTrialActive()) {
+                openDemoLeadModal();
+                showNotification('📱 Digite seu número para liberar o cardápio e testar por 24h!', 'info');
+                return;
+            }
+
             const product = products.find(p => p.id === productId);
             if (!product || !product.available) return;
 
@@ -5788,58 +7204,54 @@
                 if (input) code = input.value;
             }
 
-            if (!code || !code.trim()) {
+            const cleanCode = DefensiveUtils.safeString(code, 30);
+            if (!cleanCode) {
                 showNotification('Digite o código do cupom!', 'warning');
                 return;
             }
 
-            code = code.trim().toUpperCase();
-            const coupons = settings.coupons || defaultCoupons;
-            const found = coupons.find(c => c.code.toUpperCase() === code);
+            const availableCoupons = DefensiveUtils.safeArray(settings.coupons || defaultCoupons);
+            const subtotal = CartOrderCalculator.calculateSubtotal(cart);
 
-            if (!found) {
-                showNotification(`❌ Cupom "${code}" não encontrado!`, 'danger');
-                return;
-            }
+            const result = CouponEngine.validateAndCalculateCoupon({
+                couponCode: cleanCode,
+                subtotal,
+                availableCoupons
+            });
 
-            if (found.active === false) {
-                showNotification(`⚠️ O cupom "${code}" está inativo ou pausado!`, 'warning');
+            if (!result.isValid) {
+                showNotification(result.error || `❌ Cupom "${cleanCode}" inválido!`, 'warning');
                 return;
             }
 
             appliedCoupon = {
-                code: found.code,
-                discount: found.discount,
-                description: found.description || ''
+                code: result.code,
+                discount: result.discount,
+                description: result.description
             };
 
             saveData();
             updateCartUI();
 
-            const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            const discountVal = (subtotal * appliedCoupon.discount) / 100;
-            showNotification(`🎉 Cupom "${found.code}" aplicado! ${found.discount}% de desconto (-R$ ${discountVal.toFixed(2).replace('.', ',')})`, 'success');
+            showNotification(`🎉 Cupom "${result.code}" aplicado! ${result.discount}% de desconto (-${DefensiveUtils.formatCurrency(result.discountValue)})`, 'success');
         }
 
         function removeAppliedCoupon() {
             if (!appliedCoupon) return;
-            const removedCode = appliedCoupon.code;
+            const removedCode = DefensiveUtils.safeString(appliedCoupon.code, 30);
             appliedCoupon = null;
+            if (activeCompanyId) localStorage.removeItem(`appliedCoupon_${activeCompanyId}`);
             saveData();
             updateCartUI();
             showNotification(`Cupom "${removedCode}" removido.`, 'info');
         }
 
         function getActiveDeliveryInfo() {
-            let fee = typeof settings.deliveryFee === 'number' ? settings.deliveryFee : (parseFloat(settings.deliveryFee) || 5.00);
-            let time = settings.deliveryTime || '30 - 45 min';
-            let neighborhoodName = '';
-            let neighborhoodZone = '';
-            let neighborhoodZoneName = '';
-
-            const list = (settings.deliveryNeighborhoods && settings.deliveryNeighborhoods.length > 0) 
-                         ? settings.deliveryNeighborhoods 
-                         : DEFAULT_DELIVERY_NEIGHBORHOODS;
+            const list = DefensiveUtils.safeArray(
+                (settings.deliveryNeighborhoods && settings.deliveryNeighborhoods.length > 0) 
+                    ? settings.deliveryNeighborhoods 
+                    : DEFAULT_DELIVERY_NEIGHBORHOODS
+            );
 
             // 1. Tentar pegar do select atual no DOM se existir
             const selectEl = document.getElementById('customerNeighborhood');
@@ -5850,41 +7262,17 @@
                 selectedId = customerData.neighborhoodId;
             }
 
-            if (selectedId === 'other') {
-                const customInput = document.getElementById('customerCustomNeighborhood');
-                neighborhoodName = (customInput && customInput.value.trim()) || (customerData && customerData.neighborhood) || 'Outro Bairro';
-                neighborhoodZone = 'outra';
-                neighborhoodZoneName = 'Outra Região';
-                return { fee, time, neighborhoodName, neighborhoodZone, neighborhoodZoneName, selectedId };
-            }
+            const customInput = document.getElementById('customerCustomNeighborhood');
+            const customName = customInput ? customInput.value.trim() : '';
 
-            if (selectedId && selectedId !== 'other') {
-                const found = list.find(n => n.id === selectedId || (n.name && n.name.toLowerCase() === selectedId.toLowerCase()));
-                if (found) {
-                    fee = typeof found.fee === 'number' ? found.fee : (parseFloat(found.fee) || 0);
-                    time = found.time || time;
-                    neighborhoodName = found.name;
-                    neighborhoodZone = found.zone;
-                    neighborhoodZoneName = found.zoneName || (found.zone === 'centro' ? 'Centro' : (found.zone === 'zona_sul' ? 'Zona Sul' : (found.zone === 'zona_norte' ? 'Zona Norte' : 'Outra Região')));
-                    return { fee, time, neighborhoodName, neighborhoodZone, neighborhoodZoneName, selectedId: found.id };
-                }
-            }
-
-            // 3. Tentar pelo nome do bairro salvo no customerData
-            if (customerData && customerData.neighborhood) {
-                const found = list.find(n => (n.name && n.name.toLowerCase() === customerData.neighborhood.toLowerCase()) || n.id === customerData.neighborhoodId);
-                if (found) {
-                    fee = typeof found.fee === 'number' ? found.fee : (parseFloat(found.fee) || 0);
-                    time = found.time || time;
-                    neighborhoodName = found.name;
-                    neighborhoodZone = found.zone;
-                    neighborhoodZoneName = found.zoneName || '';
-                    return { fee, time, neighborhoodName, neighborhoodZone, neighborhoodZoneName, selectedId: found.id };
-                }
-                neighborhoodName = customerData.neighborhood;
-            }
-
-            return { fee, time, neighborhoodName, neighborhoodZone, neighborhoodZoneName, selectedId };
+            return DeliveryFeeEngine.calculateDeliveryFee({
+                selectedNeighborhoodId: selectedId,
+                customNeighborhoodName: customName,
+                neighborhoodsList: list,
+                defaultFee: settings.deliveryFee,
+                defaultTime: settings.deliveryTime,
+                customerData: customerData
+            });
         }
 
         function handleCustomerNeighborhoodChange(val) {
@@ -5911,7 +7299,7 @@
             if (badgeEl) {
                 if (val && val !== '') {
                     badgeEl.style.display = 'block';
-                    badgeEl.innerHTML = `🛵 Frete: <strong>R$ ${info.fee.toFixed(2).replace('.', ',')}</strong> | ⏱️ Previsão: <strong>${info.time}</strong>`;
+                    badgeEl.innerHTML = `🛵 Frete: <strong>${DefensiveUtils.formatCurrency(info.fee)}</strong> | ⏱️ Previsão: <strong>${DefensiveUtils.escapeHtml(info.time)}</strong>`;
                 } else {
                     badgeEl.style.display = 'none';
                 }
@@ -5922,13 +7310,27 @@
         }
 
         function updateCartUI(forceFormRender = false) {
-            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-            const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const safeCart = DefensiveUtils.safeArray(cart);
+            const deliveryInfo = getActiveDeliveryInfo();
+            const availableCoupons = DefensiveUtils.safeArray(settings.coupons || defaultCoupons);
 
-            cartCount.textContent = totalItems;
-            cartCount.style.display = totalItems > 0 ? 'flex' : 'none';
+            const totals = CartOrderCalculator.calculateFullOrderBreakdown({
+                cart: safeCart,
+                appliedCoupon,
+                deliveryInfo,
+                availableCoupons
+            });
 
-            if (cart.length === 0) {
+            // Se o cupom tiver se tornado inválido, atualizar estado
+            if (appliedCoupon && !totals.couponInfo.isValid) {
+                appliedCoupon = null;
+                if (activeCompanyId) localStorage.removeItem(`appliedCoupon_${activeCompanyId}`);
+            }
+
+            cartCount.textContent = totals.totalItems;
+            cartCount.style.display = totals.totalItems > 0 ? 'flex' : 'none';
+
+            if (safeCart.length === 0) {
                 cartItems.innerHTML = `
                     <div class="cart-empty">
                         <div class="cart-empty-icon">🛒</div>
@@ -5937,42 +7339,37 @@
                 `;
                 cartFooter.style.display = 'none';
             } else {
-                cartItems.innerHTML = cart.map(item => `
+                cartItems.innerHTML = safeCart.map(item => {
+                    const price = DefensiveUtils.safeNumber(item.price, 0);
+                    const qty = DefensiveUtils.safeInteger(item.quantity, 1);
+                    const itemSubtotal = price * qty;
+                    const cleanName = DefensiveUtils.escapeHtml(item.name || 'Item');
+                    const cleanDetails = item.details ? DefensiveUtils.escapeHtml(item.details) : '';
+                    const cleanImg = item.image ? DefensiveUtils.escapeHtml(item.image) : 'acai_300ml.svg';
+
+                    return `
                     <div class="cart-item">
-                        <img src="${item.image}" alt="${item.name}" class="cart-item-image">
+                        <img src="${cleanImg}" alt="${cleanName}" class="cart-item-image">
                         <div class="cart-item-info">
-                            <div class="cart-item-name">${item.name}</div>
-                            ${item.details ? `<div style="font-size: 0.8rem; color: #6B21A8; font-weight: 600; margin-top: 3px; background: #FAF5FF; padding: 4px 8px; border-radius: 6px; border: 1px solid #E9D5FF;">🥣 ${item.details}</div>` : ''}
-                            <div class="cart-item-price" style="margin-top: 4px;">R$ ${item.price.toFixed(2).replace('.', ',')}</div>
+                            <div class="cart-item-name">${cleanName}</div>
+                            ${cleanDetails ? `<div style="font-size: 0.8rem; color: #6B21A8; font-weight: 600; margin-top: 3px; background: #FAF5FF; padding: 4px 8px; border-radius: 6px; border: 1px solid #E9D5FF;">🥣 ${cleanDetails}</div>` : ''}
+                            <div class="cart-item-price" style="margin-top: 4px;">${DefensiveUtils.formatCurrency(price)}</div>
                             <div class="cart-item-controls">
                                 <button class="cart-item-btn" onclick="updateQuantity(${item.id}, -1)">−</button>
-                                <span class="cart-item-quantity">${item.quantity}</span>
+                                <span class="cart-item-quantity">${qty}</span>
                                 <button class="cart-item-btn" onclick="updateQuantity(${item.id}, 1)">+</button>
                                 <button class="cart-item-remove" onclick="removeFromCart(${item.id})">🗑️</button>
                             </div>
                         </div>
                         <div class="cart-item-total">
-                            R$ ${(item.price * item.quantity).toFixed(2).replace('.', ',')}
+                            ${DefensiveUtils.formatCurrency(itemSubtotal)}
                         </div>
                     </div>
-                `).join('');
+                `;
+                }).join('');
                 
                 cartFooter.style.display = 'block';
                 renderCustomerForm(forceFormRender);
-            }
-
-            // Calcular Desconto do Cupom
-            let discountValue = 0;
-            if (appliedCoupon && appliedCoupon.discount > 0) {
-                const coupons = settings.coupons || [];
-                const found = coupons.find(c => c.code.toUpperCase() === appliedCoupon.code.toUpperCase() && c.active !== false);
-                if (found) {
-                    appliedCoupon.discount = found.discount;
-                    discountValue = (subtotal * appliedCoupon.discount) / 100;
-                } else {
-                    appliedCoupon = null;
-                    if (activeCompanyId) localStorage.removeItem(`appliedCoupon_${activeCompanyId}`);
-                }
             }
 
             const discountRow = document.getElementById('cartDiscountRow');
@@ -5980,30 +7377,23 @@
             const discountValEl = document.getElementById('cartDiscountValue');
 
             if (discountRow) {
-                if (appliedCoupon && discountValue > 0) {
+                if (totals.couponInfo.isValid && totals.discountValue > 0) {
                     discountRow.style.display = 'flex';
-                    if (discountLabel) discountLabel.textContent = `🏷️ Desconto (${appliedCoupon.discount}% - ${appliedCoupon.code}):`;
-                    if (discountValEl) discountValEl.textContent = `-R$ ${discountValue.toFixed(2).replace('.', ',')}`;
+                    if (discountLabel) discountLabel.textContent = `🏷️ Desconto (${totals.couponInfo.discount}% - ${totals.couponInfo.code}):`;
+                    if (discountValEl) discountValEl.textContent = `-${DefensiveUtils.formatCurrency(totals.discountValue)}`;
                 } else {
                     discountRow.style.display = 'none';
                 }
             }
 
-            // Obter taxa e tempo dinâmico por bairro ou região
-            const deliveryInfo = getActiveDeliveryInfo();
-            const deliveryFee = deliveryInfo.fee;
-            const deliveryTimeText = deliveryInfo.time;
-            
             const estTimeEl = document.getElementById('cartEstimatedTime');
-            if (estTimeEl) estTimeEl.textContent = deliveryTimeText;
+            if (estTimeEl) estTimeEl.textContent = totals.deliveryTime;
 
-            const finalTotal = Math.max(0, subtotal - discountValue + deliveryFee);
-
-            cartSubtotal.textContent = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
-            cartDeliveryFee.textContent = `R$ ${deliveryFee.toFixed(2).replace('.', ',')}`;
-            cartTotal.textContent = `R$ ${finalTotal.toFixed(2).replace('.', ',')}`;
+            cartSubtotal.textContent = DefensiveUtils.formatCurrency(totals.subtotal);
+            cartDeliveryFee.textContent = DefensiveUtils.formatCurrency(totals.deliveryFee);
+            cartTotal.textContent = DefensiveUtils.formatCurrency(totals.finalTotal);
             
-            renderCartCouponUI(subtotal);
+            renderCartCouponUI(totals.subtotal);
             renderPaymentSelectionUI();
             updateCheckoutButton();
         }
@@ -6012,6 +7402,13 @@
         function updateCustomerHeaderUI() {
             const container = document.getElementById('customerHeaderContainer');
             if (container) {
+                if (currentAppView === 'landing' || currentAppView === 'login') {
+                    container.style.display = 'none';
+                    container.innerHTML = '';
+                    updateAdminHeaderUI();
+                    return;
+                }
+                container.style.display = 'block';
                 if (loggedCustomer) {
                     const firstName = loggedCustomer.name ? loggedCustomer.name.trim().split(' ')[0] : 'Cliente';
                     container.innerHTML = `
@@ -6091,7 +7488,7 @@
                     `;
                 } else {
                     itemsHtml += `
-                        <button type="button" class="mobile-dropdown-item admin-action" onclick="closeMobileHeaderMenu(); openAdminLogin();">
+                        <button type="button" class="mobile-dropdown-item admin-action" onclick="closeMobileHeaderMenu(); switchToLoginView();">
                             🏬 Login Empresa
                         </button>
                     `;
@@ -6225,26 +7622,31 @@
                 .replace(/'/g, '&#039;');
         }
 
-        function handleCustomerLogin(e) {
+        async function handleCustomerLogin(e) {
             e.preventDefault();
             const phone = document.getElementById('loginPhone').value.trim();
             const password = document.getElementById('loginPassword').value.trim();
 
+            let token = null;
+            // Sincronizar login com servidor seguro
+            try {
+                const r = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, password })
+                });
+                const res = await r.json();
+                if (res && res.success && res.token) {
+                    token = res.token;
+                }
+            } catch (err) {
+                // Modo offline / local
+            }
+
             const account = customerAccounts.find(acc => acc.phone === phone && acc.password === password);
 
-            // Sincronizar login com servidor seguro
-            fetch('/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone, password })
-            }).then(r => r.json()).then(res => {
-                if (res && res.success && res.token) {
-                    sessionStorage.setItem('customerAuthToken', res.token);
-                }
-            }).catch(() => {});
-
             if (account) {
-                loggedCustomer = account;
+                AuthManager.loginCustomer(account, token);
                 customerData = {
                     name: account.name,
                     neighborhood: account.neighborhood || '',
@@ -6254,7 +7656,6 @@
                     reference: account.reference || '',
                     phone: account.phone
                 };
-                localStorage.setItem('loggedCustomer', JSON.stringify(loggedCustomer));
                 localStorage.setItem('customerData', JSON.stringify(customerData));
 
                 closeCustomerAuthModal();
@@ -6271,7 +7672,7 @@
             }
         }
 
-        function handleCustomerRegister(e) {
+        async function handleCustomerRegister(e) {
             e.preventDefault();
             const name = document.getElementById('authRegisterName').value.trim();
             const nSelect = document.getElementById('authRegisterNeighborhood');
@@ -6334,26 +7735,29 @@
             customerAccounts.push(newAccount);
             localStorage.setItem('customerAccounts', JSON.stringify(customerAccounts));
 
+            let token = null;
             // Sincronizar cadastro com backend seguro
-            fetch('/api/auth/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name,
-                    phone,
-                    password,
-                    address,
-                    neighborhood: nName,
-                    reference
-                })
-            }).then(r => r.json()).then(res => {
+            try {
+                const r = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name,
+                        phone,
+                        password,
+                        address,
+                        neighborhood: nName,
+                        reference
+                    })
+                });
+                const res = await r.json();
                 if (res && res.success && res.token) {
-                    sessionStorage.setItem('customerAuthToken', res.token);
+                    token = res.token;
                 }
-            }).catch(() => {});
+            } catch (err) {}
 
-            // Logar automaticamente
-            loggedCustomer = newAccount;
+            // Logar automaticamente com AuthManager
+            AuthManager.loginCustomer(newAccount, token);
             customerData = { 
                 name, 
                 neighborhoodId: nId,
@@ -6363,7 +7767,6 @@
                 reference,
                 phone 
             };
-            localStorage.setItem('loggedCustomer', JSON.stringify(loggedCustomer));
             localStorage.setItem('customerData', JSON.stringify(customerData));
 
             closeCustomerAuthModal();
@@ -6375,14 +7778,12 @@
         }
 
         function logoutCustomer() {
-            loggedCustomer = null;
+            AuthManager.logoutCustomer();
             customerData = null;
-            localStorage.removeItem('loggedCustomer');
             localStorage.removeItem('customerData');
             closeCustomerOrdersModal();
             renderCustomerForm(true);
             updateCartUI(false);
-            updateCustomerHeaderUI();
             updateCheckoutButton();
             showNotification('Você saiu da sua conta.', 'info');
         }
@@ -6550,7 +7951,7 @@
             try {
                 const storedPlaced = JSON.parse(localStorage.getItem('all_placed_orders') || '[]');
                 if (Array.isArray(storedPlaced)) {
-                    storedPlaced.forEach(ord => {
+                    DefensiveUtils.safeArray(storedPlaced).forEach(ord => {
                         if (ord && ord.id && !allCustomerOrders.some(o => String(o.id) === String(ord.id))) {
                             allCustomerOrders.push(ord);
                         }
@@ -6559,9 +7960,11 @@
             } catch(e) {}
 
             // 2. Pedidos das empresas em memória
-            if (companies && companies.length > 0) {
-                companies.forEach(comp => {
-                    const compOrders = comp.orders || [];
+            const safeCompanies = DefensiveUtils.safeArray(companies);
+            if (safeCompanies.length > 0) {
+                safeCompanies.forEach(comp => {
+                    if (!comp) return;
+                    const compOrders = DefensiveUtils.safeArray(comp.orders);
                     compOrders.forEach(ord => {
                         if (!ord || !ord.id) return;
                         const idx = allCustomerOrders.findIndex(o => String(o.id) === String(ord.id));
@@ -6575,7 +7978,7 @@
             }
 
             // 3. Pedidos ativos em customerOrders
-            customerOrders.forEach(ord => {
+            DefensiveUtils.safeArray(customerOrders).forEach(ord => {
                 if (!ord || !ord.id) return;
                 const idx = allCustomerOrders.findIndex(o => String(o.id) === String(ord.id));
                 if (idx >= 0) {
@@ -6589,6 +7992,7 @@
             const phone = (loggedCustomer && loggedCustomer.phone) || (customerData && customerData.phone);
             const cleanPhone = phone ? String(phone).replace(/\D/g, '') : '';
             const myOrders = allCustomerOrders.filter(o => {
+                if (!o) return false;
                 if (cleanPhone && o.customerPhone) {
                     const ordPhone = String(o.customerPhone).replace(/\D/g, '');
                     return ordPhone === cleanPhone || ordPhone.endsWith(cleanPhone) || cleanPhone.endsWith(ordPhone);
@@ -6618,11 +8022,18 @@
             };
 
             container.innerHTML = myOrders.map(order => {
+                if (!order) return '';
                 const st = statusLabels[order.status] || statusLabels['RECEIVED'];
-                const targetStoreName = order.companyName || settings.restaurantName;
-                const targetWhatsapp = order.companyWhatsapp || settings.whatsappNumber;
-                const encodedWa = encodeURIComponent(`Olá! Gostaria de acompanhar meu Pedido ${order.id} em ${targetStoreName}.`);
-                
+                const targetStoreName = DefensiveUtils.escapeHtml(order.companyName || settings.restaurantName || 'Restaurante');
+                const rawWa = order.companyWhatsapp || settings.whatsappNumber || '';
+                const cleanWa = String(rawWa).replace(/\D/g, '');
+                const encodedWa = encodeURIComponent(`Olá! Gostaria de acompanhar meu Pedido ${order.id} em ${order.companyName || settings.restaurantName}.`);
+                const orderId = DefensiveUtils.escapeHtml(String(order.id || ''));
+                const orderDate = DefensiveUtils.escapeHtml(order.date || 'Hoje');
+                const totalFormatted = DefensiveUtils.formatCurrency(order.total || 0);
+
+                const items = DefensiveUtils.safeArray(order.items);
+
                 return `
                     <div class="order-card">
                         <div class="order-card-header">
@@ -6630,8 +8041,8 @@
                                 <div style="font-size: 0.78rem; font-weight: 800; color: var(--primary); margin-bottom: 2px;">
                                     🏬 ${targetStoreName}
                                 </div>
-                                <div class="order-id">Pedido ${order.id}</div>
-                                <div class="order-date">📅 ${order.date || 'Hoje'}</div>
+                                <div class="order-id">Pedido ${orderId}</div>
+                                <div class="order-date">📅 ${orderDate}</div>
                             </div>
                             <span class="order-status-badge ${st.class}">${st.text}</span>
                         </div>
@@ -6639,24 +8050,30 @@
                         <div class="order-items-summary">
                             <strong>Itens Solicitados:</strong>
                             <ul style="margin-top: 4px; padding-left: 1.2rem; font-size: 0.85rem;">
-                                ${(order.items || []).map(i => `
+                                ${items.map(i => {
+                                    if (!i) return '';
+                                    const qty = DefensiveUtils.safeNumber(i.quantity, 1);
+                                    const itemName = DefensiveUtils.escapeHtml(i.name || 'Item');
+                                    const details = i.details ? `<br><small style="color:#6B21A8; font-weight:600;">🥣 ${DefensiveUtils.escapeHtml(i.details)}</small>` : '';
+                                    return `
                                     <li style="margin-bottom: 3px;">
-                                        <strong>${i.quantity || 1}x ${i.name}</strong>
-                                        ${i.details ? `<br><small style="color:#6B21A8; font-weight:600;">🥣 ${i.details}</small>` : ''}
+                                        <strong>${qty}x ${itemName}</strong>
+                                        ${details}
                                     </li>
-                                `).join('')}
+                                `;
+                                }).join('')}
                             </ul>
                         </div>
                         <div class="order-card-footer">
-                            <span class="order-total-price">Total: R$ ${(order.total || 0).toFixed(2).replace('.', ',')}</span>
-                            <a href="https://wa.me/${targetWhatsapp}?text=${encodedWa}" target="_blank" class="btn-track-whatsapp">
+                            <span class="order-total-price">Total: ${totalFormatted}</span>
+                            <a href="https://wa.me/${cleanWa}?text=${encodedWa}" target="_blank" class="btn-track-whatsapp">
                                 💬 WhatsApp (${targetStoreName})
                             </a>
                         </div>
                         <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.4rem; font-size: 0.78rem;">
-                            <span style="background: #FAF5FF; color: #59176B; border: 1px solid #E9D5FF; padding: 0.2rem 0.5rem; border-radius: 6px; font-weight: 700;">💳 ${order.paymentMethod || 'Pix'}</span>
-                            <span style="background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D; padding: 0.2rem 0.5rem; border-radius: 6px; font-weight: 700;">⏱️ Previsão: ${order.deliveryTime || '30 - 45 min'}</span>
-                            ${(order.couponCode || (order.discountValue && order.discountValue > 0) || (order.discount && order.discount > 0)) ? `<span style="background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0; padding: 0.2rem 0.5rem; border-radius: 6px; font-weight: 700;">🏷️ Cupom: ${order.couponCode || 'PROMO'} (-R$ ${(order.discountValue || order.discount || 0).toFixed(2).replace('.', ',')})</span>` : ''}
+                            <span style="background: #FAF5FF; color: #59176B; border: 1px solid #E9D5FF; padding: 0.2rem 0.5rem; border-radius: 6px; font-weight: 700;">💳 ${DefensiveUtils.escapeHtml(order.paymentMethod || 'Pix')}</span>
+                            <span style="background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D; padding: 0.2rem 0.5rem; border-radius: 6px; font-weight: 700;">⏱️ Previsão: ${DefensiveUtils.escapeHtml(order.deliveryTime || '30 - 45 min')}</span>
+                            ${(order.couponCode || (order.discountValue && order.discountValue > 0) || (order.discount && order.discount > 0)) ? `<span style="background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0; padding: 0.2rem 0.5rem; border-radius: 6px; font-weight: 700;">🏷️ Cupom: ${DefensiveUtils.escapeHtml(order.couponCode || 'PROMO')} (-${DefensiveUtils.formatCurrency(order.discountValue || order.discount || 0)})</span>` : ''}
                         </div>
                     </div>
                 `;
@@ -6772,7 +8189,7 @@
             let allCompanyOrders = [];
 
             // A. De customerOrders em memória
-            (customerOrders || []).forEach(ord => {
+            DefensiveUtils.safeArray(customerOrders).forEach(ord => {
                 if (!ord || !ord.id) return;
                 const matchesComp = ord.companyId === activeCompId || (!ord.companyId && (activeCompId === 'company-demo-don' || activeCompId === 'company-fb-default'));
                 if (matchesComp && !allCompanyOrders.some(o => String(o.id) === String(ord.id) || String(o.id).replace('#', '') === String(ord.id).replace('#', ''))) {
@@ -6781,9 +8198,10 @@
             });
 
             // B. De companies[activeCompId].orders
-            const activeCompObj = companies.find(c => c.id === activeCompId);
+            const safeCompanies = DefensiveUtils.safeArray(companies);
+            const activeCompObj = safeCompanies.find(c => c && c.id === activeCompId);
             if (activeCompObj && Array.isArray(activeCompObj.orders)) {
-                activeCompObj.orders.forEach(ord => {
+                DefensiveUtils.safeArray(activeCompObj.orders).forEach(ord => {
                     if (!ord || !ord.id) return;
                     const idx = allCompanyOrders.findIndex(o => String(o.id) === String(ord.id) || String(o.id).replace('#', '') === String(ord.id).replace('#', ''));
                     if (idx >= 0) {
@@ -6798,7 +8216,7 @@
             try {
                 const storedLocal = JSON.parse(localStorage.getItem(`customerOrders_${activeCompId}`) || '[]');
                 if (Array.isArray(storedLocal)) {
-                    storedLocal.forEach(ord => {
+                    DefensiveUtils.safeArray(storedLocal).forEach(ord => {
                         if (!ord || !ord.id) return;
                         const idx = allCompanyOrders.findIndex(o => String(o.id) === String(ord.id) || String(o.id).replace('#', '') === String(ord.id).replace('#', ''));
                         if (idx >= 0) {
@@ -6814,7 +8232,7 @@
             try {
                 const storedAll = JSON.parse(localStorage.getItem('all_placed_orders') || '[]');
                 if (Array.isArray(storedAll)) {
-                    storedAll.forEach(ord => {
+                    DefensiveUtils.safeArray(storedAll).forEach(ord => {
                         if (!ord || !ord.id) return;
                         const matchesComp = ord.companyId === activeCompId || (!ord.companyId && (activeCompId === 'company-demo-don' || activeCompId === 'company-fb-default'));
                         if (matchesComp) {
@@ -6857,11 +8275,13 @@
             if (adminOrderSearchQuery) {
                 const q = adminOrderSearchQuery.toLowerCase();
                 filteredList = filteredList.filter(o => {
+                    if (!o) return false;
                     const idMatch = (o.id || '').toLowerCase().includes(q);
                     const nameMatch = (o.customerName || '').toLowerCase().includes(q);
                     const phoneMatch = (o.customerPhone || '').toLowerCase().includes(q);
                     const addrMatch = (o.customerAddress || '').toLowerCase().includes(q);
-                    const itemsMatch = (o.items || []).some(i => (i.name || '').toLowerCase().includes(q));
+                    const items = DefensiveUtils.safeArray(o.items);
+                    const itemsMatch = items.some(i => i && (i.name || '').toLowerCase().includes(q));
                     return idMatch || nameMatch || phoneMatch || addrMatch || itemsMatch;
                 });
             }
@@ -6882,11 +8302,14 @@
             }
 
             container.innerHTML = filteredList.map(order => {
+                if (!order) return '';
                 const isExpanded = expandedAdminOrders.has(order.id);
                 const st = adminOrderStatusMap[order.status] || adminOrderStatusMap['RECEIVED'];
-                const totalItemsCount = (order.items || []).reduce((acc, i) => acc + (i.quantity || 1), 0);
-                const encodedWa = encodeURIComponent(`Olá ${order.customerName}! Aqui é da ${settings.restaurantName}, sobre seu pedido ${order.id}.`);
+                const items = DefensiveUtils.safeArray(order.items);
+                const totalItemsCount = items.reduce((acc, i) => acc + DefensiveUtils.safeNumber(i?.quantity, 1), 0);
+                const encodedWa = encodeURIComponent(`Olá ${order.customerName || 'Cliente'}! Aqui é da ${settings.restaurantName}, sobre seu pedido ${order.id}.`);
                 const cleanPhone = (order.customerPhone || '').replace(/\D/g, '');
+                const cleanTotal = DefensiveUtils.formatCurrency(order.total || 0);
 
                 return `
                     <div class="admin-order-compact-card ${isExpanded ? 'expanded' : ''}" id="adminOrderCard_${order.id}">
@@ -6895,15 +8318,15 @@
                             <!-- ESQUERDA: NÚMERO DO PEDIDO + NOME DO CLIENTE + DATA -->
                             <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; min-width: 220px; flex: 1;">
                                 <span style="background: #312E81; color: #FFFFFF; font-weight: 800; font-size: 0.78rem; padding: 3px 8px; border-radius: 6px; font-family: monospace;">
-                                    ${order.id}
+                                    ${DefensiveUtils.escapeHtml(String(order.id || ''))}
                                 </span>
                                 <div>
                                     <div style="font-weight: 800; color: #1E1B4B; font-size: 0.92rem; display: flex; align-items: center; gap: 0.35rem;">
-                                        👤 ${order.customerName || 'Cliente'}
-                                        ${order.customerPhone ? `<span style="font-size: 0.75rem; color: #64748B; font-weight: normal;">(${order.customerPhone})</span>` : ''}
+                                        👤 ${DefensiveUtils.escapeHtml(order.customerName || 'Cliente')}
+                                        ${order.customerPhone ? `<span style="font-size: 0.75rem; color: #64748B; font-weight: normal;">(${DefensiveUtils.escapeHtml(order.customerPhone)})</span>` : ''}
                                     </div>
                                     <div style="font-size: 0.72rem; color: #64748B; margin-top: 1px;">
-                                        📅 ${order.date || 'Hoje'} • 📦 <strong>${totalItemsCount} iten(s)</strong> • 💳 ${order.paymentMethod || 'Pix'}
+                                        📅 ${DefensiveUtils.escapeHtml(order.date || 'Hoje')} • 📦 <strong>${totalItemsCount} iten(s)</strong> • 💳 ${DefensiveUtils.escapeHtml(order.paymentMethod || 'Pix')}
                                     </div>
                                 </div>
                             </div>
@@ -6911,7 +8334,7 @@
                             <!-- DIREITA: VALOR TOTAL + STATUS + AÇÕES RÁPIDAS + CHEVRON -->
                             <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;" class="no-toggle">
                                 <span style="font-size: 0.95rem; font-weight: 900; color: #047857; background: #ECFDF5; padding: 3px 8px; border-radius: 6px; border: 1px solid #A7F3D0;">
-                                    R$ ${order.total.toFixed(2).replace('.', ',')}
+                                    ${cleanTotal}
                                 </span>
 
                                 <select class="admin-order-status-select no-toggle" onchange="updateOrderStatus('${order.id}', this.value)" style="font-size: 0.78rem; padding: 0.3rem 0.5rem; border-radius: 6px; font-weight: 700; background: ${st.bg}; color: ${st.color}; border: 1px solid ${st.border};" title="Alterar status do pedido">
@@ -6940,10 +8363,10 @@
                             <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 0.75rem; margin-bottom: 0.75rem; font-size: 0.82rem; color: #334155; line-height: 1.45;">
                                 <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.35rem;">
                                     <div>
-                                        📍 <strong>Endereço de Entrega:</strong> ${order.customerAddress || 'Endereço não informado'}<br>
-                                        ${order.customerReference ? `🎯 <strong style="color: #6D28D9;">Ponto de Referência:</strong> ${order.customerReference}<br>` : ''}
-                                        📱 <strong>Telefone:</strong> ${order.customerPhone || 'Sem telefone'} | 
-                                        ⏱️ <strong style="color: #D97706;">Previsão:</strong> ${order.deliveryTime || '30 - 45 min'}
+                                        📍 <strong>Endereço de Entrega:</strong> ${DefensiveUtils.escapeHtml(order.customerAddress || 'Endereço não informado')}<br>
+                                        ${order.customerReference ? `🎯 <strong style="color: #6D28D9;">Ponto de Referência:</strong> ${DefensiveUtils.escapeHtml(order.customerReference)}<br>` : ''}
+                                        📱 <strong>Telefone:</strong> ${DefensiveUtils.escapeHtml(order.customerPhone || 'Sem telefone')} | 
+                                        ⏱️ <strong style="color: #D97706;">Previsão:</strong> ${DefensiveUtils.escapeHtml(order.deliveryTime || '30 - 45 min')}
                                     </div>
                                     ${cleanPhone ? `
                                         <a href="https://wa.me/55${cleanPhone}?text=${encodedWa}" target="_blank" class="btn-admin" style="background: #25D366; color: white; font-size: 0.75rem; font-weight: 700; padding: 0.35rem 0.7rem; border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem;">
@@ -6965,15 +8388,22 @@
                                     <span>${totalItemsCount} item(ns)</span>
                                 </div>
                                 <ul style="margin: 0; padding-left: 1.1rem; font-size: 0.84rem; color: #1E1B4B;">
-                                    ${order.items.map(i => `
+                                    ${items.map(i => {
+                                        if (!i) return '';
+                                        const qty = DefensiveUtils.safeNumber(i.quantity, 1);
+                                        const price = DefensiveUtils.safeNumber(i.price, 0);
+                                        const itemName = DefensiveUtils.escapeHtml(i.name || 'Item');
+                                        const details = i.details ? `<div style="font-size: 0.78rem; color: #6B21A8; margin-top: 1px; font-weight: 600;">🥣 ${DefensiveUtils.escapeHtml(i.details)}</div>` : '';
+                                        return `
                                         <li style="margin-bottom: 0.4rem;">
                                             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                                                <span><strong>${i.quantity}x ${i.name}</strong></span>
-                                                ${i.price ? `<span style="font-weight: 700; color: #4338CA;">R$ ${(i.price * (i.quantity || 1)).toFixed(2).replace('.', ',')}</span>` : ''}
+                                                <span><strong>${qty}x ${itemName}</strong></span>
+                                                ${price > 0 ? `<span style="font-weight: 700; color: #4338CA;">${DefensiveUtils.formatCurrency(price * qty)}</span>` : ''}
                                             </div>
-                                            ${i.details ? `<div style="font-size: 0.78rem; color: #6B21A8; margin-top: 1px; font-weight: 600;">🥣 ${i.details}</div>` : ''}
+                                            ${details}
                                         </li>
-                                    `).join('')}
+                                    `;
+                                    }).join('')}
                                 </ul>
                             </div>
 
@@ -6981,15 +8411,15 @@
                             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.6rem; border-top: 1px dashed #E2E8F0; padding-top: 0.6rem;">
                                 <div style="font-size: 0.84rem;">
                                     <div style="font-weight: 800; color: #1E1B4B; font-size: 0.95rem;">
-                                        Total: <span style="color: #047857;">R$ ${order.total.toFixed(2).replace('.', ',')}</span>
+                                        Total: <span style="color: #047857;">${cleanTotal}</span>
                                     </div>
                                     ${(order.couponCode || (order.discountValue && order.discountValue > 0) || (order.discount && order.discount > 0)) ? `
                                         <div style="font-size: 0.75rem; color: #059669; font-weight: 700; margin-top: 2px;">
-                                            🏷️ Cupom Aplicado: ${order.couponCode || 'PROMO'} (-R$ ${(order.discountValue || order.discount || 0).toFixed(2).replace('.', ',')})
+                                            🏷️ Cupom Aplicado: ${DefensiveUtils.escapeHtml(order.couponCode || 'PROMO')} (-${DefensiveUtils.formatCurrency(order.discountValue || order.discount || 0)})
                                         </div>
                                     ` : ''}
                                     <div style="font-size: 0.75rem; color: #64748B; margin-top: 1px;">
-                                        Forma de Pagamento: <strong>${order.paymentMethod || 'Pix'}</strong>
+                                        Forma de Pagamento: <strong>${DefensiveUtils.escapeHtml(order.paymentMethod || 'Pix')}</strong>
                                     </div>
                                 </div>
 
@@ -8087,7 +9517,8 @@
         }
 
         function checkout() {
-            if (cart.length === 0) {
+            const safeCart = DefensiveUtils.safeArray(cart);
+            if (safeCart.length === 0) {
                 alert('Seu carrinho está vazio!');
                 return;
             }
@@ -8097,80 +9528,46 @@
                 return;
             }
 
-            const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            
-            // Calcular desconto do cupom aplicado
-            let discountValue = 0;
-            let finalCouponCode = null;
-            let finalCouponDiscount = 0;
-            if (appliedCoupon && appliedCoupon.discount > 0) {
-                finalCouponCode = appliedCoupon.code;
-                finalCouponDiscount = appliedCoupon.discount;
-                discountValue = (subtotal * appliedCoupon.discount) / 100;
-            }
-
             const deliveryInfo = getActiveDeliveryInfo();
-            const deliveryFee = deliveryInfo.fee;
-            const estimatedDeliveryTime = deliveryInfo.time;
-            const total = Math.max(0, subtotal - discountValue + deliveryFee);
             const paymentMethodLabel = getFormattedPaymentMethod();
-
-            // Criar registro de pedido para o histórico do cliente e admin
             const activeComp = (companies && companies.find(c => c.id === activeCompanyId)) || settings;
-            const currentCompId = activeCompanyId || 'company-demo-don';
-            const currentCompName = (activeComp && activeComp.name) || settings.restaurantName || 'Don Food';
-            const currentCompWa = (activeComp && activeComp.whatsappNumber) || settings.whatsappNumber;
+            const availableCoupons = DefensiveUtils.safeArray(settings.coupons || defaultCoupons);
 
-            const orderId = '#' + Math.floor(1000 + Math.random() * 9000);
-            const newOrder = {
-                id: orderId,
-                companyId: currentCompId,
-                companyName: currentCompName,
-                companyWhatsapp: currentCompWa,
-                customerName: customerData.name,
-                customerNeighborhood: customerData.neighborhood || deliveryInfo.neighborhoodName || 'Centro',
-                customerNeighborhoodZone: customerData.neighborhoodZone || deliveryInfo.neighborhoodZoneName || '',
-                customerAddress: customerData.address,
-                customerReference: customerData.reference || '',
-                customerPhone: customerData.phone,
-                paymentMethod: paymentMethodLabel,
-                deliveryTime: estimatedDeliveryTime,
-                date: new Date().toLocaleString('pt-BR'),
-                couponCode: finalCouponCode,
-                couponDiscount: finalCouponDiscount,
-                discountValue: discountValue,
-                items: cart.map(item => ({
-                    name: item.name,
-                    details: item.details || '',
-                    quantity: item.quantity,
-                    price: item.price
-                })),
-                subtotal: subtotal,
-                deliveryFee: deliveryFee,
-                total: total,
-                status: 'RECEIVED'
-            };
+            // 1. Construir objeto do Pedido de forma pura e validada
+            const newOrder = OrderMessageBuilder.buildOrderRecord({
+                cart: safeCart,
+                customerData,
+                paymentMethodLabel,
+                appliedCoupon,
+                company: activeComp,
+                settings,
+                deliveryInfo,
+                availableCoupons
+            });
 
+            const currentCompId = newOrder.companyId;
+
+            // 2. Armazenar no histórico local defensivamente
+            if (!Array.isArray(customerOrders)) customerOrders = [];
             customerOrders.unshift(newOrder);
             if (knownOrderIds) knownOrderIds.add(newOrder.id);
 
-            // Adicionar ao array da empresa ativa
             const activeCompObj = companies.find(c => c.id === currentCompId);
             if (activeCompObj) {
-                if (!activeCompObj.orders) activeCompObj.orders = [];
+                if (!Array.isArray(activeCompObj.orders)) activeCompObj.orders = [];
                 activeCompObj.orders.unshift(newOrder);
             }
 
-            // Salvar no histórico global de pedidos do navegador
             try {
                 let allPlaced = JSON.parse(localStorage.getItem('all_placed_orders') || '[]');
+                if (!Array.isArray(allPlaced)) allPlaced = [];
                 allPlaced.unshift(newOrder);
                 localStorage.setItem('all_placed_orders', JSON.stringify(allPlaced));
             } catch(e) {}
 
             saveData();
 
-            // Enviar pedido instantaneamente para a API central da empresa
+            // 3. Enviar pedido para a API central da empresa
             fetch('/api/orders', {
                 method: 'POST',
                 headers: {
@@ -8186,7 +9583,7 @@
                 console.warn('ℹ️ Pedido registrado localmente:', err.message);
             });
 
-            // Garantir que a conta esteja registrada
+            // 4. Garantir que a conta do cliente esteja registrada
             if (!loggedCustomer) {
                 loggedCustomer = {
                     name: customerData.name,
@@ -8197,6 +9594,7 @@
                     phone: customerData.phone,
                     password: '123'
                 };
+                if (!Array.isArray(customerAccounts)) customerAccounts = [];
                 if (!customerAccounts.some(a => a.phone === loggedCustomer.phone)) {
                     customerAccounts.push(loggedCustomer);
                     localStorage.setItem('customerAccounts', JSON.stringify(customerAccounts));
@@ -8205,49 +9603,15 @@
                 updateCustomerHeaderUI();
             }
 
-            let message = `*💜 Novo Pedido ${orderId} - ${settings.restaurantName}*\n\n`;
-            
-            // Dados do cliente
-            message += `*📋 DADOS DO CLIENTE & ENTREGA*\n`;
-            message += `👤 Nome: ${customerData.name}\n`;
-            if (newOrder.customerNeighborhood) {
-                message += `🛵 Bairro / Região: ${newOrder.customerNeighborhood}${newOrder.customerNeighborhoodZone ? ` (${newOrder.customerNeighborhoodZone})` : ''}\n`;
-            }
-            message += `📍 Endereço: ${customerData.address}\n`;
-            if (customerData.reference) {
-                message += `🎯 Ponto de Referência: ${customerData.reference}\n`;
-            }
-            message += `📱 Telefone: ${customerData.phone}\n\n`;
-
-            // Forma de Pagamento e Previsão de Entrega
-            message += `*💳 FORMA DE PAGAMENTO*\n`;
-            message += `• ${paymentMethodLabel}\n\n`;
-
-            message += `*⏱️ PREVISÃO DE ENTREGA*\n`;
-            message += `• ~${estimatedDeliveryTime}\n\n`;
-            
-            // Pedido
-            message += `*🛒 ITENS DO PEDIDO*\n`;
-            cart.forEach(item => {
-                message += `• *${item.quantity}x ${item.name}*\n`;
-                if (item.details) {
-                    message += `   🥣 _Ingredientes: ${item.details}_\n`;
-                }
-                message += `   Valor unitário: R$ ${item.price.toFixed(2).replace('.', ',')}\n`;
-                message += `   Subtotal: R$ ${(item.price * item.quantity).toFixed(2).replace('.', ',')}\n\n`;
+            // 5. Formatar mensagem pura para WhatsApp
+            const message = OrderMessageBuilder.formatWhatsAppMessage({
+                order: newOrder,
+                restaurantName: settings.restaurantName || activeComp.name || 'Don Food'
             });
 
-            message += `------------------------------\n`;
-            message += `Subtotal: R$ ${subtotal.toFixed(2).replace('.', ',')}\n`;
-            if (discountValue > 0 && finalCouponCode) {
-                message += `🏷️ *Cupom de Desconto:* ${finalCouponCode} (${finalCouponDiscount}% OFF = -R$ ${discountValue.toFixed(2).replace('.', ',')})\n`;
-            }
-            message += `Taxa de Entrega: R$ ${deliveryFee.toFixed(2).replace('.', ',')}\n`;
-            message += `*💰 TOTAL: R$ ${total.toFixed(2).replace('.', ',')}*\n\n`;
-            message += 'Aguardo confirmação! Obrigado! 😊';
-
+            const targetWaNumber = DefensiveUtils.sanitizePhone(activeComp.whatsappNumber || settings.whatsappNumber || '5511999999999');
             const encodedMessage = encodeURIComponent(message);
-            const whatsappURL = `https://wa.me/${settings.whatsappNumber}?text=${encodedMessage}`;
+            const whatsappURL = `https://wa.me/${targetWaNumber}?text=${encodedMessage}`;
 
             // Abrir WhatsApp
             window.open(whatsappURL, '_blank');
@@ -8263,7 +9627,7 @@
             renderAdminOrdersList();
             renderCustomerOrdersList();
 
-            showNotification(`Pedido ${orderId} enviado para o WhatsApp! Acompanhe o status na Área do Cliente. 📦`, 'success');
+            showNotification(`Pedido ${newOrder.id} enviado para o WhatsApp! Acompanhe o status na Área do Cliente. 📦`, 'success');
 
             // Abrir modal da Área do Cliente para acompanhamento do status em tempo real
             setTimeout(() => {
@@ -8307,42 +9671,84 @@
                 });
             }
             
-            // Password Form (Painel de Login da Empresa com E-mail e Senha)
-            passwordForm.addEventListener('submit', (e) => {
+            // Password Form (Painel de Login da Empresa com E-mail/Telefone e Senha - RBAC COMPANY_OWNER)
+            passwordForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const emailInput = document.getElementById('companyLoginEmail');
-                const enteredEmail = emailInput ? emailInput.value.trim().toLowerCase() : '';
+                const enteredIdentifier = emailInput ? emailInput.value.trim() : '';
                 const enteredPassword = passwordInput.value ? passwordInput.value.trim() : '';
 
-                if (!enteredEmail || !enteredPassword) return;
+                if (!enteredPassword) return;
 
-                // 1. Procurar empresa cadastrada que corresponda ao e-mail e à senha
+                // Tentar autenticação segura no backend primeiro
+                try {
+                    const response = await fetch('/api/auth/company-login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            identifier: enteredIdentifier,
+                            email: enteredIdentifier,
+                            phone: enteredIdentifier,
+                            password: enteredPassword,
+                            companyId: activeCompanyId
+                        })
+                    });
+                    const res = await response.json();
+
+                    if (res && res.success && res.company) {
+                        const matched = companies.find(c => c.id === res.company.id) || res.company;
+                        switchActiveCompany(res.company.id);
+                        loginAdminSuccess(matched, res.token);
+                        if (emailInput) emailInput.value = '';
+                        passwordInput.value = '';
+                        if (passwordError) passwordError.style.display = 'none';
+                        return;
+                    }
+                } catch (netErr) {
+                    // Fallback para modo offline/local
+                }
+
+                // 1. Procurar empresa cadastrada que corresponda ao e-mail ou telefone e à senha
+                const cleanPhone = enteredIdentifier.replace(/\D/g, '');
+                const lowerId = enteredIdentifier.toLowerCase();
                 let matchedCompany = companies.find(c => {
+                    if (c.adminPassword !== enteredPassword) return false;
                     const cEmail = (c.email || '').trim().toLowerCase();
-                    const matchEmail = (cEmail === enteredEmail) || (!cEmail && (enteredEmail.includes('fb') || enteredEmail.includes('admin') || c.id === activeCompanyId));
-                    const matchPassword = c.adminPassword === enteredPassword;
-                    return matchEmail && matchPassword;
+                    const cPhone = (c.phone || c.whatsapp || '').replace(/\D/g, '');
+
+                    if (cEmail && cEmail === lowerId) return true;
+                    if (cleanPhone.length >= 8 && cPhone && (cPhone === cleanPhone || cPhone.endsWith(cleanPhone) || cleanPhone.endsWith(cPhone))) {
+                        return true;
+                    }
+                    if (!cEmail && (lowerId.includes('fb') || lowerId.includes('admin') || c.id === activeCompanyId)) {
+                        return true;
+                    }
+                    return false;
                 });
 
-                // 2. Se não achou por e-mail exato, verificar se e-mail não estava preenchido e a senha pertence a uma empresa
+                // 2. Se não achou por e-mail/telefone exato, verificar se a senha confere com qualquer empresa
                 if (!matchedCompany) {
                     matchedCompany = companies.find(c => c.adminPassword === enteredPassword);
-                    if (matchedCompany) {
-                        matchedCompany.email = enteredEmail;
+                    if (matchedCompany && enteredIdentifier) {
+                        if (enteredIdentifier.includes('@')) {
+                            matchedCompany.email = enteredIdentifier;
+                        } else if (cleanPhone.length >= 8) {
+                            matchedCompany.phone = enteredIdentifier;
+                        }
                         saveData();
                     }
                 }
 
                 if (matchedCompany) {
                     switchActiveCompany(matchedCompany.id);
-                    loginAdminSuccess();
+                    loginAdminSuccess(matchedCompany);
                     if (emailInput) emailInput.value = '';
                     passwordInput.value = '';
                     if (passwordError) passwordError.style.display = 'none';
                 } else {
                     if (passwordError) {
                         passwordError.style.display = 'block';
-                        passwordError.textContent = '❌ E-mail ou senha incorretos! Por favor, verifique os dados cadastrados.';
+                        passwordError.textContent = '❌ E-mail/telefone ou senha incorretos! Por favor, verifique os dados cadastrados.';
                     }
                     passwordInput.value = '';
                     passwordInput.focus();
@@ -8356,6 +9762,115 @@
                 if (emailInput) emailInput.value = '';
                 if (passwordError) passwordError.style.display = 'none';
             });
+
+            // Dedicated Login Form (/login - Tela Completa com Hero de Boas-Vindas à Loja Cadastrada)
+            const dedicatedForm = document.getElementById('dedicatedLoginForm');
+            if (dedicatedForm) {
+                dedicatedForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const emailInput = document.getElementById('dedicatedLoginEmail');
+                    const passwordEl = document.getElementById('dedicatedLoginPassword');
+                    const errorEl = document.getElementById('dedicatedLoginError');
+                    const btnSubmit = document.getElementById('btnDedicatedLoginSubmit');
+
+                    const enteredIdentifier = emailInput ? emailInput.value.trim() : '';
+                    const enteredPassword = passwordEl ? passwordEl.value.trim() : '';
+
+                    if (!enteredPassword) return;
+
+                    if (btnSubmit) {
+                        btnSubmit.disabled = true;
+                        btnSubmit.innerHTML = '⏳ Entrando no Painel...';
+                    }
+                    if (errorEl) errorEl.style.display = 'none';
+
+                    // 1. Tentar autenticação no backend (/api/auth/company-login)
+                    try {
+                        const response = await fetch('/api/auth/company-login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                identifier: enteredIdentifier,
+                                email: enteredIdentifier,
+                                phone: enteredIdentifier,
+                                password: enteredPassword,
+                                companyId: activeCompanyId
+                            })
+                        });
+                        const res = await response.json();
+
+                        if (res && res.success && res.company) {
+                            const matched = companies.find(c => c.id === res.company.id) || res.company;
+                            switchActiveCompany(res.company.id);
+                            loginAdminSuccess(matched, res.token);
+                            if (passwordEl) passwordEl.value = '';
+                            if (btnSubmit) {
+                                btnSubmit.disabled = false;
+                                btnSubmit.innerHTML = '🚀 Entrar no Painel da Loja';
+                            }
+                            switchToStoreView('login-success');
+                            openAdminPanel();
+                            return;
+                        }
+                    } catch (netErr) {
+                        // Fallback defensivo offline
+                    }
+
+                    // 2. Procurar empresa cadastrada que corresponda ao e-mail ou telefone e à senha
+                    const cleanPhone = enteredIdentifier.replace(/\D/g, '');
+                    const lowerId = enteredIdentifier.toLowerCase();
+                    let matchedCompany = companies.find(c => {
+                        if (c.adminPassword !== enteredPassword) return false;
+                        const cEmail = (c.email || '').trim().toLowerCase();
+                        const cPhone = (c.phone || c.whatsapp || '').replace(/\D/g, '');
+
+                        if (cEmail && cEmail === lowerId) return true;
+                        if (cleanPhone.length >= 8 && cPhone && (cPhone === cleanPhone || cPhone.endsWith(cleanPhone) || cleanPhone.endsWith(cPhone))) {
+                            return true;
+                        }
+                        if (!cEmail && (lowerId.includes('fb') || lowerId.includes('admin') || c.id === activeCompanyId)) {
+                            return true;
+                        }
+                        return false;
+                    });
+
+                    // 3. Fallback: Se a senha bater com qualquer loja cadastrada
+                    if (!matchedCompany) {
+                        matchedCompany = companies.find(c => c.adminPassword === enteredPassword);
+                        if (matchedCompany && enteredIdentifier) {
+                            if (enteredIdentifier.includes('@')) {
+                                matchedCompany.email = enteredIdentifier;
+                            } else if (cleanPhone.length >= 8) {
+                                matchedCompany.phone = enteredIdentifier;
+                            }
+                            saveData();
+                        }
+                    }
+
+                    if (btnSubmit) {
+                        btnSubmit.disabled = false;
+                        btnSubmit.innerHTML = '🚀 Entrar no Painel da Loja';
+                    }
+
+                    if (matchedCompany) {
+                        switchActiveCompany(matchedCompany.id);
+                        loginAdminSuccess(matchedCompany);
+                        if (passwordEl) passwordEl.value = '';
+                        if (errorEl) errorEl.style.display = 'none';
+                        switchToStoreView('login-success');
+                        openAdminPanel();
+                    } else {
+                        if (errorEl) {
+                            errorEl.style.display = 'block';
+                            errorEl.textContent = '❌ E-mail/telefone ou senha incorretos! Por favor, verifique os dados cadastrados.';
+                        }
+                        if (passwordEl) {
+                            passwordEl.value = '';
+                            passwordEl.focus();
+                        }
+                    }
+                });
+            }
             
             adminClose.addEventListener('click', closeAdminPanel);
             adminOverlay.addEventListener('click', closeAdminPanel);
@@ -8369,6 +9884,13 @@
             
             // Cart
             cartBtn.addEventListener('click', () => {
+                const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
+                const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+                if (isCurrentDemo && !DemoTrialManager.isTrialActive()) {
+                    openDemoLeadModal();
+                    showNotification('📱 Digite seu número para liberar o cardápio e testar o carrinho por 24h!', 'info');
+                    return;
+                }
                 cartSidebar.classList.add('active');
                 cartOverlay.classList.add('active');
             });
@@ -8684,7 +10206,55 @@
             printWindow.document.close();
         }
 
-        // ========== AQUISIÇÃO DO DON FOOD ==========
+        // ========== AQUISIÇÃO DO DON FOOD & CALCULADORA DEMO ==========
+        function updateDemoSavingsCalc(salesAmount, btnEl) {
+            salesAmount = Number(salesAmount) || 15000;
+
+            // Sincronizar botões rápidos
+            document.querySelectorAll('.demo-calc-buttons .demo-calc-btn').forEach(btn => {
+                const btnAmt = Number(btn.getAttribute('data-amount') || 0);
+                if (btnAmt === salesAmount) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            // Sincronizar input range e background gradient
+            const slider = document.getElementById('demoSavingsRangeSlider');
+            if (slider) {
+                slider.value = salesAmount;
+                const min = Number(slider.min) || 1000;
+                const max = Number(slider.max) || 25000;
+                const percentage = Math.max(0, Math.min(100, ((salesAmount - min) / (max - min)) * 100));
+                slider.style.background = `linear-gradient(to right, #EA580C 0%, #F59E0B ${percentage}%, #E5E7EB ${percentage}%, #E5E7EB 100%)`;
+            }
+
+            // Atualizar badge do slider
+            const sliderBadge = document.getElementById('calcSliderCurrentBadge');
+            if (sliderBadge) {
+                sliderBadge.textContent = `R$ ${salesAmount.toLocaleString('pt-BR')} /mês`;
+            }
+
+            const rate = 0.15; // Média estimada de 15% cobrada por marketplaces
+            const fee = salesAmount * rate;
+            const annualSavings = fee * 12;
+
+            const salesEl = document.getElementById('calcSalesDisplay');
+            const feeEl = document.getElementById('calcFeeDisplay');
+            const savingsEl = document.getElementById('calcSavingsDisplay');
+            const annualSavingsEl = document.getElementById('calcAnnualSavingsDisplay');
+
+            if (salesEl) salesEl.textContent = `R$ ${salesAmount.toLocaleString('pt-BR')}`;
+            if (feeEl) feeEl.textContent = `- R$ ${fee.toLocaleString('pt-BR')}`;
+            if (savingsEl) savingsEl.textContent = `R$ ${fee.toLocaleString('pt-BR')} /mês`;
+            if (annualSavingsEl) annualSavingsEl.textContent = `R$ ${annualSavings.toLocaleString('pt-BR')} no seu bolso por ano!`;
+        }
+
+        function onDemoSavingsSliderChange(value) {
+            updateDemoSavingsCalc(Number(value));
+        }
+
         function openAcquireAppModal() {
             const modal = document.getElementById('acquireAppModal');
             if (modal) modal.classList.add('active');
@@ -8695,7 +10265,26 @@
             if (modal) modal.classList.remove('active');
         }
 
+        function toggleFaqItem(headerEl) {
+            if (!headerEl) return;
+            const item = headerEl.closest('.demo-faq-item');
+            if (!item) return;
+
+            const wasActive = item.classList.contains('active');
+            
+            // Fecha outros itens para efeito sanfona limpo
+            const allItems = document.querySelectorAll('.demo-faq-item');
+            allItems.forEach(i => i.classList.remove('active'));
+
+            if (!wasActive) {
+                item.classList.add('active');
+            }
+        }
+
         // Expor todas as funções globais necessárias para eventos onclick do HTML
+        window.toggleFaqItem = toggleFaqItem;
+        window.updateDemoSavingsCalc = updateDemoSavingsCalc;
+        window.onDemoSavingsSliderChange = onDemoSavingsSliderChange;
         window.openQrCodeModal = openQrCodeModal;
         window.closeQrCodeModal = closeQrCodeModal;
         window.switchQrScope = switchQrScope;
@@ -8840,6 +10429,41 @@
         // Diálogo de Confirmação Seguro
         window.showCustomConfirm = showCustomConfirm;
         window.closeCustomConfirm = closeCustomConfirm;
+
+        // Centralizador de Autenticação e RBAC (Etapa 2)
+        window.ROLES = ROLES;
+        window.AuthManager = AuthManager;
+        window.openAdminPanel = openAdminPanel;
+        window.toggleCompanyPasswordVisibility = toggleCompanyPasswordVisibility;
+
+        // Gerenciamento de Visualização SPA (Landing / Loja Demo / Login Dedicado)
+        window.switchToStoreView = switchToStoreView;
+        window.switchToLandingView = switchToLandingView;
+        window.switchToLoginView = switchToLoginView;
+        window.showRegisteredCompanyLoginForm = showRegisteredCompanyLoginForm;
+        window.showDemoInfoPanel = showDemoInfoPanel;
+        window.openAdminPanelFromLogin = openAdminPanelFromLogin;
+        window.logoutAdminFromLogin = logoutAdminFromLogin;
+        window.handleDedicatedCompanyChange = handleDedicatedCompanyChange;
+        window.refreshDedicatedLoginUI = refreshDedicatedLoginUI;
+        window.updateHeaderNavForCurrentView = updateHeaderNavForCurrentView;
+        window.updateAppViewDisplay = updateAppViewDisplay;
+
+        // Gerenciamento de Teste Grátis 24h na Loja Demo e Captação de Leads
+        window.maskPhoneInput = maskPhoneInput;
+        window.DemoTrialManager = DemoTrialManager;
+        window.openDemoLeadModal = openDemoLeadModal;
+        window.closeDemoLeadModal = closeDemoLeadModal;
+        window.handleDemoLeadUnlockSubmit = handleDemoLeadUnlockSubmit;
+        window.openDemoAdminBlockedModal = openDemoAdminBlockedModal;
+        window.closeDemoAdminBlockedModal = closeDemoAdminBlockedModal;
+        window.fetchDevLeads = fetchDevLeads;
+        window.renderDevLeadsList = renderDevLeadsList;
+        window.filterDevLeadsList = filterDevLeadsList;
+        window.copyLeadPhone = copyLeadPhone;
+        window.copyAllLeadPhones = copyAllLeadPhones;
+        window.exportLeadsCSV = exportLeadsCSV;
+        window.deleteDevLead = deleteDevLead;
 
         // ========== INICIAR APLICAÇÃO ==========
         init();
