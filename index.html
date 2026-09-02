@@ -47,14 +47,14 @@
                 </div>
                 <h3 class="password-modal-title" style="font-size: 1.35rem; font-weight: 800; color: var(--gray-800); margin: 0;">Painel de Login da Empresa</h3>
                 <p class="password-modal-subtitle" style="margin-top: 0.35rem; color: var(--gray-600); font-size: 0.85rem; line-height: 1.4;">
-                    Digite o <strong>E-mail</strong> e a <strong>Senha</strong> do seu estabelecimento para acessar o Painel Admin
+                    Digite o <strong>E-mail ou Telefone</strong> e a <strong>Senha</strong> do seu estabelecimento para acessar o Painel Admin
                 </p>
             </div>
 
             <form id="passwordForm">
                 <div class="form-group" style="text-align: left; margin-bottom: 0.85rem;">
-                    <label class="form-label" style="font-size: 0.82rem; font-weight: 700; color: #334155;">📧 E-mail da Empresa / Loja *</label>
-                    <input type="email" class="form-input" id="companyLoginEmail" placeholder="ex: contato@suaempresa.com" required style="font-size: 0.95rem; padding: 0.65rem 0.85rem;" autocomplete="off" value="">
+                    <label class="form-label" style="font-size: 0.82rem; font-weight: 700; color: #334155;">📧 E-mail ou 📱 Telefone da Empresa *</label>
+                    <input type="text" class="form-input" id="companyLoginEmail" placeholder="ex: contato@empresa.com ou (21) 99999-9999" required style="font-size: 0.95rem; padding: 0.65rem 0.85rem;" autocomplete="username" value="">
                 </div>
 
                 <div class="form-group" style="text-align: left; margin-bottom: 1rem;">
@@ -1023,7 +1023,7 @@
                     <span class="cart-count" id="cartCount">0</span>
                 </button>
                 
-                <button type="button" class="btn-acquire-header" id="btnAcquireHeader" onclick="openAcquireAppModal()" title="Adquira o Sistema Don Food para o seu restaurante" style="display: inline-flex;">
+                <button type="button" class="btn-acquire-header" id="btnAcquireHeader" onclick="openAcquireAppModal()" title="Adquira o Sistema Don Food para o seu restaurante" style="display: none;">
                     Quero Testar
                 </button>
 
@@ -1048,6 +1048,171 @@
             </div>
         </div>
     </header>
+
+    <!-- TELA / JANELA DEDICADA DE LOGIN DA EMPRESA (Acessível via rota /login, ?view=login ou botão Login Empresa) -->
+    <div id="loginViewWrapper" class="login-view-wrapper" style="display: none;">
+        <div class="login-view-backdrop-glow"></div>
+        <div class="login-view-container">
+            <!-- Fundo com Título de Boas-Vindas à Loja Cadastrada -->
+            <div class="login-view-hero-text">
+                <div class="login-welcome-badge">
+                    <span class="badge-lock-icon">🔐</span>
+                    <span>PAINEL EXCLUSIVO DO LOJISTA</span>
+                </div>
+                <h1 class="login-welcome-title">
+                    Bem-vindo à sua Loja <span id="loginViewStoreName" class="login-highlight-store-name">"Açaí na Quentinha do FB"</span>
+                </h1>
+                <p class="login-welcome-subtitle">
+                    Acesse o painel para gerenciar cardápio, acompanhar pedidos em tempo real, configurar taxas de entrega e personalizar a identidade visual do seu estabelecimento.
+                </p>
+                
+                <div class="login-feature-pills">
+                    <div class="login-pill-item">
+                        <span class="login-pill-icon">📋</span>
+                        <span>Gestão de Pedidos</span>
+                    </div>
+                    <div class="login-pill-item">
+                        <span class="login-pill-icon">🏷️</span>
+                        <span>Controle de Produtos</span>
+                    </div>
+                    <div class="login-pill-item">
+                        <span class="login-pill-icon">🛵</span>
+                        <span>Taxas por Bairro</span>
+                    </div>
+                    <div class="login-pill-item">
+                        <span class="login-pill-icon">🖨️</span>
+                        <span>Impressão Térmica</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Caixa Centralizada: Alternância entre Loja Demo e Login de Empresas Cadastradas -->
+            <div class="login-card-box" id="loginCardBox">
+
+                <!-- Painel se o lojista já estiver conectado -->
+                <div id="loginAlreadyLoggedBox" style="display: none;" class="login-already-logged-card">
+                    <div class="already-logged-icon">✨</div>
+                    <h3 class="already-logged-title">Você já está conectado!</h3>
+                    <p class="already-logged-text">
+                        Sessão ativa como administrador de <strong id="loginAlreadyStoreName">Loja</strong>
+                    </p>
+                    <div class="already-logged-actions">
+                        <button type="button" onclick="openAdminPanelFromLogin()" class="btn-dedicated-login-submit">
+                            ⚙️ Acessar Painel Administrativo
+                        </button>
+                        <button type="button" onclick="logoutAdminFromLogin()" class="btn-dedicated-cancel">
+                            🚪 Sair / Trocar de Conta
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 1. JANELA / PAINEL DA EMPRESA DEMO (EXCLUSIVO DA DEMO) -->
+                <div id="loginDemoCard" style="display: none;">
+                    <div class="login-card-header">
+                        <div class="login-store-icon-avatar" style="background: linear-gradient(135deg, #FEF3C7, #FDE68A); color: #B45309; border: 2px solid #FCD34D;">
+                            🛍️
+                        </div>
+                        <h2 class="login-card-title">Loja Modelo Don Food</h2>
+                        <p class="login-card-subtitle">
+                            Você está visualizando o ambiente de demonstração
+                        </p>
+                    </div>
+
+                    <!-- Informações e contatos para testar o admin da Demo -->
+                    <div style="background: #FFFBEB; border: 1.5px dashed #FCD34D; border-radius: 12px; padding: 1rem; font-size: 0.85rem; color: #92400E; text-align: center; line-height: 1.5; margin-bottom: 1.25rem;">
+                        <div style="margin-bottom: 0.65rem; font-weight: 600;">
+                            💡 <strong>Loja de Demonstração:</strong> entre em contato para testar os recursos administrativos do Don Food!
+                        </div>
+                        <div style="display: inline-flex; align-items: center; justify-content: center; gap: 0.65rem; flex-wrap: wrap;">
+                            <a id="demoHintWhatsappLink" href="https://api.whatsapp.com/send?phone=5521973987378&text=Ol%C3%A1%21+Gostaria+de+testar+os+recursos+administrativos+do+Don+Food." target="_blank" rel="noopener noreferrer" class="demo-contact-chip" title="Conversar no WhatsApp / Telefone" onclick="try { window.open(this.href, '_blank'); return false; } catch(e){ return true; }">
+                                <svg fill="currentColor" viewBox="0 0 24 24"><path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+                                <span>(21) 97398-7378</span>
+                            </a>
+                            <a id="demoHintEmailLink" href="mailto:donfim@gmail.com?subject=Teste%20dos%20Recursos%20Administrativos%20Don%20Food" target="_blank" rel="noopener noreferrer" class="demo-contact-chip" title="Enviar um E-mail" onclick="try { window.location.href = this.href; } catch(e){}">
+                                <svg fill="currentColor" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+                                <span>donfim@gmail.com</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <button type="button" onclick="switchToStoreView('login')" class="btn-dedicated-login-submit" style="background: linear-gradient(135deg, #4F46E5 0%, #4338CA 100%); box-shadow: 0 6px 20px rgba(79, 70, 229, 0.35);">
+                        🛍️ Ver Cardápio da Loja Demo
+                    </button>
+
+                    <div class="login-card-links" style="margin-top: 0.85rem;">
+                        <button type="button" onclick="switchToLandingView()" class="btn-link-action">
+                            🏠 Apresentação Comercial Don Food
+                        </button>
+                    </div>
+
+                    <!-- LINK DE DESTAQUE: "JÁ FAÇO PARTE DO DONFOOD" -->
+                    <div class="login-already-partner-box">
+                        <p class="login-already-partner-prompt">
+                            Já tem sua empresa cadastrada no Don Food?
+                        </p>
+                        <button type="button" class="btn-already-partner-link" id="btnAlreadyPartnerLink" onclick="showRegisteredCompanyLoginForm()" title="Acessar painel de empresa cadastrada">
+                            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12.65 10A5.99 5.99 0 007 6c-3.31 0-6 2.69-6 6s2.69 6 6 6a5.99 5.99 0 005.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
+                            <span>Já faço parte do donfood</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. JANELA DE LOGIN DAS EMPRESAS CADASTRADAS -->
+                <div id="loginRegisteredCard" style="display: block;">
+                    <div class="login-card-header">
+                        <div class="login-store-icon-avatar" id="loginStoreIconAvatar">
+                            🏬
+                        </div>
+                        <h2 class="login-card-title" id="loginCardTitle">Acessar Painel da Loja</h2>
+                        <p class="login-card-subtitle" id="loginCardSubtitle">
+                            Digite o <strong>E-mail ou Telefone</strong> e a <strong>Senha</strong> do seu estabelecimento
+                        </p>
+                    </div>
+
+                    <!-- Formulário de Autenticação da Empresa Cadastrada -->
+                    <form id="dedicatedLoginForm" class="dedicated-login-form">
+                        <div class="form-group" style="text-align: left; margin-bottom: 0.9rem;">
+                            <label class="form-label" for="dedicatedLoginEmail" style="font-size: 0.84rem; font-weight: 700; color: #1E293B;">📧 E-mail ou 📱 Telefone da Empresa *</label>
+                            <input type="text" class="form-input dedicated-input" id="dedicatedLoginEmail" placeholder="ex: contato@empresa.com ou (21) 99999-9999" required autocomplete="username">
+                        </div>
+
+                        <div class="form-group" style="text-align: left; margin-bottom: 1rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                                <label class="form-label" for="dedicatedLoginPassword" style="font-size: 0.84rem; font-weight: 700; color: #1E293B; margin-bottom: 0;">🔑 Senha da Empresa *</label>
+                                <span style="font-size: 0.75rem; color: #64748B;">Acesso restrito</span>
+                            </div>
+                            <div class="password-input-wrapper">
+                                <input type="password" class="form-input dedicated-input" id="dedicatedLoginPassword" placeholder="••••••••" required autocomplete="current-password">
+                                <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('dedicatedLoginPassword', this)" title="Mostrar ou ocultar senha" aria-label="Mostrar senha">👁️</button>
+                            </div>
+                        </div>
+
+                        <div class="password-error" id="dedicatedLoginError" style="display: none; background: #FEF2F2; color: #DC2626; border: 1.5px solid #FCA5A5; padding: 0.75rem; border-radius: 10px; font-size: 0.85rem; font-weight: 700; margin-bottom: 1.1rem; text-align: center;">
+                            ❌ E-mail/telefone ou senha incorretos! Verifique os dados cadastrados da empresa.
+                        </div>
+
+                        <button type="submit" id="btnDedicatedLoginSubmit" class="btn-dedicated-login-submit">
+                            🚀 Entrar no Painel da Loja
+                        </button>
+
+                        <div class="login-card-links">
+                            <button type="button" onclick="showDemoInfoPanel()" class="btn-link-action" id="btnBackToDemoFromLogin" style="display: none; color: #D97706; font-weight: 700;">
+                                ← Informações da Loja Demo
+                            </button>
+                            <span class="link-bullet" id="bulletBackToDemo" style="display: none;">•</span>
+                            <button type="button" onclick="switchToStoreView('login')" class="btn-link-action" id="btnBackToStoreFromLogin">
+                                🛍️ Ir para o Cardápio
+                            </button>
+                            <span class="link-bullet">•</span>
+                            <button type="button" onclick="switchToLandingView()" class="btn-link-action" id="btnBackToLandingFromLogin">
+                                🏠 Apresentação Don Food
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- LANDING PAGE SHOWCASE (EXIBIDA QUANDO ESTIVER NO LINK PRINCIPAL / DEMO) -->
     <div id="demoLandingHero" class="demo-landing-wrapper" style="display: none;">
@@ -1857,9 +2022,8 @@
         <footer class="demo-commercial-footer">
             <div class="demo-footer-grid">
                 <div>
-                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
-                        <img src="/Don_Food.png" alt="Don Food" style="height: 38px; width: auto;" onerror="this.onerror=null; this.src='Don_food.png';">
-                        <span style="font-size: 1.3rem; font-weight: 900; color: #FFFFFF;">Don Food</span>
+                    <div style="display: flex; align-items: center; margin-bottom: 0.75rem;">
+                        <img src="/Don_Food.png" alt="Don Food" style="height: 42px; width: auto;" onerror="this.onerror=null; this.src='Don_food.png';">
                     </div>
                     <p style="color: #9CA3AF; line-height: 1.5; font-size: 0.85rem; margin-bottom: 1rem;">
                         A plataforma completa de cardápio digital, pedidos no WhatsApp e gestão de delivery com 0% de comissões para restaurantes, lanchonetes e confeitarias.
@@ -1996,6 +2160,23 @@
             </div>
         </div>
     </section>
+    <footer class="footer">
+        <div class="footer-content-wrap">
+            <span id="footerDevTrigger" onclick="handleDevLogoClick(event)" class="footer-dev-trigger" title="Don Food">
+                <span>Aplicativo</span>
+                <strong class="don-delivery-highlight">
+                    <img src="/Don_Food.png" alt="Don Food" class="footer-logo-don" onerror="if(this.src.indexOf('Don_Food.png') === -1) { this.src = '/Don_Food.png'; } else { this.src = 'Don_food.png'; }">
+                </strong>
+            </span>
+            <span class="footer-dev-by-wrap">
+                <span>| Desenvolvido por</span>
+                <a href="https://www.donfim.com.br" target="_blank" rel="noopener noreferrer" class="footer-dev-link" title="Donfim Tech - Soluções em Tecnologia (www.donfim.com.br)">
+                    <img src="/Donfimtech.png" onerror="if(this.src.indexOf('donfimtech.png') === -1) { this.src = '/donfimtech.png'; } else { this.src = 'Donfimtech.png'; }" alt="Donfim Tech Logo" class="footer-logo-donfim">
+                </a>
+            </span>
+        </div>
+    </footer>
+    </main>
 
     <!-- MODAL DE MONTAGEM DO AÇAÍ -->
     <div class="customizer-modal" id="acaiCustomizerModal">
@@ -2067,6 +2248,9 @@
             <div style="display: flex; gap: 0.5rem; margin-bottom: 1.25rem; border-bottom: 2px solid var(--gray-100); padding-bottom: 0.5rem; align-items: center; flex-wrap: wrap;">
                 <button type="button" class="btn-admin" id="devTabCompaniesBtn" onclick="switchDevTab('companies')" style="background: #4F46E5; color: white; border-radius: 20px; font-size: 0.82rem; padding: 0.4rem 0.9rem; font-weight: bold;">
                     🏢 Empresas (<span id="devCompanyCount">1</span>)
+                </button>
+                <button type="button" class="btn-admin" id="devTabLeadsBtn" onclick="switchDevTab('leads')" style="background: var(--gray-200); color: var(--gray-800); border-radius: 20px; font-size: 0.82rem; padding: 0.4rem 0.9rem; font-weight: bold;">
+                    🎯 Contatos Demo 24h (<span id="devLeadsCount">0</span>)
                 </button>
                 <button type="button" class="btn-admin" id="devTabCustomersBtn" onclick="switchDevTab('customers')" style="background: var(--gray-200); color: var(--gray-800); border-radius: 20px; font-size: 0.82rem; padding: 0.4rem 0.9rem; font-weight: bold;">
                     👥 Gestão de Clientes (<span id="devCustomerCount">0</span>)
@@ -2379,6 +2563,57 @@
                     </ol>
                 </div>
             </div>
+
+            <!-- ABA 6: GESTÃO DE LEADS E CONTATOS CAPTURADOS NA DEMO (TESTES 24H) -->
+            <div id="devTabLeads" style="display: none;">
+                <div style="background: #F8FAFC; border: 1px solid var(--gray-200); border-radius: 12px; padding: 1rem; margin-bottom: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+                        <div>
+                            <h4 style="margin: 0; color: #1E1B4B; font-size: 1.05rem; display: flex; align-items: center; gap: 0.4rem;">
+                                🎯 Leads & Contatos Capturados na Loja Demo
+                            </h4>
+                            <small style="color: var(--gray-600);">Telefones de clientes interessados que liberaram o teste grátis de 24 horas</small>
+                        </div>
+                        <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                            <button type="button" class="btn-admin" onclick="copyAllLeadPhones()" style="background: #4F46E5; color: white; font-size: 0.78rem; padding: 0.35rem 0.7rem; font-weight: 700; border-radius: 8px;" title="Copiar todos os números para colar em lista de transmissão">
+                                📋 Copiar Telefones
+                            </button>
+                            <button type="button" class="btn-admin" onclick="exportLeadsCSV()" style="background: #059669; color: white; font-size: 0.78rem; padding: 0.35rem 0.7rem; font-weight: 700; border-radius: 8px;" title="Baixar planilha CSV para CRM">
+                                📥 Exportar CSV
+                            </button>
+                            <button type="button" class="btn-admin" onclick="fetchDevLeads()" style="background: var(--gray-200); color: var(--gray-800); font-size: 0.78rem; padding: 0.35rem 0.7rem; font-weight: 700; border-radius: 8px;">
+                                🔄 Atualizar
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Métricas dos Leads -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem; margin-bottom: 0.75rem;">
+                        <div style="background: white; border: 1px solid var(--gray-200); border-radius: 8px; padding: 0.5rem 0.75rem; text-align: center;">
+                            <span style="display: block; font-size: 0.7rem; color: var(--gray-600); text-transform: uppercase; font-weight: 700;">Total Contatos</span>
+                            <strong id="devMetricTotalLeads" style="font-size: 1.15rem; color: #1E1B4B;">0</strong>
+                        </div>
+                        <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 8px; padding: 0.5rem 0.75rem; text-align: center;">
+                            <span style="display: block; font-size: 0.7rem; color: #065F46; text-transform: uppercase; font-weight: 700;">🟢 Ativos (24h)</span>
+                            <strong id="devMetricActiveLeads" style="font-size: 1.15rem; color: #059669;">0</strong>
+                        </div>
+                        <div style="background: #FFF7ED; border: 1px solid #FFEDD5; border-radius: 8px; padding: 0.5rem 0.75rem; text-align: center;">
+                            <span style="display: block; font-size: 0.7rem; color: #9A3412; text-transform: uppercase; font-weight: 700;">⏳ Expirados</span>
+                            <strong id="devMetricExpiredLeads" style="font-size: 1.15rem; color: #EA580C;">0</strong>
+                        </div>
+                    </div>
+
+                    <!-- Campo de Busca -->
+                    <div style="position: relative;">
+                        <input type="text" id="devLeadsSearchInput" class="form-input" placeholder="🔍 Filtrar por telefone ou nome..." oninput="filterDevLeadsList()" style="font-size: 0.85rem; padding: 0.4rem 0.75rem;">
+                    </div>
+                </div>
+
+                <!-- Lista de Leads Renderizados -->
+                <div id="devLeadsList" style="display: flex; flex-direction: column; gap: 0.6rem; max-height: 380px; overflow-y: auto; padding-right: 4px;">
+                    <!-- Leads renderizados via JS -->
+                </div>
+            </div>
         </div>
     </div>
 
@@ -2638,7 +2873,7 @@
     </button>
 
     <!-- MODAL QR CODE DE ACESSO RÁPIDO & PLACA DE MESA -->
-    <div class="modal" id="qrCodeModal" style="z-index: 3600;">
+    <div class="modal" id="qrCodeModal" style="z-index: 3600;" onclick="if(event.target === this) closeQrCodeModal()">
         <div class="modal-content" style="max-width: 480px; text-align: center; border-top: 5px solid #4F46E5;">
             <div class="modal-header" style="border-bottom: 1px solid var(--gray-200); padding-bottom: 0.75rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
                 <div style="text-align: left;">
@@ -2698,7 +2933,7 @@
     </div>
 
     <!-- MODAL DE AQUISIÇÃO / QUERO O DON FOOD -->
-    <div class="modal" id="acquireAppModal" style="z-index: 3650;">
+    <div class="modal" id="acquireAppModal" style="z-index: 3650;" onclick="if(event.target === this) closeAcquireAppModal()">
         <div class="modal-content" style="max-width: 580px; border-radius: 18px; padding: 1.75rem; border-top: 6px solid #F59E0B;">
             <div class="modal-header" style="border-bottom: 1px solid var(--gray-200); padding-bottom: 0.75rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
                 <div style="text-align: left;">
@@ -2764,24 +2999,6 @@
         </div>
     </div>
 
-    <footer class="footer">
-        <div class="footer-content-wrap">
-            <span id="footerDevTrigger" onclick="handleDevLogoClick(event)" class="footer-dev-trigger" title="Don Food">
-                <span>Aplicativo</span>
-                <strong class="don-delivery-highlight">
-                    <img src="/Don_Food.png" alt="Don Food" class="footer-logo-don" onerror="if(this.src.indexOf('Don_Food.png') === -1) { this.src = '/Don_Food.png'; } else { this.src = 'Don_food.png'; }">
-                </strong>
-            </span>
-            <span class="footer-dev-by-wrap">
-                <span>| Desenvolvido por</span>
-                <a href="https://www.donfim.com.br" target="_blank" rel="noopener noreferrer" class="footer-dev-link" title="Donfim Tech - Soluções em Tecnologia (www.donfim.com.br)">
-                    <img src="/Donfimtech.png" onerror="if(this.src.indexOf('donfimtech.png') === -1) { this.src = '/donfimtech.png'; } else { this.src = 'Donfimtech.png'; }" alt="Donfim Tech Logo" class="footer-logo-donfim">
-                </a>
-            </span>
-        </div>
-    </footer>
-    </main>
-
     <!-- CARRINHO SIDEBAR -->
     <div class="cart-overlay" id="cartOverlay"></div>
     <aside class="cart-sidebar" id="cartSidebar">
@@ -2841,6 +3058,87 @@
             </div>
         </div>
     </aside>
+
+    <!-- MODAL DE DESBLOQUEIO DE TESTE GRÁTIS 24H (LOJA DEMO) -->
+    <div class="modal" id="demoLeadCaptureModal" style="z-index: 3800; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px);">
+        <div class="modal-content" style="max-width: 480px; border-radius: 20px; border-top: 6px solid #F59E0B; padding: 1.75rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4); text-align: center;">
+            <div style="display: flex; justify-content: flex-end;">
+                <button type="button" class="modal-close" onclick="closeDemoLeadModal()" style="font-size: 1.2rem; color: #94A3B8;">✕</button>
+            </div>
+            <div style="margin-top: -10px; margin-bottom: 1rem;">
+                <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #FEF3C7, #FDE68A); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 2rem; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3); margin-bottom: 0.75rem;">
+                    🚀
+                </div>
+                <h3 style="font-size: 1.35rem; color: #1E1B4B; margin: 0 0 0.4rem 0; font-weight: 800;">
+                    Teste Grátis de 24 Horas
+                </h3>
+                <p style="font-size: 0.95rem; color: #4B5563; margin: 0 0 0.5rem 0; font-weight: 600;">
+                    Digite o seu melhor número de contato para receber o acesso instantâneo:
+                </p>
+                <span style="display: inline-block; font-size: 0.82rem; color: #92400E; background: #FEF3C7; padding: 0.35rem 0.75rem; border-radius: 50px; font-weight: 700; border: 1px solid #FDE68A;">
+                    ⏱️ Liberação Automática por 24h na Área do Cliente
+                </span>
+            </div>
+
+            <form id="demoLeadUnlockForm" onsubmit="handleDemoLeadUnlockSubmit(event)" style="text-align: left; margin-top: 1.25rem;">
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label for="demoLeadPhoneInput" style="display: block; font-size: 0.88rem; font-weight: 700; color: #1F2937; margin-bottom: 0.35rem;">
+                        📱 Seu WhatsApp / Celular: <span style="color: #EF4444;">*</span>
+                    </label>
+                    <input type="tel" id="demoLeadPhoneInput" class="form-input" placeholder="(21) 99999-9999" required style="font-size: 1.1rem; padding: 0.75rem; border-radius: 10px; text-align: center; font-weight: 700; letter-spacing: 0.5px; border: 2px solid #E2E8F0;" oninput="maskPhoneInput(this)">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1.25rem;">
+                    <label for="demoLeadNameInput" style="display: block; font-size: 0.85rem; font-weight: 600; color: #4B5563; margin-bottom: 0.35rem;">
+                        🏪 Seu Nome ou Restaurante (Opcional):
+                    </label>
+                    <input type="text" id="demoLeadNameInput" class="form-input" placeholder="Ex: Lucas / Açaí do Lucas" style="font-size: 0.95rem; padding: 0.65rem; border-radius: 10px;">
+                </div>
+
+                <div id="demoLeadError" style="color: #EF4444; font-size: 0.85rem; font-weight: 700; display: none; margin-bottom: 0.75rem; text-align: center;">
+                    ❌ Por favor, digite um número de WhatsApp válido com DDD.
+                </div>
+
+                <button type="submit" id="btnDemoUnlockSubmit" class="btn-admin" style="width: 100%; background: linear-gradient(135deg, #F59E0B, #D97706); color: white; font-size: 1.05rem; font-weight: 800; padding: 0.9rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4); display: flex; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer;">
+                    🔓 Desbloquear Acesso por 24 Horas
+                </button>
+            </form>
+
+            <div style="margin-top: 1rem; border-top: 1px solid #E2E8F0; padding-top: 0.75rem; display: flex; align-items: center; justify-content: center; gap: 0.75rem; flex-wrap: wrap;">
+                <small style="color: #64748B; font-size: 0.78rem; display: flex; align-items: center; gap: 0.3rem;">
+                    🔒 Seus dados estão seguros
+                </small>
+                <small style="color: #64748B; font-size: 0.78rem;">•</small>
+                <small style="color: #64748B; font-size: 0.78rem;">
+                    ⚡ Acesso Imediato
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL INFORMATIVO: PAINEL ADMIN BLOQUEADO NO MODO DEMO -->
+    <div class="modal" id="demoAdminBlockedModal" style="z-index: 3850; background: rgba(15, 23, 42, 0.8);">
+        <div class="modal-content" style="max-width: 480px; border-radius: 18px; border-top: 5px solid #4F46E5; text-align: center; padding: 1.5rem;">
+            <div style="width: 56px; height: 56px; background: #EEF2FF; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 1.75rem; margin-bottom: 0.75rem;">
+                🔒
+            </div>
+            <h3 style="color: #1E1B4B; font-size: 1.25rem; font-weight: 800; margin: 0 0 0.5rem 0;">
+                Painel da Loja Exclusivo para Assinantes
+            </h3>
+            <p style="color: #4B5563; font-size: 0.9rem; line-height: 1.5; margin-bottom: 1.25rem;">
+                No período de teste gratuito de 24 horas, você tem acesso total à <strong>Área do Cliente</strong> para experimentar a navegação, seleção de adicionais, frete por bairro e carrinho.<br><br>
+                O <strong>Painel Administrativo da Loja</strong> (com relatórios, controle de pedidos e impressão térmica) é disponibilizado na contratação oficial do sistema Don Food.
+            </p>
+            <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+                <a href="https://api.whatsapp.com/send?phone=5521973987378&text=Ol%C3%A1%21+Estou+testando+o+card%C3%A1pio+da+Don+Food+e+gostaria+de+conhecer+o+Painel+Administrativo+e+condi%C3%A7%C3%B5es+de+contrata%C3%A7%C3%A3o." target="_blank" class="btn-admin" style="background: #25D366; color: white; font-weight: 800; font-size: 0.95rem; padding: 0.8rem; border-radius: 10px; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                    💬 Falar com Especialista no WhatsApp
+                </a>
+                <button type="button" class="btn-admin" onclick="closeDemoAdminBlockedModal()" style="background: var(--gray-200); color: var(--gray-800); font-weight: 600; padding: 0.7rem; border-radius: 10px;">
+                    🛍️ Continuar Testando o Cardápio
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Supabase JS Client SDK for Realtime Subscriptions -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

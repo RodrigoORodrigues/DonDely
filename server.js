@@ -273,6 +273,7 @@ if (!fs.existsSync(DATA_DIR)) {
 const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
 const COMPANIES_FILE = path.join(DATA_DIR, 'companies.json');
 const CUSTOMERS_FILE = path.join(DATA_DIR, 'customers.json');
+const DEMO_LEADS_FILE = path.join(DATA_DIR, 'demo_leads.json');
 
 function readJsonFile(filePath, defaultValue = []) {
     try {
@@ -557,9 +558,10 @@ app.post('/api/auth/login', authLimiter, (req, res) => {
 // Login do Proprietário da Loja (Papel: COMPANY_OWNER)
 app.post('/api/auth/company-login', authLimiter, (req, res) => {
     try {
-        const { email, password, companyId } = req.body;
-        const cleanEmail = sanitizeString(email, 100).toLowerCase().trim();
+        const { email, identifier, phone, password, companyId } = req.body;
+        const rawIdentifier = sanitizeString(identifier || email || phone || '', 100).toLowerCase().trim();
         const cleanPassword = sanitizeString(password, 100);
+        const cleanDigits = rawIdentifier.replace(/\D/g, '');
 
         if (!cleanPassword) {
             return res.status(400).json({ success: false, error: 'Senha é obrigatória.' });
@@ -568,8 +570,19 @@ app.post('/api/auth/company-login', authLimiter, (req, res) => {
         const companies = readJsonFile(COMPANIES_FILE, []);
         let matched = null;
 
-        if (cleanEmail) {
-            matched = companies.find(c => (c.email || '').toLowerCase().trim() === cleanEmail && c.adminPassword === cleanPassword);
+        if (rawIdentifier) {
+            matched = companies.find(c => {
+                if (c.adminPassword !== cleanPassword) return false;
+                const cEmail = (c.email || '').toLowerCase().trim();
+                const cPhone = (c.phone || c.whatsapp || '').replace(/\D/g, '');
+                if (cEmail && cEmail === rawIdentifier) return true;
+                if (cleanDigits && cleanDigits.length >= 8 && cPhone) {
+                    if (cPhone === cleanDigits || cPhone.endsWith(cleanDigits) || cleanDigits.endsWith(cPhone)) {
+                        return true;
+                    }
+                }
+                return false;
+            });
         }
 
         if (!matched && companyId) {
@@ -588,7 +601,7 @@ app.post('/api/auth/company-login', authLimiter, (req, res) => {
             role: ROLES.COMPANY_OWNER,
             companyId: matched.id,
             companyName: matched.name,
-            email: matched.email || cleanEmail
+            email: matched.email || rawIdentifier
         });
 
         res.json({
@@ -882,6 +895,96 @@ app.post('/api/supabase/sync-company', generalLimiter, authenticateToken, valida
         res.json({ success: true, message: `Dados da empresa ${companyId} sincronizados com segurança.` });
     } catch (err) {
         res.status(500).json({ success: false, error: 'Falha na sincronização de dados.' });
+    }
+});
+
+// ============================================================================
+// ROTAS DE CAPTURA DE LEADS E TESTE GRÁTIS 24H (LOJA DEMO & PAINEL DEV)
+// ============================================================================
+app.post('/api/demo/unlock', generalLimiter, (req, res) => {
+    try {
+        const { phone, name, storeSlug, source } = req.body || {};
+        const cleanPhone = (phone || '').replace(/\D/g, '');
+
+        if (!cleanPhone || cleanPhone.length < 8) {
+            return res.status(400).json({
+                success: false,
+                error: 'Por favor, informe um número de telefone ou WhatsApp válido.'
+            });
+        }
+
+        const cleanName = sanitizeString(name || 'Interessado Demo', 100);
+        const leads = readJsonFile(DEMO_LEADS_FILE, []);
+        const now = Date.now();
+        const trialExpiresAt = now + 24 * 60 * 60 * 1000; // 24 horas
+
+        const existingIndex = leads.findIndex(l => (l.phone || '').replace(/\D/g, '') === cleanPhone);
+        let savedLead;
+
+        if (existingIndex >= 0) {
+            savedLead = {
+                ...leads[existingIndex],
+                name: cleanName !== 'Interessado Demo' ? cleanName : leads[existingIndex].name,
+                updatedAt: new Date().toISOString(),
+                trialExpiresAt: trialExpiresAt,
+                unlockCount: (leads[existingIndex].unlockCount || 1) + 1,
+                lastSource: sanitizeString(source || 'store-demo', 50)
+            };
+            leads[existingIndex] = savedLead;
+        } else {
+            savedLead = {
+                id: `lead_${now}_${Math.random().toString(36).substring(2, 7)}`,
+                phone: phone.trim(),
+                cleanPhone: cleanPhone,
+                name: cleanName,
+                createdAt: new Date().toISOString(),
+                trialExpiresAt: trialExpiresAt,
+                storeSlug: sanitizeString(storeSlug || 'demo', 50),
+                source: sanitizeString(source || 'store-demo', 50),
+                unlockCount: 1,
+                status: 'ACTIVE_TRIAL'
+            };
+            leads.unshift(savedLead);
+        }
+
+        writeJsonFile(DEMO_LEADS_FILE, leads);
+
+        res.json({
+            success: true,
+            message: 'Acesso de teste de 24 horas liberado com sucesso!',
+            lead: savedLead,
+            trialExpiresAt: trialExpiresAt
+        });
+    } catch (err) {
+        console.error('Erro ao registrar lead de teste:', err.message);
+        res.status(500).json({ success: false, error: 'Erro ao processar liberação de teste.' });
+    }
+});
+
+app.get('/api/dev/leads', generalLimiter, (req, res) => {
+    try {
+        const leads = readJsonFile(DEMO_LEADS_FILE, []);
+        const now = Date.now();
+        const formattedLeads = leads.map(l => ({
+            ...l,
+            isTrialActive: l.trialExpiresAt ? (l.trialExpiresAt > now) : false,
+            remainingHours: l.trialExpiresAt ? Math.max(0, Math.round((l.trialExpiresAt - now) / 3600000)) : 0
+        }));
+        res.json({ success: true, data: formattedLeads, total: formattedLeads.length });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'Erro ao listar contatos capturados.' });
+    }
+});
+
+app.delete('/api/dev/leads/:id', generalLimiter, (req, res) => {
+    try {
+        const { id } = req.params;
+        const leads = readJsonFile(DEMO_LEADS_FILE, []);
+        const filtered = leads.filter(l => l.id !== id && l.cleanPhone !== id);
+        writeJsonFile(DEMO_LEADS_FILE, filtered);
+        res.json({ success: true, message: 'Lead removido com sucesso.', remaining: filtered.length });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'Erro ao excluir lead.' });
     }
 });
 

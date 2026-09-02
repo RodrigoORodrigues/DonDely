@@ -633,6 +633,20 @@
             flex-shrink: 0;
         }
 
+        /* Ocultar botões de loja/carrinho/login na Página de Apresentação (Landing) e Tela de Login */
+        body.view-landing #cartBtn,
+        body.view-landing #btnAcquireHeader,
+        body.view-landing #customerHeaderContainer,
+        body.view-landing #adminHeaderContainer,
+        body.view-landing #mobileHeaderMenuContainer,
+        body.view-login #cartBtn,
+        body.view-login #btnAcquireHeader,
+        body.view-login #customerHeaderContainer,
+        body.view-login #adminHeaderContainer,
+        body.view-login #mobileHeaderMenuContainer {
+            display: none !important;
+        }
+
         #customerHeaderContainer,
         #adminHeaderContainer {
             display: flex;
@@ -6302,4 +6316,429 @@
             border-radius: 10px;
             padding: 0.85rem;
             margin-bottom: 1rem;
+        }
+
+        /* ========== TELA / JANELA DEDICADA DE LOGIN DA EMPRESA (/login) ========== */
+        .login-view-wrapper {
+            position: relative;
+            min-height: calc(100vh - 75px);
+            min-height: calc(100dvh - 75px);
+            background: linear-gradient(145deg, #0F172A 0%, #1E1B4B 40%, #311042 100%);
+            padding: 3rem 1.5rem 4rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .login-view-backdrop-glow {
+            position: absolute;
+            top: -20%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 700px;
+            height: 700px;
+            background: radial-gradient(circle, rgba(234, 88, 12, 0.18) 0%, rgba(139, 38, 160, 0.22) 40%, transparent 70%);
+            filter: blur(60px);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .login-view-container {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            max-width: 1100px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1.15fr 0.95fr;
+            gap: 3rem;
+            align-items: center;
+        }
+
+        .login-view-hero-text {
+            color: #FFFFFF;
+            padding-right: 1rem;
+        }
+
+        .login-welcome-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(254, 215, 170, 0.35);
+            padding: 0.4rem 1rem;
+            border-radius: 50px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            color: #FED7AA;
+            margin-bottom: 1.25rem;
+            backdrop-filter: blur(8px);
+        }
+
+        .login-welcome-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+            margin-bottom: 1.25rem;
+            color: #FFFFFF;
+        }
+
+        .login-highlight-store-name {
+            display: block;
+            color: #FDE68A;
+            background: linear-gradient(135deg, #FDE68A 0%, #F59E0B 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            word-break: break-word;
+            margin-top: 0.25rem;
+        }
+
+        .login-welcome-subtitle {
+            font-size: 1.05rem;
+            line-height: 1.6;
+            color: #E2E8F0;
+            margin-bottom: 2rem;
+            max-width: 520px;
+        }
+
+        .login-feature-pills {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.85rem;
+            max-width: 480px;
+        }
+
+        .login-pill-item {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: #F1F5F9;
+            backdrop-filter: blur(6px);
+        }
+
+        .login-pill-icon {
+            font-size: 1.2rem;
+        }
+
+        /* CAIXA DE LOGIN */
+        .login-card-box {
+            background: #FFFFFF;
+            border-radius: 20px;
+            padding: 2.25rem 2rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
+            width: 100%;
+            max-width: 450px;
+            margin: 0 auto;
+        }
+
+        .login-card-header {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .login-store-icon-avatar {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, var(--primary, #59176B), var(--primary-dark, #3E0C4C));
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: #FFFFFF;
+            margin: 0 auto 1rem auto;
+            box-shadow: 0 8px 20px rgba(89, 23, 107, 0.35);
+        }
+
+        .login-card-title {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--gray-900);
+            margin-bottom: 0.35rem;
+        }
+
+        .login-card-subtitle {
+            font-size: 0.88rem;
+            color: var(--gray-600);
+            line-height: 1.45;
+        }
+
+        .dedicated-login-form .form-input.dedicated-input {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            font-size: 0.95rem;
+            border: 1.5px solid #CBD5E1;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+            background: #F8FAFC;
+        }
+
+        .dedicated-login-form .form-input.dedicated-input:focus {
+            background: #FFFFFF;
+            border-color: var(--primary, #59176B);
+            box-shadow: 0 0 0 3px rgba(89, 23, 107, 0.15);
+            outline: none;
+        }
+
+        .btn-dedicated-login-submit {
+            width: 100%;
+            background: linear-gradient(135deg, #DC2626 0%, #EA580C 50%, #F59E0B 100%);
+            color: #FFFFFF;
+            font-weight: 800;
+            font-size: 1.05rem;
+            padding: 0.9rem 1.5rem;
+            border-radius: 50px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(234, 88, 12, 0.4);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .btn-dedicated-login-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(234, 88, 12, 0.5);
+        }
+
+        .btn-dedicated-login-submit:active {
+            transform: translateY(0);
+        }
+
+        .btn-dedicated-cancel {
+            background: #F1F5F9;
+            color: #475569;
+            font-weight: 700;
+            font-size: 0.95rem;
+            padding: 0.85rem 1.25rem;
+            border-radius: 50px;
+            border: 1px solid #CBD5E1;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-dedicated-cancel:hover {
+            background: #E2E8F0;
+            color: #1E293B;
+        }
+
+        /* BLOCO E BOTÃO DE DESTAQUE: "JÁ FAÇO PARTE DO DONFOOD" */
+        .login-already-partner-box {
+            margin-top: 1.5rem;
+            padding-top: 1.25rem;
+            border-top: 1.5px dashed #E2E8F0;
+            text-align: center;
+        }
+
+        .login-already-partner-prompt {
+            font-size: 0.88rem;
+            color: #475569;
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+        }
+
+        .btn-already-partner-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.6rem;
+            background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+            color: #92400E;
+            border: 2px solid #F59E0B;
+            padding: 0.85rem 1.4rem;
+            border-radius: 50px;
+            font-size: 0.98rem;
+            font-weight: 800;
+            cursor: pointer;
+            text-decoration: none;
+            box-shadow: 0 4px 14px rgba(245, 158, 11, 0.25);
+            transition: all 0.22s ease;
+            width: 100%;
+            user-select: none;
+        }
+
+        .btn-already-partner-link:hover {
+            background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+            border-color: #D97706;
+            color: #78350F;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(245, 158, 11, 0.38);
+            text-decoration: none;
+        }
+
+        .btn-already-partner-link:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 6px rgba(245, 158, 11, 0.2);
+        }
+
+        .btn-already-partner-link svg {
+            width: 18px;
+            height: 18px;
+            color: #D97706;
+            flex-shrink: 0;
+            transition: transform 0.2s ease;
+        }
+
+        .btn-already-partner-link:hover svg {
+            transform: rotate(-10deg) scale(1.15);
+        }
+
+        .login-card-links {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.6rem;
+            margin-top: 1.25rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-link-action {
+            background: none;
+            border: none;
+            color: #4F46E5;
+            font-weight: 700;
+            font-size: 0.86rem;
+            cursor: pointer;
+            padding: 0.25rem 0.4rem;
+            transition: all 0.2s;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+
+        .btn-link-action:hover {
+            color: #3730A3;
+        }
+
+        .link-bullet {
+            color: #94A3B8;
+            font-size: 0.8rem;
+        }
+
+        /* CHIPS INTERATIVOS DE CONTATO (DEMO HINT) */
+        .demo-contact-chip {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 0.4rem !important;
+            color: #92400E !important;
+            background: #FEF3C7 !important;
+            padding: 0.35rem 0.75rem !important;
+            border-radius: 50px !important;
+            border: 1.5px solid #FCD34D !important;
+            text-decoration: none !important;
+            font-weight: 700 !important;
+            font-size: 0.78rem !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease !important;
+            box-shadow: 0 1px 3px rgba(180, 83, 9, 0.08) !important;
+            user-select: none !important;
+            position: relative !important;
+            z-index: 5 !important;
+        }
+
+        .demo-contact-chip:hover {
+            background: #FDE68A !important;
+            border-color: #F59E0B !important;
+            color: #78350F !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 10px rgba(180, 83, 9, 0.2) !important;
+            text-decoration: none !important;
+        }
+
+        .demo-contact-chip:active {
+            transform: translateY(0) !important;
+            box-shadow: 0 1px 2px rgba(180, 83, 9, 0.15) !important;
+        }
+
+        .demo-contact-chip svg {
+            width: 14px !important;
+            height: 14px !important;
+            flex-shrink: 0 !important;
+            cursor: pointer !important;
+            pointer-events: auto !important;
+            transition: transform 0.2s ease, color 0.2s ease !important;
+        }
+
+        .demo-contact-chip:hover svg {
+            transform: scale(1.18) !important;
+            color: #B45309 !important;
+        }
+
+        /* CARD QUANDO JÁ CONECTADO */
+        .login-already-logged-card {
+            background: #F0FDF4;
+            border: 1.5px solid #86EFAC;
+            border-radius: 14px;
+            padding: 1.5rem 1.25rem;
+            text-align: center;
+        }
+
+        .already-logged-icon {
+            font-size: 2rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .already-logged-title {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: #14532D;
+            margin-bottom: 0.25rem;
+        }
+
+        .already-logged-text {
+            font-size: 0.9rem;
+            color: #166534;
+            margin-bottom: 1.25rem;
+        }
+
+        .already-logged-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.65rem;
+        }
+
+        /* RESPONSIVIDADE DA TELA DE LOGIN */
+        @media (max-width: 900px) {
+            .login-view-wrapper {
+                padding: 2rem 1rem 3rem 1rem;
+            }
+
+            .login-view-container {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+                text-align: center;
+            }
+
+            .login-view-hero-text {
+                padding-right: 0;
+            }
+
+            .login-welcome-title {
+                font-size: 1.9rem;
+            }
+
+            .login-welcome-subtitle {
+                margin: 0 auto 1.5rem auto;
+                font-size: 0.95rem;
+            }
+
+            .login-feature-pills {
+                margin: 0 auto;
+            }
+
+            .login-card-box {
+                padding: 1.75rem 1.25rem;
+                max-width: 100%;
+            }
         }

@@ -2513,10 +2513,10 @@
                 );
             }
 
-            // Fallback por pathname se for rota direta como /demo ou /acai-fb
+            // Fallback por pathname se for rota direta como /demo ou /acai-fb (excluindo /login e assets)
             if (!targetCompany && window.location.pathname && window.location.pathname !== '/' && window.location.pathname !== '/index.html') {
                 const pathSlug = window.location.pathname.replace(/^\/+/, '').split('/')[0].toLowerCase();
-                if (pathSlug && !pathSlug.endsWith('.js') && !pathSlug.endsWith('.css') && !pathSlug.endsWith('.png') && !pathSlug.endsWith('.jpg') && !pathSlug.endsWith('.svg') && !pathSlug.endsWith('.json') && !pathSlug.endsWith('.sql') && pathSlug !== 'api') {
+                if (pathSlug && !pathSlug.endsWith('.js') && !pathSlug.endsWith('.css') && !pathSlug.endsWith('.png') && !pathSlug.endsWith('.jpg') && !pathSlug.endsWith('.svg') && !pathSlug.endsWith('.json') && !pathSlug.endsWith('.sql') && pathSlug !== 'api' && pathSlug !== 'login') {
                     targetCompany = companies.find(c => 
                         (c.slug && c.slug.toLowerCase() === pathSlug) || 
                         (c.id && c.id.toLowerCase() === pathSlug)
@@ -2549,12 +2549,18 @@
             // 3. Atualizar Visibilidade do Banner de Demonstração e Landing Page Showcase
             const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
             
-            // Determinar visualização inicial (Landing Showcase vs Loja)
-            if (!isCurrentDemo) {
+            // Determinar visualização inicial (Landing Showcase vs Loja vs Tela de Login Dedicada)
+            const pathLower = (window.location.pathname || '').toLowerCase();
+            const viewParam = (urlParams.get('view') || urlParams.get('pagina') || '').toLowerCase();
+            const hashLower = (window.location.hash || '').toLowerCase();
+            const isLoginRoute = pathLower === '/login' || pathLower.endsWith('/login') || viewParam === 'login' || hashLower === '#login';
+
+            if (isLoginRoute) {
+                currentAppView = 'login';
+            } else if (!isCurrentDemo) {
                 currentAppView = 'store';
             } else {
-                const hash = window.location.hash;
-                if (hash === '#loja-demo' || hash === '#cardapio' || hash === '#inicio') {
+                if (hashLower === '#loja-demo' || hashLower === '#cardapio' || hashLower === '#inicio') {
                     currentAppView = 'store';
                 } else {
                     currentAppView = 'landing';
@@ -2723,7 +2729,424 @@
             `).join('');
         }
 
-        // ========== GERENCIAMENTO DE VISUALIZAÇÃO (LANDING APRESENTAÇÃO vs LOJA DEMO / CARDÁPIO) ==========
+        // ========== MÁSCARA TELEFÔNICA (DDD + NÚMERO) ==========
+        function maskPhoneInput(input) {
+            if (!input) return;
+            let v = input.value.replace(/\D/g, '');
+            if (v.length > 11) v = v.substring(0, 11);
+            if (v.length > 10) {
+                input.value = `(${v.substring(0,2)}) ${v.substring(2,7)}-${v.substring(7)}`;
+            } else if (v.length > 6) {
+                input.value = `(${v.substring(0,2)}) ${v.substring(2,6)}-${v.substring(6)}`;
+            } else if (v.length > 2) {
+                input.value = `(${v.substring(0,2)}) ${v.substring(2)}`;
+            } else if (v.length > 0) {
+                input.value = `(${v}`;
+            } else {
+                input.value = '';
+            }
+        }
+
+        // ========== GERENCIADOR DE TESTE GRÁTIS 24H NA LOJA DEMO (CAPTURA DE LEADS) ==========
+        const DemoTrialManager = {
+            STORAGE_KEY: 'donfood_demo_trial',
+            LEADS_KEY: 'donfood_demo_leads',
+
+            isTrialActive() {
+                try {
+                    const raw = localStorage.getItem(this.STORAGE_KEY);
+                    if (!raw) return false;
+                    const data = JSON.parse(raw);
+                    if (!data || !data.expiresAt) return false;
+                    return Number(data.expiresAt) > Date.now();
+                } catch {
+                    return false;
+                }
+            },
+
+            getTrialData() {
+                try {
+                    const raw = localStorage.getItem(this.STORAGE_KEY);
+                    if (!raw) return null;
+                    return JSON.parse(raw);
+                } catch {
+                    return null;
+                }
+            },
+
+            getRemainingTimeFormatted() {
+                const data = this.getTrialData();
+                if (!data || !data.expiresAt) return 'Expirado';
+                const diff = Number(data.expiresAt) - Date.now();
+                if (diff <= 0) return 'Expirado';
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                return `${hours}h ${minutes}min`;
+            },
+
+            async unlock(phone, name) {
+                const cleanPhone = (phone || '').replace(/\D/g, '');
+                if (!cleanPhone || cleanPhone.length < 10) {
+                    throw new Error('Número de WhatsApp inválido (mínimo 10 dígitos com DDD).');
+                }
+
+                const now = Date.now();
+                const expiresAt = now + 24 * 60 * 60 * 1000;
+                const leadRecord = {
+                    id: 'lead_' + now + '_' + Math.random().toString(36).substring(2, 6),
+                    phone: phone.trim(),
+                    cleanPhone: cleanPhone,
+                    name: (name || '').trim() || 'Interessado Demo',
+                    unlockedAt: now,
+                    expiresAt: expiresAt,
+                    createdAt: new Date().toISOString(),
+                    status: 'ACTIVE_TRIAL'
+                };
+
+                // Salvar localmente no navegador
+                localStorage.setItem(this.STORAGE_KEY, JSON.stringify(leadRecord));
+
+                // Salvar lista acumulada de leads no localStorage
+                try {
+                    const existingLeadsRaw = localStorage.getItem(this.LEADS_KEY);
+                    let leadsList = existingLeadsRaw ? JSON.parse(existingLeadsRaw) : [];
+                    const idx = leadsList.findIndex(l => (l.phone || '').replace(/\D/g, '') === cleanPhone);
+                    if (idx >= 0) {
+                        leadsList[idx] = { ...leadsList[idx], ...leadRecord, unlockCount: (leadsList[idx].unlockCount || 1) + 1 };
+                    } else {
+                        leadsList.unshift(leadRecord);
+                    }
+                    localStorage.setItem(this.LEADS_KEY, JSON.stringify(leadsList));
+                } catch (e) {
+                    console.error('Erro ao armazenar lead localmente:', e);
+                }
+
+                // Sincronizar com servidor Node.js backend
+                try {
+                    await fetch('/api/demo/unlock', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            phone: phone.trim(),
+                            name: (name || '').trim(),
+                            storeSlug: 'demo',
+                            source: 'store-demo'
+                        })
+                    });
+                } catch (err) {
+                    console.warn('Sincronização com backend offline.');
+                }
+
+                return leadRecord;
+            },
+
+            updateDemoBannerUI() {
+                const noticeBar = document.getElementById('demoNoticeBar');
+                if (!noticeBar) return;
+
+                const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
+                const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+
+                if (!isCurrentDemo || currentAppView !== 'store') {
+                    noticeBar.style.display = 'none';
+                    return;
+                }
+
+                noticeBar.style.display = 'block';
+
+                const isUnlocked = this.isTrialActive();
+                const trialData = this.getTrialData();
+
+                if (isUnlocked && trialData) {
+                    const remaining = this.getRemainingTimeFormatted();
+                    noticeBar.innerHTML = `
+                        <div class="demo-notice-glow-box" style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95)); border: 1.5px solid #6EE7B7; color: white;">
+                            <div style="display: flex; align-items: center; gap: 0.6rem;">
+                                <span style="font-size: 1.25rem;">⏱️</span>
+                                <div>
+                                    <strong style="display: block; font-size: 0.92rem; color: #FFFFFF;">Área do Cliente Liberada (Teste Grátis 24h)</strong>
+                                    <small style="color: #ECFDF5; font-size: 0.8rem;">Tempo restante: <strong>${remaining}</strong> • Contato: <strong>${trialData.phone}</strong></small>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                                <button type="button" onclick="switchToLandingView(event)" class="btn-admin" style="font-size: 0.82rem; padding: 5px 14px; font-weight: 700; border-radius: 50px; background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.4); cursor: pointer;">
+                                    ← Apresentação
+                                </button>
+                                <button type="button" onclick="openAcquireAppModal()" class="btn-acquire-header" style="font-size: 0.82rem; padding: 5px 14px; font-weight: 700; border-radius: 50px; background: #FFFFFF; color: #047857; box-shadow: 0 2px 10px rgba(0,0,0,0.15);">
+                                    💎 Quero Este Sistema
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    noticeBar.innerHTML = `
+                        <div class="demo-notice-glow-box" style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; background: linear-gradient(135deg, #9A3412, #7C2D12); border: 1.5px solid #FDBA74; color: white;">
+                            <div style="display: flex; align-items: center; gap: 0.6rem;">
+                                <span style="font-size: 1.25rem;">🔒</span>
+                                <div>
+                                    <strong style="display: block; font-size: 0.92rem; color: #FFFFFF;">Loja de Demonstração Don Food (Modo Visual)</strong>
+                                    <small style="color: #FED7AA; font-size: 0.8rem;">Libere o cardápio interativo e teste grátis por 24 horas.</small>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                                <button type="button" onclick="openDemoLeadModal()" class="btn-admin" style="font-size: 0.85rem; padding: 6px 16px; font-weight: 800; border-radius: 50px; background: linear-gradient(135deg, #F59E0B, #D97706); color: white; border: none; cursor: pointer; box-shadow: 0 3px 12px rgba(245, 158, 11, 0.4);">
+                                    🔓 Desbloquear Teste 24h
+                                </button>
+                                <button type="button" onclick="switchToLandingView(event)" class="btn-admin" style="font-size: 0.82rem; padding: 5px 14px; font-weight: 700; border-radius: 50px; background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3); cursor: pointer;">
+                                    ← Apresentação
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+        };
+
+        function openDemoLeadModal() {
+            const modal = document.getElementById('demoLeadCaptureModal');
+            if (modal) {
+                modal.classList.add('active');
+                const phoneInput = document.getElementById('demoLeadPhoneInput');
+                if (phoneInput) {
+                    setTimeout(() => phoneInput.focus(), 100);
+                }
+            }
+        }
+
+        function closeDemoLeadModal() {
+            const modal = document.getElementById('demoLeadCaptureModal');
+            if (modal) modal.classList.remove('active');
+        }
+
+        async function handleDemoLeadUnlockSubmit(e) {
+            if (e) e.preventDefault();
+            const phoneInput = document.getElementById('demoLeadPhoneInput');
+            const nameInput = document.getElementById('demoLeadNameInput');
+            const errorEl = document.getElementById('demoLeadError');
+            const btnSubmit = document.getElementById('btnDemoUnlockSubmit');
+
+            const phone = phoneInput ? phoneInput.value.trim() : '';
+            const name = nameInput ? nameInput.value.trim() : '';
+            const cleanPhone = phone.replace(/\D/g, '');
+
+            if (!cleanPhone || cleanPhone.length < 10) {
+                if (errorEl) {
+                    errorEl.style.display = 'block';
+                    errorEl.textContent = '❌ Por favor, digite um número de WhatsApp válido com DDD (mínimo 10 dígitos).';
+                }
+                if (phoneInput) phoneInput.focus();
+                return;
+            }
+
+            if (btnSubmit) {
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = '⏳ Liberando Acesso...';
+            }
+
+            try {
+                await DemoTrialManager.unlock(phone, name);
+                if (errorEl) errorEl.style.display = 'none';
+                closeDemoLeadModal();
+                DemoTrialManager.updateDemoBannerUI();
+                showNotification(`🎉 Teste liberado com sucesso por 24 horas! Aproveite para montar pedidos e testar o cardápio.`, 'success');
+            } catch (err) {
+                if (errorEl) {
+                    errorEl.style.display = 'block';
+                    errorEl.textContent = `❌ ${err.message || 'Erro ao liberar teste.'}`;
+                }
+            } finally {
+                if (btnSubmit) {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = '🔓 Desbloquear Acesso por 24 Horas';
+                }
+            }
+        }
+
+        function openDemoAdminBlockedModal() {
+            const modal = document.getElementById('demoAdminBlockedModal');
+            if (modal) modal.classList.add('active');
+        }
+
+        function closeDemoAdminBlockedModal() {
+            const modal = document.getElementById('demoAdminBlockedModal');
+            if (modal) modal.classList.remove('active');
+        }
+
+        // ========== GESTÃO DE LEADS CAPTURADOS NO PAINEL DEV ==========
+        let devLeadsData = [];
+
+        async function fetchDevLeads() {
+            try {
+                const response = await fetch('/api/dev/leads');
+                const res = await response.json();
+                if (res && res.success && Array.isArray(res.data)) {
+                    devLeadsData = res.data;
+                } else {
+                    const local = localStorage.getItem(DemoTrialManager.LEADS_KEY);
+                    devLeadsData = local ? JSON.parse(local) : [];
+                }
+            } catch {
+                const local = localStorage.getItem(DemoTrialManager.LEADS_KEY);
+                devLeadsData = local ? JSON.parse(local) : [];
+            }
+
+            renderDevLeadsList();
+        }
+
+        function renderDevLeadsList() {
+            const listEl = document.getElementById('devLeadsList');
+            const totalEl = document.getElementById('devMetricTotalLeads');
+            const activeEl = document.getElementById('devMetricActiveLeads');
+            const expiredEl = document.getElementById('devMetricExpiredLeads');
+            const countBadge = document.getElementById('devLeadsCount');
+            const searchInput = document.getElementById('devLeadsSearchInput');
+            const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+            const now = Date.now();
+            let total = devLeadsData.length;
+            let active = 0;
+            let expired = 0;
+
+            devLeadsData.forEach(lead => {
+                const exp = lead.trialExpiresAt || lead.expiresAt;
+                if (exp && Number(exp) > now) {
+                    active++;
+                } else {
+                    expired++;
+                }
+            });
+
+            if (totalEl) totalEl.textContent = total;
+            if (activeEl) activeEl.textContent = active;
+            if (expiredEl) expiredEl.textContent = expired;
+            if (countBadge) countBadge.textContent = total;
+
+            if (!listEl) return;
+
+            let filtered = devLeadsData.filter(lead => {
+                if (!searchTerm) return true;
+                const nameMatch = (lead.name || '').toLowerCase().includes(searchTerm);
+                const phoneMatch = (lead.phone || '').includes(searchTerm) || (lead.cleanPhone || '').includes(searchTerm);
+                return nameMatch || phoneMatch;
+            });
+
+            if (filtered.length === 0) {
+                listEl.innerHTML = `
+                    <div style="background: white; border: 1px dashed var(--gray-300); border-radius: 10px; padding: 2rem; text-align: center; color: var(--gray-500);">
+                        <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">🎯</span>
+                        <strong style="color: var(--gray-700);">Nenhum contato encontrado</strong>
+                        <p style="font-size: 0.85rem; margin: 0.25rem 0 0 0;">Quando visitantes inserirem o telefone na Loja Demo, eles aparecerão aqui automaticamente.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            listEl.innerHTML = filtered.map(lead => {
+                const exp = lead.trialExpiresAt || lead.expiresAt;
+                const isLeadActive = exp ? (Number(exp) > now) : false;
+                const remainingHours = exp ? Math.max(0, Math.round((Number(exp) - now) / 3600000)) : 0;
+                const cleanPhone = (lead.phone || '').replace(/\D/g, '');
+                const formattedDate = lead.createdAt ? new Date(lead.createdAt).toLocaleString('pt-BR') : 'Data não informada';
+                const leadName = lead.name || 'Interessado Demo';
+                const whatsappMsg = encodeURIComponent(`Olá, ${leadName}! Vi que você testou o cardápio digital do Don Food. O que achou da experiência? Posso tirar alguma dúvida ou apresentar as condições para o seu estabelecimento?`);
+
+                return `
+                    <div style="background: white; border: 1px solid var(--gray-200); border-radius: 10px; padding: 0.85rem; display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <div style="width: 42px; height: 42px; background: ${isLeadActive ? '#ECFDF5' : '#F1F5F9'}; color: ${isLeadActive ? '#059669' : '#64748B'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                                📱
+                            </div>
+                            <div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                                    <strong style="color: #1E1B4B; font-size: 0.95rem;">${lead.phone}</strong>
+                                    <span style="font-size: 0.75rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 20px; background: ${isLeadActive ? '#DCFCE7' : '#F1F5F9'}; color: ${isLeadActive ? '#15803D' : '#64748B'};">
+                                        ${isLeadActive ? `🟢 Ativo (${remainingHours}h restantes)` : '⏳ Expirado'}
+                                    </span>
+                                </div>
+                                <div style="font-size: 0.82rem; color: #4B5563; margin-top: 0.15rem;">
+                                    <span>👤 <strong>${leadName}</strong></span> • <small style="color: #64748B;">Cadastrado em: ${formattedDate}</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 0.4rem; align-items: center;">
+                            <a href="https://wa.me/55${cleanPhone}?text=${whatsappMsg}" target="_blank" class="btn-admin" style="background: #25D366; color: white; font-weight: 700; font-size: 0.8rem; padding: 0.4rem 0.8rem; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem;" title="Iniciar conversa comercial no WhatsApp">
+                                💬 WhatsApp
+                            </a>
+                            <button type="button" class="btn-admin" onclick="copyLeadPhone('${lead.phone}')" style="background: var(--gray-100); color: var(--gray-700); font-size: 0.8rem; padding: 0.4rem 0.6rem; border-radius: 8px;" title="Copiar Telefone">
+                                📋
+                            </button>
+                            <button type="button" class="btn-admin" onclick="deleteDevLead('${lead.id || cleanPhone}')" style="background: #FEE2E2; color: #DC2626; font-size: 0.8rem; padding: 0.4rem 0.6rem; border-radius: 8px;" title="Excluir Lead">
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterDevLeadsList() {
+            renderDevLeadsList();
+        }
+
+        function copyLeadPhone(phone) {
+            if (!phone) return;
+            navigator.clipboard.writeText(phone);
+            showNotification(`Telefone ${phone} copiado! 📋`, 'success');
+        }
+
+        function copyAllLeadPhones() {
+            if (!devLeadsData || devLeadsData.length === 0) {
+                showNotification('Nenhum telefone para copiar.', 'warning');
+                return;
+            }
+            const phones = devLeadsData.map(l => l.phone).filter(Boolean).join('\n');
+            navigator.clipboard.writeText(phones);
+            showNotification(`📋 ${devLeadsData.length} telefones copiados para a área de transferência!`, 'success');
+        }
+
+        function exportLeadsCSV() {
+            if (!devLeadsData || devLeadsData.length === 0) {
+                showNotification('Nenhum contato para exportar.', 'warning');
+                return;
+            }
+
+            let csv = "Telefone;Nome;Data_Criacao;Status;Horas_Restantes\n";
+            const now = Date.now();
+            devLeadsData.forEach(l => {
+                const exp = l.trialExpiresAt || l.expiresAt;
+                const isActive = exp ? (Number(exp) > now) : false;
+                const hours = exp ? Math.max(0, Math.round((Number(exp) - now) / 3600000)) : 0;
+                csv += `"${l.phone || ''}";"${l.name || ''}";"${l.createdAt || ''}";"${isActive ? 'ATIVO' : 'EXPIRADO'}";"${hours}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `leads_donfood_demo_${new Date().toISOString().slice(0,10)}.csv`;
+            link.click();
+            URL.revokeObjectURL(url);
+            showNotification('📥 Planilha de leads exportada com sucesso!', 'success');
+        }
+
+        async function deleteDevLead(id) {
+            if (!confirm('Deseja realmente remover este contato da lista de leads?')) return;
+
+            try {
+                await fetch(`/api/dev/leads/${id}`, { method: 'DELETE' });
+            } catch {}
+
+            devLeadsData = devLeadsData.filter(l => l.id !== id && l.cleanPhone !== id);
+            try {
+                localStorage.setItem(DemoTrialManager.LEADS_KEY, JSON.stringify(devLeadsData));
+            } catch {}
+
+            renderDevLeadsList();
+            showNotification('Contato removido da lista.', 'info');
+        }
+
+        // ========== GERENCIAMENTO DE VISUALIZAÇÃO (LANDING vs LOJA DEMO vs LOGIN DEDICADO) ==========
         function updateHeaderNavForCurrentView() {
             const mainHeaderNav = document.getElementById('mainHeaderNav');
             if (!mainHeaderNav) return;
@@ -2731,7 +3154,12 @@
             const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
             const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
 
-            if (isCurrentDemo) {
+            if (currentAppView === 'login') {
+                mainHeaderNav.innerHTML = `
+                    <a href="javascript:void(0)" onclick="switchToStoreView('header')" class="nav-link" style="color: #EA580C; font-weight: 800; display: inline-flex; align-items: center; gap: 0.35rem;">🛍️ Ir para o Cardápio</a>
+                    <a href="javascript:void(0)" onclick="switchToLandingView(event)" class="nav-link" style="color: #4F46E5; font-weight: 700; display: inline-flex; align-items: center; gap: 0.3rem;">🏠 Apresentação Don Food</a>
+                `;
+            } else if (isCurrentDemo) {
                 if (currentAppView === 'landing') {
                     mainHeaderNav.innerHTML = `
                         <a href="#demoLandingHero" onclick="switchToLandingView(event)" class="nav-link">Início</a>
@@ -2762,40 +3190,258 @@
 
             const demoHero = document.getElementById('demoLandingHero');
             const storeWrapper = document.getElementById('storeViewWrapper');
+            const loginWrapper = document.getElementById('loginViewWrapper');
             const demoBar = document.getElementById('demoNoticeBar');
             const heroSection = document.getElementById('inicio');
 
-            if (!isCurrentDemo) {
+            // Atualiza classe do body para sincronia visual com CSS
+            document.body.classList.remove('view-landing', 'view-store', 'view-login');
+            document.body.classList.add('view-' + currentAppView);
+
+            if (currentAppView === 'login') {
+                if (demoHero) demoHero.style.display = 'none';
+                if (storeWrapper) storeWrapper.style.display = 'none';
+                if (loginWrapper) loginWrapper.style.display = 'block';
+                if (demoBar) demoBar.style.display = 'none';
+                if (heroSection) heroSection.classList.remove('has-demo-landing');
+                refreshDedicatedLoginUI();
+            } else if (!isCurrentDemo) {
                 currentAppView = 'store';
+                document.body.classList.remove('view-landing', 'view-login');
+                document.body.classList.add('view-store');
                 if (demoHero) demoHero.style.display = 'none';
                 if (storeWrapper) storeWrapper.style.display = 'block';
+                if (loginWrapper) loginWrapper.style.display = 'none';
                 if (demoBar) demoBar.style.display = 'none';
                 if (heroSection) heroSection.classList.remove('has-demo-landing');
             } else {
                 if (currentAppView === 'landing') {
                     if (demoHero) demoHero.style.display = 'block';
                     if (storeWrapper) storeWrapper.style.display = 'none';
+                    if (loginWrapper) loginWrapper.style.display = 'none';
                     if (demoBar) demoBar.style.display = 'none';
                     if (heroSection) heroSection.classList.add('has-demo-landing');
                 } else {
                     if (demoHero) demoHero.style.display = 'none';
                     if (storeWrapper) storeWrapper.style.display = 'block';
+                    if (loginWrapper) loginWrapper.style.display = 'none';
                     if (demoBar) demoBar.style.display = 'block';
                     if (heroSection) heroSection.classList.remove('has-demo-landing');
+                    DemoTrialManager.updateDemoBannerUI();
                 }
             }
 
             updateHeaderNavForCurrentView();
 
+            // Atualizar visibilidade das ações do cabeçalho (Carrinho, Quero Testar, Cliente, Empresa)
+            const cartBtn = document.getElementById('cartBtn');
             const btnAcquireHeader = document.getElementById('btnAcquireHeader');
-            if (btnAcquireHeader) {
-                btnAcquireHeader.textContent = isCurrentDemo ? 'Quero Testar' : 'Quero o App';
+            const customerContainer = document.getElementById('customerHeaderContainer');
+            const adminContainer = document.getElementById('adminHeaderContainer');
+            const mobileMenu = document.getElementById('mobileHeaderMenuContainer');
+
+            if (currentAppView === 'landing' || currentAppView === 'login') {
+                if (cartBtn) cartBtn.style.display = 'none';
+                if (btnAcquireHeader) btnAcquireHeader.style.display = 'none';
+                if (customerContainer) customerContainer.style.display = 'none';
+                if (adminContainer) adminContainer.style.display = 'none';
+                if (mobileMenu) mobileMenu.style.display = 'none';
+            } else {
+                if (cartBtn) cartBtn.style.display = 'flex';
+                if (mobileMenu) mobileMenu.style.display = '';
+                if (btnAcquireHeader) {
+                    btnAcquireHeader.style.display = isCurrentDemo ? 'inline-flex' : 'none';
+                    if (isCurrentDemo) btnAcquireHeader.textContent = 'Quero Testar';
+                }
+                if (customerContainer) customerContainer.style.display = 'block';
+                if (adminContainer) adminContainer.style.display = 'flex';
+                updateCustomerHeaderUI();
             }
+        }
+
+        let isRegisteredCompanyLoginActive = false;
+
+        function showRegisteredCompanyLoginForm() {
+            isRegisteredCompanyLoginActive = true;
+            refreshDedicatedLoginUI();
+            setTimeout(() => {
+                const emailInput = document.getElementById('dedicatedLoginEmail');
+                if (emailInput) {
+                    emailInput.focus();
+                }
+            }, 100);
+        }
+
+        function showDemoInfoPanel() {
+            isRegisteredCompanyLoginActive = false;
+            refreshDedicatedLoginUI();
+        }
+
+        function refreshDedicatedLoginUI() {
+            const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
+            const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+            
+            // Se a empresa ativa não for Demo, forçar sempre tela de login da empresa cadastrada
+            if (!isCurrentDemo) {
+                isRegisteredCompanyLoginActive = true;
+            }
+
+            // 1. Atualizar Fundo de Boas-Vindas e Textos da Hero
+            const storeNameEl = document.getElementById('loginViewStoreName');
+            const heroBadgeText = document.getElementById('loginHeroBadgeText');
+            const heroSubtitle = document.getElementById('loginHeroSubtitle');
+
+            if (isCurrentDemo && !isRegisteredCompanyLoginActive) {
+                if (storeNameEl) storeNameEl.textContent = '"Don Food (Demonstração)"';
+                if (heroBadgeText) heroBadgeText.textContent = '🛍️ LOJA DE DEMONSTRAÇÃO DON FOOD';
+                if (heroSubtitle) heroSubtitle.textContent = 'Explore nosso cardápio modelo e veja como a plataforma Don Food potencializa as vendas do seu estabelecimento pelo WhatsApp.';
+            } else {
+                const displayName = (!isCurrentDemo && activeComp.name) ? `"${activeComp.name}"` : '"Don Food - Empresas Parceiras"';
+                if (storeNameEl) storeNameEl.textContent = displayName;
+                if (heroBadgeText) heroBadgeText.textContent = '🔐 PAINEL EXCLUSIVO DO LOJISTA';
+                if (heroSubtitle) heroSubtitle.textContent = 'Acesse o painel para gerenciar cardápio, acompanhar pedidos em tempo real, configurar taxas de entrega e personalizar a identidade visual da sua empresa.';
+            }
+
+            // 2. Avatar / Ícone da Loja
+            const avatarEl = document.getElementById('loginStoreIconAvatar');
+            if (avatarEl) {
+                if (!isCurrentDemo && settings.logo && (settings.logo.startsWith('http') || settings.logo.startsWith('data:image'))) {
+                    avatarEl.innerHTML = `<img src="${settings.logo}" alt="Logo" style="width: 100%; height: 100%; object-fit: cover; border-radius: 18px;">`;
+                } else {
+                    avatarEl.textContent = '🏬';
+                }
+            }
+
+            // 3. Título e Subtítulo do Card de Empresa Cadastrada
+            const cardTitleEl = document.getElementById('loginCardTitle');
+            const cardSubtitleEl = document.getElementById('loginCardSubtitle');
+            if (cardTitleEl) {
+                cardTitleEl.textContent = (!isCurrentDemo && activeComp.name) ? `Acessar Painel: ${activeComp.name}` : 'Acessar Minha Loja';
+            }
+            if (cardSubtitleEl) {
+                cardSubtitleEl.innerHTML = 'Digite o <strong>E-mail ou Telefone</strong> e a <strong>Senha</strong> do seu estabelecimento';
+            }
+
+            // 4. Alternar Visualização entre Conectado, Loja Demo e Login de Empresas Cadastradas
+            const isOwner = AuthManager.isCompanyOwner(activeCompanyId) || AuthManager.isSuperAdmin();
+            const alreadyLoggedBox = document.getElementById('loginAlreadyLoggedBox');
+            const demoCard = document.getElementById('loginDemoCard');
+            const registeredCard = document.getElementById('loginRegisteredCard');
+            const alreadyStoreName = document.getElementById('loginAlreadyStoreName');
+            const btnBackToDemo = document.getElementById('btnBackToDemoFromLogin');
+            const bulletBackToDemo = document.getElementById('bulletBackToDemo');
+
+            if (isOwner) {
+                if (alreadyLoggedBox) alreadyLoggedBox.style.display = 'block';
+                if (demoCard) demoCard.style.display = 'none';
+                if (registeredCard) registeredCard.style.display = 'none';
+                if (alreadyStoreName) alreadyStoreName.textContent = activeComp.name || settings.restaurantName || 'Sua Loja';
+            } else {
+                if (alreadyLoggedBox) alreadyLoggedBox.style.display = 'none';
+
+                if (isCurrentDemo && !isRegisteredCompanyLoginActive) {
+                    // Janela exclusiva da Loja Demo
+                    if (demoCard) demoCard.style.display = 'block';
+                    if (registeredCard) registeredCard.style.display = 'none';
+                } else {
+                    // Janela de Login das Empresas Cadastradas
+                    if (demoCard) demoCard.style.display = 'none';
+                    if (registeredCard) registeredCard.style.display = 'block';
+
+                    // Exibir botão de retorno à Demo se veio do contexto Demo
+                    if (isCurrentDemo) {
+                        if (btnBackToDemo) btnBackToDemo.style.display = 'inline-block';
+                        if (bulletBackToDemo) bulletBackToDemo.style.display = 'inline';
+                    } else {
+                        if (btnBackToDemo) btnBackToDemo.style.display = 'none';
+                        if (bulletBackToDemo) bulletBackToDemo.style.display = 'none';
+                    }
+                }
+            }
+
+            // 5. Limpar erros
+            const errorEl = document.getElementById('dedicatedLoginError');
+            if (errorEl) errorEl.style.display = 'none';
+        }
+
+        function handleDedicatedCompanyChange(selectEl) {
+            if (!selectEl || !selectEl.value) return;
+            switchActiveCompany(selectEl.value);
+            refreshDedicatedLoginUI();
+        }
+
+        function switchToLoginView(e, targetCompId = null, forceRegistered = false) {
+            if (e && e.preventDefault) e.preventDefault();
+            if (targetCompId) {
+                switchActiveCompany(targetCompId);
+            }
+            
+            const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
+            const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+
+            if (!isCurrentDemo || forceRegistered) {
+                isRegisteredCompanyLoginActive = true;
+            } else {
+                isRegisteredCompanyLoginActive = false;
+            }
+
+            currentAppView = 'login';
+            updateAppViewDisplay();
+            
+            // Sincronizar URL para /login sem recarregar
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                if (activeComp && activeComp.slug && !activeComp.isDemo) {
+                    urlParams.set('empresa', activeComp.slug);
+                }
+                const newQuery = urlParams.toString() ? '?' + urlParams.toString() : '';
+                window.history.pushState({ view: 'login' }, '', '/login' + newQuery);
+            } catch (err) {
+                // Fallback silencioso para navegadores com restrições de histórico
+            }
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            // Focar no campo de e-mail/telefone em branco se estiver no modo de login cadastrado
+            setTimeout(() => {
+                if (isRegisteredCompanyLoginActive) {
+                    const emailInput = document.getElementById('dedicatedLoginEmail');
+                    const passwordInput = document.getElementById('dedicatedLoginPassword');
+                    if (emailInput) {
+                        emailInput.value = '';
+                        emailInput.focus();
+                    }
+                    if (passwordInput) {
+                        passwordInput.value = '';
+                    }
+                }
+            }, 150);
         }
 
         function switchToStoreView(source) {
             currentAppView = 'store';
             updateAppViewDisplay();
+
+            // Atualizar URL de volta à loja/cardápio
+            try {
+                const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
+                const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+                const urlParams = new URLSearchParams(window.location.search);
+                if (activeComp && activeComp.slug && !activeComp.isDemo) {
+                    urlParams.set('empresa', activeComp.slug);
+                } else {
+                    urlParams.delete('empresa');
+                }
+                const newQuery = urlParams.toString() ? '?' + urlParams.toString() : '';
+                window.history.pushState({ view: 'store' }, '', '/' + newQuery);
+
+                if (isCurrentDemo && !DemoTrialManager.isTrialActive()) {
+                    setTimeout(() => {
+                        openDemoLeadModal();
+                    }, 350);
+                }
+            } catch (err) {}
+
             if (source === 'cardapio' || window.location.hash === '#cardapio') {
                 setTimeout(() => {
                     const cardapioEl = document.getElementById('cardapio');
@@ -2810,7 +3456,22 @@
             if (e && e.preventDefault) e.preventDefault();
             currentAppView = 'landing';
             updateAppViewDisplay();
+
+            try {
+                window.history.pushState({ view: 'landing' }, '', '/');
+            } catch (err) {}
+
             window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function openAdminPanelFromLogin() {
+            switchToStoreView('admin');
+            openAdminPanel();
+        }
+
+        function logoutAdminFromLogin() {
+            logoutAdmin();
+            refreshDedicatedLoginUI();
         }
 
         // ========== GERENCIAMENTO DO ACESSO OCULTO DEVELOPER (10 CLIQUES) ==========
@@ -2911,6 +3572,7 @@
             const modal = document.getElementById('devPanelModal');
             if (modal) modal.classList.add('active');
             renderDevCompanyList();
+            fetchDevLeads(); // Carregar contatos da demo em segundo plano
             switchDevTab('companies');
         }
 
@@ -2929,17 +3591,20 @@
                 return;
             }
             const compTab = document.getElementById('devTabCompanies');
+            const leadsTab = document.getElementById('devTabLeads');
             const custTab = document.getElementById('devTabCustomers');
             const migrateTab = document.getElementById('devTabMigrate');
             const createTab = document.getElementById('devTabCreate');
             const supTab = document.getElementById('devTabSupabase');
             const compBtn = document.getElementById('devTabCompaniesBtn');
+            const leadsBtn = document.getElementById('devTabLeadsBtn');
             const custBtn = document.getElementById('devTabCustomersBtn');
             const migrateBtn = document.getElementById('devTabMigrateBtn');
             const createBtn = document.getElementById('devTabCreateBtn');
             const supBtn = document.getElementById('devTabSupabaseBtn');
 
             if (compTab) compTab.style.display = tab === 'companies' ? 'block' : 'none';
+            if (leadsTab) leadsTab.style.display = tab === 'leads' ? 'block' : 'none';
             if (custTab) custTab.style.display = tab === 'customers' ? 'block' : 'none';
             if (migrateTab) migrateTab.style.display = tab === 'migrate' ? 'block' : 'none';
             if (createTab) createTab.style.display = tab === 'create' ? 'block' : 'none';
@@ -2948,6 +3613,10 @@
             if (compBtn) {
                 compBtn.style.background = tab === 'companies' ? '#4F46E5' : 'var(--gray-200)';
                 compBtn.style.color = tab === 'companies' ? 'white' : 'var(--gray-800)';
+            }
+            if (leadsBtn) {
+                leadsBtn.style.background = tab === 'leads' ? '#4F46E5' : 'var(--gray-200)';
+                leadsBtn.style.color = tab === 'leads' ? 'white' : 'var(--gray-800)';
             }
             if (custBtn) {
                 custBtn.style.background = tab === 'customers' ? '#4F46E5' : 'var(--gray-200)';
@@ -2966,7 +3635,9 @@
                 supBtn.style.color = tab === 'supabase' ? 'white' : 'var(--gray-800)';
             }
 
-            if (tab === 'customers') {
+            if (tab === 'leads') {
+                fetchDevLeads();
+            } else if (tab === 'customers') {
                 populateDevCustomerFilter();
                 renderDevCustomerList();
             } else if (tab === 'migrate') {
@@ -4371,6 +5042,14 @@
 
         // ========== INTERACTIVE PRODUCT CUSTOMIZER (POR CATEGORIA) ==========
         function openAcaiCustomizer(productId) {
+            const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
+            const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+            if (isCurrentDemo && !DemoTrialManager.isTrialActive()) {
+                openDemoLeadModal();
+                showNotification('📱 Digite seu número para liberar o cardápio e testar a montagem por 24h!', 'info');
+                return;
+            }
+
             const product = products.find(p => p.id === productId);
             if (!product || !product.available) return;
 
@@ -4734,6 +5413,12 @@
         let isAdminLoggedIn = false;
 
         function openAdminPanel() {
+            const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
+            const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+            if (isCurrentDemo && !AuthManager.isSuperAdmin()) {
+                openDemoAdminBlockedModal();
+                return;
+            }
             if (!AuthManager.isCompanyOwner(activeCompanyId)) {
                 openAdminLogin();
                 return;
@@ -4744,6 +5429,12 @@
         }
 
         function openAdminLogin() {
+            const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
+            const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+            if (isCurrentDemo && !AuthManager.isSuperAdmin()) {
+                openDemoAdminBlockedModal();
+                return;
+            }
             const modal = document.getElementById('passwordModal');
             if (modal) modal.classList.add('active');
             const emailInput = document.getElementById('companyLoginEmail');
@@ -4779,6 +5470,32 @@
 
         function updateAdminHeaderUI() {
             const container = document.getElementById('adminHeaderContainer');
+            const cartBtn = document.getElementById('cartBtn');
+            const btnAcquireHeader = document.getElementById('btnAcquireHeader');
+            const mobileMenu = document.getElementById('mobileHeaderMenuContainer');
+
+            const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
+            const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+
+            if (currentAppView === 'landing' || currentAppView === 'login') {
+                if (container) {
+                    container.style.display = 'none';
+                    container.innerHTML = '';
+                }
+                if (cartBtn) cartBtn.style.display = 'none';
+                if (btnAcquireHeader) btnAcquireHeader.style.display = 'none';
+                if (mobileMenu) mobileMenu.style.display = 'none';
+                return;
+            }
+
+            if (cartBtn) cartBtn.style.display = 'flex';
+            if (mobileMenu) mobileMenu.style.display = '';
+
+            if (btnAcquireHeader) {
+                btnAcquireHeader.style.display = isCurrentDemo ? 'inline-flex' : 'none';
+                if (isCurrentDemo) btnAcquireHeader.textContent = 'Quero Testar';
+            }
+
             if (container) {
                 if (loggedCustomer) {
                     // Quando logado como cliente, não exibir a parte de login de empresa
@@ -4786,7 +5503,6 @@
                     container.style.display = 'none';
                 } else if (AuthManager.isCompanyOwner(activeCompanyId) || AuthManager.isSuperAdmin()) {
                     container.style.display = 'flex';
-                    const activeComp = companies.find(c => c.id === activeCompanyId) || settings;
                     const activeCompId = activeCompanyId || 'company-demo-don';
                     const currentOrders = customerOrders.filter(o => 
                         o.companyId === activeCompId || 
@@ -4816,12 +5532,13 @@
                 } else {
                     container.style.display = 'flex';
                     container.innerHTML = `
-                        <button class="btn-admin-header-login" onclick="openAdminLogin()" title="Painel de Login da Empresa">
+                        <button class="btn-admin-header-login" onclick="switchToLoginView()" title="Painel de Login da Empresa">
                             Login Empresa
                         </button>
                     `;
                 }
             }
+
             updateMobileHeaderMenuUI();
         }
 
@@ -6311,6 +7028,14 @@
 
         // ========== GERENCIAR CARRINHO ==========
         function addToCart(productId) {
+            const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
+            const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+            if (isCurrentDemo && !DemoTrialManager.isTrialActive()) {
+                openDemoLeadModal();
+                showNotification('📱 Digite seu número para liberar o cardápio e testar por 24h!', 'info');
+                return;
+            }
+
             const product = products.find(p => p.id === productId);
             if (!product || !product.available) return;
 
@@ -6680,6 +7405,13 @@
         function updateCustomerHeaderUI() {
             const container = document.getElementById('customerHeaderContainer');
             if (container) {
+                if (currentAppView === 'landing' || currentAppView === 'login') {
+                    container.style.display = 'none';
+                    container.innerHTML = '';
+                    updateAdminHeaderUI();
+                    return;
+                }
+                container.style.display = 'block';
                 if (loggedCustomer) {
                     const firstName = loggedCustomer.name ? loggedCustomer.name.trim().split(' ')[0] : 'Cliente';
                     container.innerHTML = `
@@ -6759,7 +7491,7 @@
                     `;
                 } else {
                     itemsHtml += `
-                        <button type="button" class="mobile-dropdown-item admin-action" onclick="closeMobileHeaderMenu(); openAdminLogin();">
+                        <button type="button" class="mobile-dropdown-item admin-action" onclick="closeMobileHeaderMenu(); switchToLoginView();">
                             🏬 Login Empresa
                         </button>
                     `;
@@ -8942,11 +9674,11 @@
                 });
             }
             
-            // Password Form (Painel de Login da Empresa com E-mail e Senha - RBAC COMPANY_OWNER)
+            // Password Form (Painel de Login da Empresa com E-mail/Telefone e Senha - RBAC COMPANY_OWNER)
             passwordForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const emailInput = document.getElementById('companyLoginEmail');
-                const enteredEmail = emailInput ? emailInput.value.trim().toLowerCase() : '';
+                const enteredIdentifier = emailInput ? emailInput.value.trim() : '';
                 const enteredPassword = passwordInput.value ? passwordInput.value.trim() : '';
 
                 if (!enteredPassword) return;
@@ -8957,7 +9689,9 @@
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            email: enteredEmail,
+                            identifier: enteredIdentifier,
+                            email: enteredIdentifier,
+                            phone: enteredIdentifier,
                             password: enteredPassword,
                             companyId: activeCompanyId
                         })
@@ -8977,19 +9711,33 @@
                     // Fallback para modo offline/local
                 }
 
-                // 1. Procurar empresa cadastrada que corresponda ao e-mail e à senha
+                // 1. Procurar empresa cadastrada que corresponda ao e-mail ou telefone e à senha
+                const cleanPhone = enteredIdentifier.replace(/\D/g, '');
+                const lowerId = enteredIdentifier.toLowerCase();
                 let matchedCompany = companies.find(c => {
+                    if (c.adminPassword !== enteredPassword) return false;
                     const cEmail = (c.email || '').trim().toLowerCase();
-                    const matchEmail = (cEmail === enteredEmail) || (!cEmail && (enteredEmail.includes('fb') || enteredEmail.includes('admin') || c.id === activeCompanyId));
-                    const matchPassword = c.adminPassword === enteredPassword;
-                    return matchEmail && matchPassword;
+                    const cPhone = (c.phone || c.whatsapp || '').replace(/\D/g, '');
+
+                    if (cEmail && cEmail === lowerId) return true;
+                    if (cleanPhone.length >= 8 && cPhone && (cPhone === cleanPhone || cPhone.endsWith(cleanPhone) || cleanPhone.endsWith(cPhone))) {
+                        return true;
+                    }
+                    if (!cEmail && (lowerId.includes('fb') || lowerId.includes('admin') || c.id === activeCompanyId)) {
+                        return true;
+                    }
+                    return false;
                 });
 
-                // 2. Se não achou por e-mail exato, verificar se a senha confere com qualquer empresa
+                // 2. Se não achou por e-mail/telefone exato, verificar se a senha confere com qualquer empresa
                 if (!matchedCompany) {
                     matchedCompany = companies.find(c => c.adminPassword === enteredPassword);
-                    if (matchedCompany && enteredEmail) {
-                        matchedCompany.email = enteredEmail;
+                    if (matchedCompany && enteredIdentifier) {
+                        if (enteredIdentifier.includes('@')) {
+                            matchedCompany.email = enteredIdentifier;
+                        } else if (cleanPhone.length >= 8) {
+                            matchedCompany.phone = enteredIdentifier;
+                        }
                         saveData();
                     }
                 }
@@ -9003,7 +9751,7 @@
                 } else {
                     if (passwordError) {
                         passwordError.style.display = 'block';
-                        passwordError.textContent = '❌ E-mail ou senha incorretos! Por favor, verifique os dados cadastrados.';
+                        passwordError.textContent = '❌ E-mail/telefone ou senha incorretos! Por favor, verifique os dados cadastrados.';
                     }
                     passwordInput.value = '';
                     passwordInput.focus();
@@ -9017,6 +9765,115 @@
                 if (emailInput) emailInput.value = '';
                 if (passwordError) passwordError.style.display = 'none';
             });
+
+            // Dedicated Login Form (/login - Tela Completa com Hero de Boas-Vindas à Loja Cadastrada)
+            const dedicatedForm = document.getElementById('dedicatedLoginForm');
+            if (dedicatedForm) {
+                dedicatedForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const emailInput = document.getElementById('dedicatedLoginEmail');
+                    const passwordEl = document.getElementById('dedicatedLoginPassword');
+                    const errorEl = document.getElementById('dedicatedLoginError');
+                    const btnSubmit = document.getElementById('btnDedicatedLoginSubmit');
+
+                    const enteredIdentifier = emailInput ? emailInput.value.trim() : '';
+                    const enteredPassword = passwordEl ? passwordEl.value.trim() : '';
+
+                    if (!enteredPassword) return;
+
+                    if (btnSubmit) {
+                        btnSubmit.disabled = true;
+                        btnSubmit.innerHTML = '⏳ Entrando no Painel...';
+                    }
+                    if (errorEl) errorEl.style.display = 'none';
+
+                    // 1. Tentar autenticação no backend (/api/auth/company-login)
+                    try {
+                        const response = await fetch('/api/auth/company-login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                identifier: enteredIdentifier,
+                                email: enteredIdentifier,
+                                phone: enteredIdentifier,
+                                password: enteredPassword,
+                                companyId: activeCompanyId
+                            })
+                        });
+                        const res = await response.json();
+
+                        if (res && res.success && res.company) {
+                            const matched = companies.find(c => c.id === res.company.id) || res.company;
+                            switchActiveCompany(res.company.id);
+                            loginAdminSuccess(matched, res.token);
+                            if (passwordEl) passwordEl.value = '';
+                            if (btnSubmit) {
+                                btnSubmit.disabled = false;
+                                btnSubmit.innerHTML = '🚀 Entrar no Painel da Loja';
+                            }
+                            switchToStoreView('login-success');
+                            openAdminPanel();
+                            return;
+                        }
+                    } catch (netErr) {
+                        // Fallback defensivo offline
+                    }
+
+                    // 2. Procurar empresa cadastrada que corresponda ao e-mail ou telefone e à senha
+                    const cleanPhone = enteredIdentifier.replace(/\D/g, '');
+                    const lowerId = enteredIdentifier.toLowerCase();
+                    let matchedCompany = companies.find(c => {
+                        if (c.adminPassword !== enteredPassword) return false;
+                        const cEmail = (c.email || '').trim().toLowerCase();
+                        const cPhone = (c.phone || c.whatsapp || '').replace(/\D/g, '');
+
+                        if (cEmail && cEmail === lowerId) return true;
+                        if (cleanPhone.length >= 8 && cPhone && (cPhone === cleanPhone || cPhone.endsWith(cleanPhone) || cleanPhone.endsWith(cPhone))) {
+                            return true;
+                        }
+                        if (!cEmail && (lowerId.includes('fb') || lowerId.includes('admin') || c.id === activeCompanyId)) {
+                            return true;
+                        }
+                        return false;
+                    });
+
+                    // 3. Fallback: Se a senha bater com qualquer loja cadastrada
+                    if (!matchedCompany) {
+                        matchedCompany = companies.find(c => c.adminPassword === enteredPassword);
+                        if (matchedCompany && enteredIdentifier) {
+                            if (enteredIdentifier.includes('@')) {
+                                matchedCompany.email = enteredIdentifier;
+                            } else if (cleanPhone.length >= 8) {
+                                matchedCompany.phone = enteredIdentifier;
+                            }
+                            saveData();
+                        }
+                    }
+
+                    if (btnSubmit) {
+                        btnSubmit.disabled = false;
+                        btnSubmit.innerHTML = '🚀 Entrar no Painel da Loja';
+                    }
+
+                    if (matchedCompany) {
+                        switchActiveCompany(matchedCompany.id);
+                        loginAdminSuccess(matchedCompany);
+                        if (passwordEl) passwordEl.value = '';
+                        if (errorEl) errorEl.style.display = 'none';
+                        switchToStoreView('login-success');
+                        openAdminPanel();
+                    } else {
+                        if (errorEl) {
+                            errorEl.style.display = 'block';
+                            errorEl.textContent = '❌ E-mail/telefone ou senha incorretos! Por favor, verifique os dados cadastrados.';
+                        }
+                        if (passwordEl) {
+                            passwordEl.value = '';
+                            passwordEl.focus();
+                        }
+                    }
+                });
+            }
             
             adminClose.addEventListener('click', closeAdminPanel);
             adminOverlay.addEventListener('click', closeAdminPanel);
@@ -9030,6 +9887,13 @@
             
             // Cart
             cartBtn.addEventListener('click', () => {
+                const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
+                const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+                if (isCurrentDemo && !DemoTrialManager.isTrialActive()) {
+                    openDemoLeadModal();
+                    showNotification('📱 Digite seu número para liberar o cardápio e testar o carrinho por 24h!', 'info');
+                    return;
+                }
                 cartSidebar.classList.add('active');
                 cartOverlay.classList.add('active');
             });
@@ -9404,7 +10268,24 @@
             if (modal) modal.classList.remove('active');
         }
 
+        function toggleFaqItem(headerEl) {
+            if (!headerEl) return;
+            const item = headerEl.closest('.demo-faq-item');
+            if (!item) return;
+
+            const wasActive = item.classList.contains('active');
+            
+            // Fecha outros itens para efeito sanfona limpo
+            const allItems = document.querySelectorAll('.demo-faq-item');
+            allItems.forEach(i => i.classList.remove('active'));
+
+            if (!wasActive) {
+                item.classList.add('active');
+            }
+        }
+
         // Expor todas as funções globais necessárias para eventos onclick do HTML
+        window.toggleFaqItem = toggleFaqItem;
         window.updateDemoSavingsCalc = updateDemoSavingsCalc;
         window.onDemoSavingsSliderChange = onDemoSavingsSliderChange;
         window.openQrCodeModal = openQrCodeModal;
@@ -9558,11 +10439,34 @@
         window.openAdminPanel = openAdminPanel;
         window.toggleCompanyPasswordVisibility = toggleCompanyPasswordVisibility;
 
-        // Gerenciamento de Visualização SPA (Landing / Loja Demo)
+        // Gerenciamento de Visualização SPA (Landing / Loja Demo / Login Dedicado)
         window.switchToStoreView = switchToStoreView;
         window.switchToLandingView = switchToLandingView;
+        window.switchToLoginView = switchToLoginView;
+        window.showRegisteredCompanyLoginForm = showRegisteredCompanyLoginForm;
+        window.showDemoInfoPanel = showDemoInfoPanel;
+        window.openAdminPanelFromLogin = openAdminPanelFromLogin;
+        window.logoutAdminFromLogin = logoutAdminFromLogin;
+        window.handleDedicatedCompanyChange = handleDedicatedCompanyChange;
+        window.refreshDedicatedLoginUI = refreshDedicatedLoginUI;
         window.updateHeaderNavForCurrentView = updateHeaderNavForCurrentView;
         window.updateAppViewDisplay = updateAppViewDisplay;
+
+        // Gerenciamento de Teste Grátis 24h na Loja Demo e Captação de Leads
+        window.maskPhoneInput = maskPhoneInput;
+        window.DemoTrialManager = DemoTrialManager;
+        window.openDemoLeadModal = openDemoLeadModal;
+        window.closeDemoLeadModal = closeDemoLeadModal;
+        window.handleDemoLeadUnlockSubmit = handleDemoLeadUnlockSubmit;
+        window.openDemoAdminBlockedModal = openDemoAdminBlockedModal;
+        window.closeDemoAdminBlockedModal = closeDemoAdminBlockedModal;
+        window.fetchDevLeads = fetchDevLeads;
+        window.renderDevLeadsList = renderDevLeadsList;
+        window.filterDevLeadsList = filterDevLeadsList;
+        window.copyLeadPhone = copyLeadPhone;
+        window.copyAllLeadPhones = copyAllLeadPhones;
+        window.exportLeadsCSV = exportLeadsCSV;
+        window.deleteDevLead = deleteDevLead;
 
         // ========== INICIAR APLICAÇÃO ==========
         init();
