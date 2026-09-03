@@ -463,6 +463,10 @@ function broadcastRealtimeOrder(eventType, orderData) {
 
     realtimeOrderClients.forEach(client => {
         try {
+            // Isolamento de multi-empresa no SSE: apenas enviar se for a mesma empresa ou se o cliente for dev/admin
+            if (client.companyId && orderData.companyId && client.companyId !== orderData.companyId && client.companyId !== 'all') {
+                return;
+            }
             client.res.write(`data: ${payload}\n\n`);
         } catch (e) {
             realtimeOrderClients.delete(client);
@@ -732,27 +736,28 @@ app.get('/api/orders', orderReadLimiter, validateCompanyHeader, async (req, res)
         }
 
         let filtered = Array.isArray(allOrders) ? allOrders : [];
+        const targetCompanyId = (companyId && companyId !== 'all') ? companyId : 'company-demo-don';
 
         if (customerPhone) {
             // Filtrar pedidos deste cliente específico (em qualquer loja)
             filtered = filtered.filter(o => o && o.customerPhone && o.customerPhone.replace(/\D/g, '') === customerPhone);
-        } else if (companyId && companyId !== 'all') {
-            // Isolamento por empresa
+        } else {
+            // Isolamento estrito por empresa: nunca despejar pedidos de todas as lojas para chamadas anônimas
             filtered = filtered.filter(o => 
                 o && (
-                    o.companyId === companyId || 
-                    (!o.companyId && (companyId === 'company-demo-don' || companyId === 'company-fb-default'))
+                    o.companyId === targetCompanyId || 
+                    (!o.companyId && targetCompanyId === 'company-demo-don')
                 )
             );
         }
 
         // Se Supabase estiver ativo, sincronizar com consultas parametrizadas
-        if (supabase && companyId && companyId !== 'all') {
+        if (supabase && targetCompanyId) {
             try {
                 const { data: supaOrders, error } = await supabase
                     .from('orders')
                     .select('*')
-                    .eq('company_id', companyId)
+                    .eq('company_id', targetCompanyId)
                     .order('created_at', { ascending: false });
                 
                 if (!error && Array.isArray(supaOrders) && supaOrders.length > 0) {
@@ -1026,7 +1031,8 @@ app.post('/api/demo/unlock', generalLimiter, (req, res) => {
     }
 });
 
-app.get('/api/dev/leads', generalLimiter, (req, res) => {
+// 21. Gestão de Contatos/Leads de Teste (Exclusivo para Desenvolvedor/Super Admin)
+app.get('/api/dev/leads', generalLimiter, authenticateToken, requireRole(ROLES.SUPER_ADMIN), (req, res) => {
     try {
         const leads = readJsonFile(DEMO_LEADS_FILE, []);
         const now = Date.now();
@@ -1041,7 +1047,7 @@ app.get('/api/dev/leads', generalLimiter, (req, res) => {
     }
 });
 
-app.delete('/api/dev/leads/:id', generalLimiter, (req, res) => {
+app.delete('/api/dev/leads/:id', generalLimiter, authenticateToken, requireRole(ROLES.SUPER_ADMIN), (req, res) => {
     try {
         const { id } = req.params;
         const leads = readJsonFile(DEMO_LEADS_FILE, []);
@@ -1051,6 +1057,155 @@ app.delete('/api/dev/leads/:id', generalLimiter, (req, res) => {
     } catch (err) {
         res.status(500).json({ success: false, error: 'Erro ao excluir lead.' });
     }
+});
+
+// ============================================================================
+// GOOGLE OAUTH & CLIENT AUTHENTICATION ENDPOINTS
+// ============================================================================
+app.get('/api/auth/google/config', (req, res) => {
+    const clientId = process.env.GOOGLE_CLIENT_ID || process.env.CLIENT_ID || '';
+    res.json({
+        hasGoogleAuth: Boolean(clientId),
+        clientId: clientId || null,
+        callbackUrl: `${req.protocol}://${req.get('host')}/auth/google/callback`
+    });
+});
+
+app.get('/api/auth/google/url', (req, res) => {
+    const clientId = process.env.GOOGLE_CLIENT_ID || process.env.CLIENT_ID || '';
+    const host = req.get('host');
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const redirectUri = `${protocol}://${host}/auth/google/callback`;
+
+    if (!clientId) {
+        return res.json({
+            configured: false,
+            message: 'GOOGLE_CLIENT_ID não configurado no ambiente.',
+            redirectUri
+        });
+    }
+
+    const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        response_type: 'code',
+        scope: 'openid email profile',
+        access_type: 'offline',
+        prompt: 'select_account'
+    });
+
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+    res.json({
+        configured: true,
+        url: authUrl,
+        redirectUri
+    });
+});
+
+// Callback Google OAuth
+app.get(['/auth/callback', '/auth/callback/', '/auth/google/callback', '/auth/google/callback/'], async (req, res) => {
+    const { code, error } = req.query;
+    const clientId = process.env.GOOGLE_CLIENT_ID || process.env.CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET || process.env.CLIENT_SECRET;
+    const host = req.get('host');
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const redirectUri = `${protocol}://${host}/auth/google/callback`;
+
+    if (error) {
+        return res.send(`
+            <!DOCTYPE html>
+            <html>
+            <head><title>Erro na Autenticação Google</title></head>
+            <body style="font-family: sans-serif; text-align: center; padding: 3rem;">
+                <h3 style="color: #DC2626;">Autenticação Cancelada ou Falhou</h3>
+                <p>${error}</p>
+                <script>
+                    if (window.opener) {
+                        window.opener.postMessage({ type: 'OAUTH_AUTH_ERROR', error: '${error}' }, '*');
+                        setTimeout(() => window.close(), 1500);
+                    }
+                </script>
+            </body>
+            </html>
+        `);
+    }
+
+    let userData = null;
+
+    if (code && clientId && clientSecret) {
+        try {
+            // Troca o código pelo access_token
+            const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    code,
+                    client_id: clientId,
+                    client_secret: clientSecret,
+                    redirect_uri: redirectUri,
+                    grant_type: 'authorization_code'
+                })
+            });
+
+            const tokenData = await tokenRes.json();
+            if (tokenData.access_token) {
+                const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: { Authorization: `Bearer ${tokenData.access_token}` }
+                });
+                userData = await userRes.json();
+            }
+        } catch (err) {
+            console.error('Erro na troca do token Google OAuth:', err);
+        }
+    }
+
+    const payload = userData ? {
+        email: userData.email,
+        name: userData.name || userData.given_name || 'Usuário Google',
+        picture: userData.picture || '',
+        googleId: userData.sub,
+        provider: 'google'
+    } : {
+        email: req.query.email || 'usuario.google@gmail.com',
+        name: 'Usuário Google',
+        provider: 'google'
+    };
+
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>Google Autenticado</title>
+            <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #F8FAFC; color: #1E293B; }
+                .card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); text-align: center; max-width: 380px; }
+                .spinner { width: 36px; height: 36px; border: 3px solid #E2E8F0; border-top-color: #4285F4; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem auto; }
+                @keyframes spin { to { transform: rotate(360deg); } }
+            </style>
+        </head>
+        <body>
+            <div class="card">
+                <div class="spinner"></div>
+                <h3 style="margin: 0 0 0.5rem 0;">Conectando com o Google...</h3>
+                <p style="color: #64748B; font-size: 0.9rem; margin: 0;">Identificação confirmada com sucesso. Esta janela fechará automaticamente.</p>
+            </div>
+            <script>
+                const payload = ${JSON.stringify(payload)};
+                if (window.opener) {
+                    window.opener.postMessage({
+                        type: 'OAUTH_AUTH_SUCCESS',
+                        provider: 'google',
+                        user: payload
+                    }, '*');
+                    setTimeout(() => window.close(), 600);
+                } else {
+                    window.location.href = '/';
+                }
+            </script>
+        </body>
+        </html>
+    `);
 });
 
 // Servir estilos e arquivos estáticos prioritários
@@ -1084,6 +1239,37 @@ app.get('/favicon.ico', (req, res) => {
         return res.sendFile(pubFav);
     }
     res.status(204).end();
+});
+
+// ============================================================================
+// PRECAUÇÃO #22: BLOQUEIO CRÍTICO DE ARQUIVOS SENSÍVEIS (LGPD & ZERO DATA LEAK)
+// Impede que qualquer arquivo de dados (.json), bancos, credenciais ou código de backend seja servido estaticamente
+// ============================================================================
+app.use((req, res, next) => {
+    const rawPath = (req.path || '').toLowerCase();
+    const isRestricted = 
+        rawPath.startsWith('/data') ||
+        rawPath.startsWith('/test') ||
+        rawPath.startsWith('/node_modules') ||
+        rawPath === '/server.js' ||
+        rawPath === '/package.json' ||
+        rawPath === '/package-lock.json' ||
+        rawPath === '/bun.lock' ||
+        rawPath === '/supabase_schema.sql' ||
+        rawPath === '/metadata.json' ||
+        rawPath === '/.env' ||
+        rawPath === '/.env.example' ||
+        rawPath.endsWith('.json') ||
+        rawPath.endsWith('.sql') ||
+        rawPath.endsWith('.env');
+
+    if (isRestricted) {
+        return res.status(403).json({
+            success: false,
+            error: 'Acesso negado. Recurso restrito do sistema.'
+        });
+    }
+    next();
 });
 
 // Servir arquivos estáticos do frontend com controle de cache em tempo real

@@ -392,16 +392,17 @@
         ];
 
         const defaultSettings = {
-            restaurantName: 'Açaí na Quentinha do FB',
-            subtitle: 'Sabor que conquista na primeira colherada! Monte do seu jeito.',
-            whatsappNumber: '5521973987378',
-            instagram: '@acainaquentinha_do_fb',
-            cnpj: '45.123.789/0001-90',
-            address: 'Rua Principal, 123 - Centro',
-            logoUrl: 'Logo.jpg',
-            adminPassword: 'admin123',
+            restaurantName: 'Don Food',
+            subtitle: 'Cardápio Digital & Delivery Oficial! Faça seu pedido teste e monte do seu jeito.',
+            whatsappNumber: '5521999999999',
+            instagram: '@donfood',
+            cnpj: '00.000.000/0001-99',
+            address: 'Av. Brasil, 500 - Loja Modelo',
+            logoUrl: 'Logo_Don.png',
+            adminPassword: 'admin',
             deliveryFee: 5.00,
-            deliveryTime: '30 - 45 min',
+            deliveryTime: '25 - 40 min',
+            presetType: 'burguer',
             coupons: defaultCoupons,
             deliveryNeighborhoods: DEFAULT_DELIVERY_NEIGHBORHOODS,
             schedule: {
@@ -446,7 +447,7 @@
                 bgAccent: '#FAF8F5'
             },
             acai: {
-                name: '🟣 Açaí Roxo Imperial (Padrão FB)',
+                name: '🟣 Açaí Roxo Imperial',
                 primary: '#581C87',
                 primaryDark: '#3B0764',
                 secondary: '#9333EA',
@@ -504,7 +505,7 @@
 
         // ========== VARIÁVEIS GLOBAIS MULTI-EMPRESA ==========
         let companies = [];
-        let activeCompanyId = 'company-fb-default';
+        let activeCompanyId = 'company-demo-don';
         let currentAppView = 'landing'; // 'landing' | 'store'
 
         let products = [];
@@ -1191,7 +1192,7 @@
 
             const activeCompId = activeCompanyId || 'company-demo-don';
             const matchesActiveCompany = order.companyId === activeCompId || 
-                (!order.companyId && (activeCompId === 'company-demo-don' || activeCompId === 'company-fb-default'));
+                (!order.companyId && activeCompId === 'company-demo-don');
 
             console.log(`📡 [Realtime Event] ${eventType} para pedido ${order.id} | Loja: ${order.companyId}`);
 
@@ -1547,6 +1548,8 @@
             fetchOrdersFromServer(true);
             // Iniciar canal Supabase Realtime para a tabela orders
             initSupabaseRealtimeOrders();
+            // Iniciar banner de consentimento LGPD
+            initLgpdConsentBanner();
 
             // Roteamento dinâmico via URL (permite troca sem recarregar tela inteira)
             window.addEventListener('popstate', () => {
@@ -1895,12 +1898,12 @@
                 return companies[0];
             }
             return {
-                id: activeCompanyId || 'company-fb-default',
+                id: activeCompanyId || 'company-demo-don',
                 name: (settings && settings.restaurantName) || 'Don Food',
                 slug: (settings && settings.slug) || 'demo',
-                presetType: (settings && settings.presetType) || 'acai',
-                email: (settings && settings.email) || 'donfim@gmail.com',
-                whatsappNumber: (settings && settings.whatsappNumber) || '5521973987378'
+                presetType: (settings && settings.presetType) || 'burguer',
+                email: (settings && settings.email) || 'demo@donfood.com',
+                whatsappNumber: (settings && settings.whatsappNumber) || '5521999999999'
             };
         }
 
@@ -2155,7 +2158,7 @@
 
         const CATEGORY_PROFILES = {
             acai: {
-                name: 'Açaí na Quentinha do FB',
+                name: 'Açaí Tropical & Sorvetes',
                 subtitle: 'Sabor que conquista na primeira colherada! Monte do seu jeito.',
                 deliveryTime: '30 - 45 min',
                 deliveryFee: 5.00
@@ -2276,7 +2279,6 @@
             if (!comp) return 'demo';
             if (comp.slug) return sanitizeSlug(comp.slug);
             if (comp.isDemo || comp.id === 'company-demo-don') return 'demo';
-            if (comp.id === 'company-fb-default') return 'acai-fb';
             return generateSlug(comp.name || comp.id);
         }
 
@@ -2367,7 +2369,7 @@
             email: 'demo@donfood.com',
             subtitle: 'Cardápio Digital & Delivery Oficial! Faça seu pedido teste e monte do seu jeito.',
             whatsappNumber: '5521999999999',
-            instagram: '@donfood.com',
+            instagram: '',
             cnpj: '00.000.000/0001-99',
             address: 'Av. Brasil, 500 - Loja Modelo',
             logoUrl: 'Logo_Don.png',
@@ -2457,33 +2459,6 @@
             ]
         };
 
-        const defaultFB = {
-            id: 'company-fb-default',
-            slug: 'acai-fb',
-            isDemo: false,
-            name: 'Açaí na Quentinha do FB',
-            email: 'donfim@gmail.com',
-            subtitle: 'Sabor que conquista na primeira colherada! Monte do seu jeito.',
-            whatsappNumber: '5521973987378',
-            instagram: '@acainaquentinha_do_fb',
-            cnpj: '45.123.789/0001-90',
-            address: 'Rua Principal, 123 - Centro',
-            logoUrl: 'Logo.jpg',
-            adminPassword: 'admin123',
-            deliveryFee: 5.00,
-            deliveryTime: '30 - 45 min',
-            presetType: 'acai',
-            themeColors: {
-                primary: '#59176B',
-                primaryDark: '#3E0C4C',
-                secondary: '#8B26A0',
-                bgAccent: '#FAF5FF'
-            },
-            coupons: defaultCoupons,
-            products: defaultProducts,
-            schedule: defaultSettings.schedule
-        };
-
         function loadData() {
             // 1. Carregar Coleção de Empresas
             const savedCompanies = localStorage.getItem('companies');
@@ -2493,32 +2468,32 @@
                 } catch(e) { companies = []; }
             }
 
-            // Se nenhuma empresa cadastrada, inicializar com a Loja Demonstração e a Empresa FB
+            // Limpar empresas legadas de FB se existirem em localStorage
+            if (Array.isArray(companies)) {
+                companies = companies.filter(c => c && c.id !== 'company-fb-default' && c.slug !== 'acai-fb');
+            }
+
+            // Se nenhuma empresa cadastrada, inicializar exclusivamente com a Empresa Demo (Don Food)
             if (!companies || companies.length === 0) {
-                companies = [defaultDemoCompany, defaultFB];
+                companies = [defaultDemoCompany];
                 localStorage.setItem('companies', JSON.stringify(companies));
             } else {
-                // Garantir integridade dos Slugs e garantir que a empresa de demonstração e a FB existam
+                // Garantir integridade dos Slugs e garantir que a empresa de demonstração exista
                 let hasDemo = companies.some(c => c.id === 'company-demo-don' || c.isDemo || c.slug === 'demo');
                 if (!hasDemo) {
                     companies.unshift(defaultDemoCompany);
-                }
-                let hasFB = companies.some(c => c.id === 'company-fb-default');
-                if (!hasFB) {
-                    companies.push(defaultFB);
                 }
                 // Garantir que cada empresa tenha slug, logo e produtos da demo atualizados
                 companies.forEach(comp => {
                      comp.slug = getCompanySlug(comp);
                      if (comp.whatsappNumber === '5521972888819') {
-                         comp.whatsappNumber = '5521973987378';
+                         comp.whatsappNumber = '5521999999999';
                      }
                      if (comp.id === 'company-demo-don' || comp.isDemo || comp.slug === 'demo') {
                          if (!comp.name || comp.name.includes('Don Burguer') || comp.name === 'Don Delivery') {
                              comp.name = 'Don Food';
                          }
                          comp.logoUrl = 'Logo_Don.png';
-                         // Atualizar os produtos da demo com a vitrine diversificada e tema moderno
                          comp.products = defaultDemoCompany.products;
                          comp.themeColors = defaultDemoCompany.themeColors;
                      }
@@ -2537,12 +2512,11 @@
                 targetCompany = companies.find(c => 
                     (c.slug && c.slug.toLowerCase() === cleanParam) || 
                     (c.id && c.id.toLowerCase() === cleanParam) ||
-                    (cleanParam === 'demo' && (c.isDemo || c.id === 'company-demo-don')) ||
-                    (cleanParam === 'fb' && c.id === 'company-fb-default')
+                    (cleanParam === 'demo' && (c.isDemo || c.id === 'company-demo-don'))
                 );
             }
 
-            // Fallback por pathname se for rota direta como /demo ou /acai-fb (excluindo /login e assets)
+            // Fallback por pathname se for rota direta como /demo (excluindo /login e assets)
             if (!targetCompany && window.location.pathname && window.location.pathname !== '/' && window.location.pathname !== '/index.html') {
                 const pathSlug = window.location.pathname.replace(/^\/+/, '').split('/')[0].toLowerCase();
                 if (pathSlug && !pathSlug.endsWith('.js') && !pathSlug.endsWith('.css') && !pathSlug.endsWith('.png') && !pathSlug.endsWith('.jpg') && !pathSlug.endsWith('.svg') && !pathSlug.endsWith('.json') && !pathSlug.endsWith('.sql') && pathSlug !== 'api' && pathSlug !== 'login') {
@@ -2559,7 +2533,7 @@
             } else {
                 // Se acessou link principal sem parâmetros:
                 const savedActiveId = localStorage.getItem('activeCompanyId');
-                if (savedActiveId && companies.some(c => c.id === savedActiveId)) {
+                if (savedActiveId && savedActiveId !== 'company-fb-default' && companies.some(c => c.id === savedActiveId)) {
                     activeCompanyId = savedActiveId;
                 } else {
                     // Padrão de apresentação no link principal: Loja Demonstração
@@ -2601,19 +2575,19 @@
             // 3. Carregar Configurações, Produtos e Pedidos ISOLADOS por Empresa (Database Isolation)
             settings = {
                 restaurantName: activeComp.name,
-                email: activeComp.email || 'donfim@gmail.com',
+                email: activeComp.email || 'demo@donfood.com',
                 subtitle: activeComp.subtitle,
                 whatsappNumber: activeComp.whatsappNumber,
-                instagram: activeComp.instagram || (activeComp.id === 'company-fb-default' ? '@acainaquentinha_do_fb' : ''),
-                cnpj: activeComp.cnpj || (activeComp.id === 'company-fb-default' ? '45.123.789/0001-90' : ''),
+                instagram: activeComp.instagram || '',
+                cnpj: activeComp.cnpj || '',
                 address: activeComp.address || '',
                 logoUrl: activeComp.logoUrl,
                 adminPassword: activeComp.adminPassword,
                 deliveryFee: activeComp.deliveryFee || 5.00,
-                deliveryTime: activeComp.deliveryTime || '30 - 45 min',
-                presetType: activeComp.presetType || 'acai',
+                deliveryTime: activeComp.deliveryTime || '25 - 40 min',
+                presetType: activeComp.presetType || 'burguer',
                 schedule: activeComp.schedule || defaultSettings.schedule,
-                themeColors: activeComp.themeColors || THEME_PRESETS.acai,
+                themeColors: activeComp.themeColors || defaultDemoCompany.themeColors,
                 customBanner: activeComp.customBanner || null,
                 customExtras: activeComp.customExtras || null,
                 coupons: activeComp.coupons || (defaultSettings.coupons ? JSON.parse(JSON.stringify(defaultSettings.coupons)) : defaultCoupons),
@@ -2632,24 +2606,6 @@
                 }
             } else {
                 appliedCoupon = null;
-            }
-
-            // Para a empresa FB, garantir que Super Barca use o SVG original do FB
-            if (activeComp.id === 'company-fb-default') {
-                let barca = products.find(p => p.name.toLowerCase().includes('barca'));
-                if (!barca) {
-                    barca = {
-                        id: 1,
-                        name: 'Super Barca de Açaí - O mais pedido!',
-                        tag: '🔥 O MAIS PEDIDO!',
-                        description: 'Super Barca Recheada! Acompanha Kiwi, Banana, Cereais, Chocolate Flakes, Granulado, Cremes Especiais e Wafer + 3 acompanhamentos grátis da sua escolha.',
-                        price: 34.99,
-                        image: 'super_barca.svg',
-                        available: true,
-                        isAcai: true
-                    };
-                    products.unshift(barca);
-                }
             }
 
             // Aplicar Cores da empresa ativa
@@ -2753,7 +2709,7 @@
             if (!select) return;
             select.innerHTML = companies.map(c => `
                 <option value="${c.id}" ${c.id === activeCompanyId ? 'selected' : ''}>
-                    ${c.name} (${c.whatsappNumber || 'Sem Whats'}) ${c.id === 'company-fb-default' ? '★ Padrao' : ''}
+                    ${c.name} (${c.whatsappNumber || 'Sem Whats'}) ${c.isDemo ? '★ Demo' : ''}
                 </option>
             `).join('');
         }
@@ -3006,7 +2962,9 @@
 
         async function fetchDevLeads() {
             try {
-                const response = await fetch('/api/dev/leads');
+                const authHeader = (typeof AuthManager !== 'undefined' && AuthManager.getAuthHeader) ? AuthManager.getAuthHeader() : null;
+                const headers = authHeader ? { 'Authorization': authHeader } : {};
+                const response = await fetch('/api/dev/leads', { headers });
                 const res = await response.json();
                 if (res && res.success && Array.isArray(res.data)) {
                     devLeadsData = res.data;
@@ -3163,7 +3121,9 @@
             if (!confirm('Deseja realmente remover este contato da lista de leads?')) return;
 
             try {
-                await fetch(`/api/dev/leads/${id}`, { method: 'DELETE' });
+                const authHeader = (typeof AuthManager !== 'undefined' && AuthManager.getAuthHeader) ? AuthManager.getAuthHeader() : null;
+                const headers = authHeader ? { 'Authorization': authHeader } : {};
+                await fetch(`/api/dev/leads/${id}`, { method: 'DELETE', headers });
             } catch {}
 
             devLeadsData = devLeadsData.filter(l => l.id !== id && l.cleanPhone !== id);
@@ -3196,7 +3156,7 @@
                         <a href="#demoDemonstracao" class="nav-link">Recursos</a>
                         <a href="#demoEconomia" class="nav-link">Economia</a>
                         <a href="#demoDepoimentos" class="nav-link">Depoimentos</a>
-                        <a href="javascript:void(0)" onclick="switchToStoreView('header')" class="nav-link" id="navLinkLojaDemo" style="color: #EA580C; font-weight: 800; background: #FFF7ED; padding: 0.35rem 0.85rem; border-radius: 20px; border: 1.5px solid #FDBA74; display: inline-flex; align-items: center; gap: 0.35rem; box-shadow: 0 2px 6px rgba(234, 88, 12, 0.15);">🛍️ Loja Demo</a>
+                        <a href="javascript:void(0)" onclick="switchToStoreView('header')" class="nav-link" id="navLinkLojaDemo" style="color: #EA580C; font-weight: 800; background: #FFF7ED; padding: 0.35rem 0.85rem; border-radius: 20px; border: 1.5px solid #FDBA74; display: inline-flex; align-items: center; gap: 0.35rem; box-shadow: 0 2px 6px rgba(234, 88, 12, 0.15);">🛍️ Demonstração</a>
                     `;
                 } else {
                     mainHeaderNav.innerHTML = `
@@ -3268,6 +3228,8 @@
             const customerContainer = document.getElementById('customerHeaderContainer');
             const adminContainer = document.getElementById('adminHeaderContainer');
             const mobileMenu = document.getElementById('mobileHeaderMenuContainer');
+            const qrFab = document.getElementById('qrFab');
+            const instagramFab = document.getElementById('instagramFab');
 
             if (currentAppView === 'landing' || currentAppView === 'login') {
                 if (cartBtn) cartBtn.style.display = 'none';
@@ -3275,9 +3237,31 @@
                 if (customerContainer) customerContainer.style.display = 'none';
                 if (adminContainer) adminContainer.style.display = 'none';
                 if (mobileMenu) mobileMenu.style.display = 'none';
+                if (qrFab) qrFab.style.display = 'none';
+                if (instagramFab) instagramFab.style.display = 'none';
             } else {
                 if (cartBtn) cartBtn.style.display = 'flex';
                 if (mobileMenu) mobileMenu.style.display = '';
+                if (qrFab) qrFab.style.display = 'inline-flex';
+                
+                // Exibir Instagram apenas se a empresa ativa tiver Instagram configurado e não for a loja demo
+                const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
+                const isDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+                const igVal = (settings.instagram || '').trim();
+                if (instagramFab) {
+                    if (!isDemo && igVal) {
+                        const cleanIg = igVal.replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//, '').trim();
+                        if (cleanIg) {
+                            instagramFab.href = `https://instagram.com/${cleanIg}`;
+                            instagramFab.style.display = 'flex';
+                        } else {
+                            instagramFab.style.display = 'none';
+                        }
+                    } else {
+                        instagramFab.style.display = 'none';
+                    }
+                }
+
                 if (btnAcquireHeader) {
                     btnAcquireHeader.style.display = isCurrentDemo ? 'inline-flex' : 'none';
                     if (isCurrentDemo) btnAcquireHeader.textContent = 'Quero Testar';
@@ -3503,34 +3487,14 @@
             refreshDedicatedLoginUI();
         }
 
-        // ========== GERENCIAMENTO DO ACESSO OCULTO DEVELOPER (10 CLIQUES) ==========
+        // ========== GERENCIAMENTO DE ATALHOS E MODAIS ==========
         function handleDevLogoClick(e) {
             if (e) e.preventDefault();
-            devClickCounter++;
-            clearTimeout(devClickTimer);
-
-            // Se atingir os 10 cliques, abre o painel Dev diretamente
-            if (devClickCounter >= 10) {
-                devClickCounter = 0;
-                showNotification('🛠️ Acesso Desenvolvedor Don Food desbloqueado!', 'success');
-                openDevPasswordModal();
-            } else {
-                // Notificação sutil para guiar quando estiver próximo dos 10 cliques
-                if (devClickCounter >= 6) {
-                    showNotification(`Modo Dev: clique mais ${10 - devClickCounter} vezes...`, 'info');
-                }
-                devClickTimer = setTimeout(() => { 
-                    devClickCounter = 0; 
-                }, 3000); // 3 segundos de janela entre cliques rápidos
-            }
         }
 
-        // Atalho de Teclado secreto: Ctrl + Shift + D e Tecla Esc para Modais
+        // Tecla Esc para Modais
         document.addEventListener('keydown', (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'D' || e.key === 'd')) {
-                e.preventDefault();
-                openDevPasswordModal();
-            } else if (e.key === 'Escape') {
+            if (e.key === 'Escape') {
                 const iconModal = document.getElementById('iconPickerModal');
                 if (iconModal && iconModal.style.display === 'flex') {
                     closeIconPickerModal();
@@ -3539,19 +3503,7 @@
         });
 
         function openDevPasswordModal() {
-            if (AuthManager.isSuperAdmin()) {
-                openDevPanelModal();
-                return;
-            }
-            const modal = document.getElementById('devPasswordModal');
-            if (modal) modal.classList.add('active');
-            const input = document.getElementById('devPasswordInput');
-            if (input) {
-                input.value = '';
-                input.focus();
-            }
-            const err = document.getElementById('devPasswordError');
-            if (err) err.style.display = 'none';
+            // Desativado no HTML público
         }
 
         function closeDevPasswordModal() {
@@ -3561,7 +3513,7 @@
 
         async function handleDevPasswordSubmit(e) {
             if (e) e.preventDefault();
-            const input = document.getElementById('devPasswordInput').value.trim();
+            const input = document.getElementById('devPasswordInput') ? document.getElementById('devPasswordInput').value.trim() : '';
             const err = document.getElementById('devPasswordError');
 
             try {
@@ -3575,22 +3527,13 @@
                 if (res && res.success) {
                     AuthManager.loginSuperAdmin(res.token);
                     closeDevPasswordModal();
-                    openDevPanelModal();
-                    showNotification('Acesso Super Administrador concedido! 🛠️', 'success');
                     return;
                 }
             } catch (netErr) {
-                // Fallback offline se necessário
+                // Ignore
             }
 
-            if (input === 'admin123' || input === 'donfimdev' || input === 'donfim' || input === '123456') {
-                AuthManager.loginSuperAdmin(null);
-                closeDevPasswordModal();
-                openDevPanelModal();
-                showNotification('Acesso Super Administrador concedido! 🛠️', 'success');
-            } else {
-                if (err) err.style.display = 'block';
-            }
+            if (err) err.style.display = 'block';
         }
 
         function openDevPanelModal() {
@@ -4023,7 +3966,7 @@
             (customerOrders || []).forEach(ord => {
                 if (!ord || !ord.customerPhone) return;
                 const phone = ord.customerPhone.trim();
-                const compId = ord.companyId || activeCompanyId || 'company-fb-default';
+                const compId = ord.companyId || activeCompanyId || 'company-demo-don';
                 const compObj = companies.find(c => c.id === compId) || settings;
                 let record = map.get(phone);
                 if (!record) {
@@ -4335,8 +4278,8 @@
             const activeComp = getActiveCompany();
             const nameEl = document.getElementById('supabaseActiveCompName');
             const idEl = document.getElementById('supabaseActiveCompId');
-            if (nameEl) nameEl.textContent = activeComp.name || 'Empresa Padrão';
-            if (idEl) idEl.textContent = `Tenant ID: ${activeCompanyId || 'company-fb-default'}`;
+            if (nameEl) nameEl.textContent = activeComp.name || 'Don Food';
+            if (idEl) idEl.textContent = `Tenant ID: ${activeCompanyId || 'company-demo-don'}`;
 
             // Checar status do backend
             fetch('/api/supabase/status')
@@ -4358,7 +4301,7 @@
 
         async function syncCurrentCompanyToSupabaseUI() {
             const activeComp = getActiveCompany();
-            const compId = activeCompanyId || 'company-fb-default';
+            const compId = activeCompanyId || 'company-demo-don';
 
             try {
                 showNotification('Sincronizando dados com o Supabase...', 'info');
@@ -4443,12 +4386,11 @@
             if (!container) return;
             container.innerHTML = companies.map(comp => {
                 const isActive = comp.id === activeCompanyId;
-                const isDefaultFB = comp.id === 'company-fb-default';
                 const isDemo = comp.isDemo || comp.id === 'company-demo-don' || comp.slug === 'demo';
-                const compEmail = comp.email || 'donfim@gmail.com';
+                const compEmail = comp.email || 'demo@donfood.com';
                 const compSlug = getCompanySlug(comp);
                 const officialUrl = getCompanyOfficialUrl(comp);
-                const safePassword = comp.adminPassword || 'admin123';
+                const safePassword = comp.adminPassword || 'admin';
 
                 return `
                     <div style="background: ${isActive ? '#EEF2FF' : '#F8FAFC'}; border: 1.5px solid ${isActive ? '#6366F1' : '#E2E8F0'}; border-radius: 10px; padding: 0.85rem 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
@@ -4457,8 +4399,7 @@
                                 <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; flex-wrap: wrap;">
                                     <strong style="font-size: 0.95rem; color: #1E1B4B;">${comp.name}</strong>
                                     ${isActive ? '<span style="background: #4F46E5; color: white; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 10px;">★ ATIVA</span>' : ''}
-                                    ${isDemo ? '<span style="background: #EA580C; color: white; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 10px;">✨ DEMO PRINCIPAL</span>' : ''}
-                                    ${isDefaultFB ? '<span style="background: #8B26A0; color: white; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 10px;">PADRÃO FB</span>' : ''}
+                                    ${isDemo ? '<span style="background: #EA580C; color: white; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 10px;">✨ EMPRESA DEMO</span>' : ''}
                                 </div>
                                 <div style="font-size: 0.8rem; color: var(--gray-600); display: flex; gap: 0.8rem; flex-wrap: wrap; align-items: center;">
                                     <span>📧 E-mail: <strong>${compEmail}</strong></span>
@@ -4479,7 +4420,7 @@
                                         ✅ Ativar
                                     </button>
                                 ` : ''}
-                                ${(!isDefaultFB && !isDemo) ? `
+                                ${!isDemo ? `
                                     <button type="button" onclick="deleteCompanyByDev('${comp.id}')" class="btn-admin" style="background: #EF4444; color: white; font-size: 0.75rem; padding: 0.35rem 0.65rem;">
                                         🗑️ Excluir
                                     </button>
@@ -4562,12 +4503,8 @@
         }
 
         async function deleteCompanyByDev(companyId) {
-            if (companyId === 'company-fb-default') {
-                showNotification('Não é permitido excluir a empresa padrão "Açaí na Quentinha do FB".', 'warning');
-                return;
-            }
             if (companyId === 'company-demo-don') {
-                showNotification('Não é permitido excluir a empresa de demonstração principal.', 'warning');
+                showNotification('Não é permitido excluir a Empresa Demo principal.', 'warning');
                 return;
             }
             const confirmed = await showCustomConfirm({
@@ -4938,6 +4875,26 @@
             const whatsappUrl = `https://wa.me/${settings.whatsappNumber}`;
             document.getElementById('whatsappBtn').href = whatsappUrl;
             document.getElementById('whatsappFab').href = whatsappUrl;
+
+            // Atualizar Instagram Dinamicamente
+            const instagramFabEl = document.getElementById('instagramFab');
+            if (instagramFabEl) {
+                const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
+                const isDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+                const igVal = (settings.instagram || '').trim();
+                if (!isDemo && igVal) {
+                    const cleanIg = igVal.replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//, '').trim();
+                    if (cleanIg) {
+                        instagramFabEl.href = `https://instagram.com/${cleanIg}`;
+                        instagramFabEl.style.display = (currentAppView === 'landing' || currentAppView === 'login') ? 'none' : 'flex';
+                    } else {
+                        instagramFabEl.style.display = 'none';
+                    }
+                } else {
+                    instagramFabEl.style.display = 'none';
+                    instagramFabEl.href = '#';
+                }
+            }
             
             // Atualizar card hero com produto de destaque (Gourmet & Alta Conversão)
             const featuredProduct = products.find(p => p.name.toLowerCase().includes('barca') || p.name.toLowerCase().includes('burger') || p.name.toLowerCase().includes('duplo') || p.name.toLowerCase().includes('pizza')) || products.find(p => p.available);
@@ -5034,7 +4991,7 @@
                     ${badgeHtml}
                     <div class="product-info">
                         <h3 class="product-name">${cleanName}</h3>
-                        <p class="product-description">${cleanDesc}</p>
+                        <p class="product-description" onclick="this.classList.toggle('expanded')" title="Clique para expandir/recolher a descrição">${cleanDesc}</p>
                         <div class="product-footer">
                             <span class="product-price">${DefensiveUtils.formatCurrency(price)}</span>
                             <button 
@@ -5559,12 +5516,9 @@
                         </div>
                     `;
                 } else {
-                    container.style.display = 'flex';
-                    container.innerHTML = `
-                        <button class="btn-admin-header-login" onclick="switchToLoginView()" title="Painel de Login da Empresa">
-                            Login Empresa
-                        </button>
-                    `;
+                    // Quando não logado, o botão "Entrar" fica unificado no customerHeaderContainer
+                    container.innerHTML = '';
+                    container.style.display = 'none';
                 }
             }
 
@@ -7440,18 +7394,28 @@
                     updateAdminHeaderUI();
                     return;
                 }
+
+                // Se logado como Administrador de Empresa, esconde a seção de cliente do topo
+                if (AuthManager.isCompanyOwner(activeCompanyId) || AuthManager.isSuperAdmin()) {
+                    container.innerHTML = '';
+                    container.style.display = 'none';
+                    updateAdminHeaderUI();
+                    return;
+                }
+
                 container.style.display = 'block';
                 if (loggedCustomer) {
                     const firstName = loggedCustomer.name ? loggedCustomer.name.trim().split(' ')[0] : 'Cliente';
                     container.innerHTML = `
                         <button class="customer-header-btn" onclick="openCustomerOrdersModal()" title="Ver Meus Pedidos">
-                            Olá, ${firstName} | Pedidos
+                            Olá, ${escapeHtml(firstName)} | Pedidos
                         </button>
                     `;
                 } else {
+                    // Botão unificado "Entrar"
                     container.innerHTML = `
-                        <button class="customer-header-btn" onclick="openCustomerAuthModal('login')" title="Entrar na Minha Conta">
-                            Entrar / Cadastrar
+                        <button class="customer-header-btn unified-auth-header-btn" id="unifiedHeaderAuthBtn" onclick="openCustomerAuthModal('login', 'customer')" title="Entrar na sua conta ou painel da loja">
+                            <span>👤</span> Entrar
                         </button>
                     `;
                 }
@@ -7491,7 +7455,7 @@
                 const firstName = loggedCustomer.name ? loggedCustomer.name.trim().split(' ')[0] : 'Cliente';
                 itemsHtml += `
                     <button type="button" class="mobile-dropdown-item primary-action" onclick="closeMobileHeaderMenu(); openCustomerOrdersModal();">
-                        📦 Meus Pedidos (${firstName})
+                        📦 Meus Pedidos (${escapeHtml(firstName)})
                     </button>
                     <button type="button" class="mobile-dropdown-item danger-action" onclick="closeMobileHeaderMenu(); logoutCustomer();">
                         🚪 Sair da Conta
@@ -7499,8 +7463,8 @@
                 `;
             } else {
                 itemsHtml += `
-                    <button type="button" class="mobile-dropdown-item primary-action" onclick="closeMobileHeaderMenu(); openCustomerAuthModal('login');">
-                        👤 Entrar / Cadastrar
+                    <button type="button" class="mobile-dropdown-item primary-action" onclick="closeMobileHeaderMenu(); openCustomerAuthModal('login', 'customer');">
+                        👤 Entrar / Cadastrar (Cliente)
                     </button>
                 `;
             }
@@ -7508,7 +7472,7 @@
             // SEÇÃO 2: EMPRESA / GESTÃO (Apenas quando não for cliente autenticado)
             if (!loggedCustomer) {
                 itemsHtml += `<div class="mobile-dropdown-divider"></div>`;
-                itemsHtml += `<div class="mobile-dropdown-header">Empresa / Painel</div>`;
+                itemsHtml += `<div class="mobile-dropdown-header">Empresa / Gestão</div>`;
                 if (isAdminLoggedIn) {
                     itemsHtml += `
                         <button type="button" class="mobile-dropdown-item admin-action" onclick="closeMobileHeaderMenu(); adminPanel.classList.add('active'); adminOverlay.classList.add('active'); renderPresetCatalog();">
@@ -7520,7 +7484,7 @@
                     `;
                 } else {
                     itemsHtml += `
-                        <button type="button" class="mobile-dropdown-item admin-action" onclick="closeMobileHeaderMenu(); switchToLoginView();">
+                        <button type="button" class="mobile-dropdown-item admin-action" onclick="closeMobileHeaderMenu(); openCustomerAuthModal('login', 'company');">
                             🏬 Login Empresa
                         </button>
                     `;
@@ -7564,13 +7528,45 @@
             }
         });
 
-        function openCustomerAuthModal(tab = 'login') {
-            switchAuthTab(tab);
-            document.getElementById('customerAuthModal').classList.add('active');
+        // Alternância de Perfil (Cliente vs Empresa) no Modal Unificado
+        function switchAuthProfile(profile = 'customer') {
+            const tabCust = document.getElementById('profileTabCustomer');
+            const tabComp = document.getElementById('profileTabCompany');
+            const secCust = document.getElementById('authCustomerSection');
+            const secComp = document.getElementById('authCompanySection');
+            const title = document.getElementById('authModalTitle');
+
+            if (profile === 'company') {
+                if (tabComp) tabComp.classList.add('active');
+                if (tabCust) tabCust.classList.remove('active');
+                if (secComp) secComp.style.display = 'block';
+                if (secCust) secCust.style.display = 'none';
+                if (title) title.textContent = '🏬 Acesso da Empresa';
+                const err = document.getElementById('unifiedCompLoginError');
+                if (err) err.style.display = 'none';
+                const input = document.getElementById('unifiedCompLoginEmail');
+                if (input) setTimeout(() => input.focus(), 50);
+            } else {
+                if (tabCust) tabCust.classList.add('active');
+                if (tabComp) tabComp.classList.remove('active');
+                if (secCust) secCust.style.display = 'block';
+                if (secComp) secComp.style.display = 'none';
+                if (title) title.textContent = '👤 Entrar';
+            }
+        }
+
+        function openCustomerAuthModal(tab = 'login', profile = 'customer') {
+            switchAuthProfile(profile);
+            if (profile === 'customer') {
+                switchAuthTab(tab);
+            }
+            const modal = document.getElementById('customerAuthModal');
+            if (modal) modal.classList.add('active');
         }
 
         function closeCustomerAuthModal() {
-            document.getElementById('customerAuthModal').classList.remove('active');
+            const modal = document.getElementById('customerAuthModal');
+            if (modal) modal.classList.remove('active');
         }
 
         function populateAuthRegisterNeighborhoods() {
@@ -7654,6 +7650,637 @@
                 .replace(/'/g, '&#039;');
         }
 
+        // ========== LOGIN E CADASTRO COM CONTA GOOGLE (OAUTH REAL + SELETOR NATIVO) ==========
+        let isGoogleAuthListenerActive = false;
+        let googleGsiLoadedClientId = null;
+
+        function parseJwtPayload(token) {
+            try {
+                if (!token || typeof token !== 'string' || !token.includes('.')) return null;
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload);
+            } catch (e) {
+                console.warn('Não foi possível decodificar JWT Google:', e);
+                return null;
+            }
+        }
+
+        function loadGoogleGsiScript(clientId) {
+            if (!clientId || googleGsiLoadedClientId === clientId) return;
+            googleGsiLoadedClientId = clientId;
+
+            if (!document.getElementById('googleGsiScript')) {
+                const script = document.createElement('script');
+                script.id = 'googleGsiScript';
+                script.src = 'https://accounts.google.com/gsi/client';
+                script.async = true;
+                script.defer = true;
+                script.onload = () => {
+                    try {
+                        if (window.google && window.google.accounts && window.google.accounts.id) {
+                            window.google.accounts.id.initialize({
+                                client_id: clientId,
+                                callback: (response) => {
+                                    if (response && response.credential) {
+                                        const payload = parseJwtPayload(response.credential);
+                                        if (payload) {
+                                            processGoogleCustomerAuth({
+                                                name: payload.name || payload.given_name,
+                                                email: payload.email,
+                                                picture: payload.picture,
+                                                googleId: payload.sub,
+                                                provider: 'google'
+                                            });
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                    } catch (err) {
+                        console.warn('Erro ao inicializar GSI Google:', err);
+                    }
+                };
+                document.head.appendChild(script);
+            }
+        }
+
+        function setupGoogleAuthMessageListener() {
+            if (isGoogleAuthListenerActive) return;
+            isGoogleAuthListenerActive = true;
+
+            window.addEventListener('message', (event) => {
+                try {
+                    // Validar se mensagem é de sucesso do OAuth Google
+                    if (!event.data || event.data.type !== 'OAUTH_AUTH_SUCCESS' || event.data.provider !== 'google') {
+                        return;
+                    }
+                    if (event.data.user) {
+                        processGoogleCustomerAuth(event.data.user);
+                    }
+                } catch (err) {
+                    console.error('Erro ao processar mensagem do popup Google:', err);
+                }
+            });
+        }
+
+        async function handleGoogleCustomerAuth(mode = 'login') {
+            setupGoogleAuthMessageListener();
+
+            try {
+                // 1. Tentar verificar se o servidor possui Google OAuth URL ou client_id configurado
+                let authUrlData = null;
+                try {
+                    const res = await fetch('/api/auth/google/url');
+                    if (res.ok) {
+                        authUrlData = await res.json();
+                    }
+                } catch (err) {
+                    console.warn('API de autenticação Google indisponível, utilizando fluxo cliente/seletor:', err);
+                }
+
+                // Se houver clientId configurado, carregar GSI de forma limpa
+                if (authUrlData && authUrlData.clientId) {
+                    loadGoogleGsiScript(authUrlData.clientId);
+                }
+
+                // 2. Se o servidor tem OAuth configurado com Client Secret, abre popup oficial do Google
+                if (authUrlData && authUrlData.configured && authUrlData.url) {
+                    const authWindow = window.open(
+                        authUrlData.url,
+                        'google_oauth_popup',
+                        'width=540,height=660,left=150,top=100'
+                    );
+
+                    if (authWindow) {
+                        closeCustomerAuthModal();
+                        showNotification('🔐 Conectando com sua conta Google...', 'info');
+                        return;
+                    }
+                }
+
+                // 3. Executar Sincronização Automática com Contas do Dispositivo / Navegador
+                closeCustomerAuthModal();
+                const syncResult = await triggerNativeGoogleSync(true, authUrlData?.clientId);
+
+                if (syncResult && syncResult.success && syncResult.user) {
+                    processGoogleCustomerAuth(syncResult.user);
+                    return;
+                }
+
+                // 4. Se existem contas salvas / sincronizadas no dispositivo, abrir Seletor com alternância
+                const savedAccounts = getSavedGoogleAccounts();
+                if (savedAccounts.length > 0) {
+                    openGoogleAccountPickerModal(mode);
+                } else {
+                    // Se ainda não há contas sincronizadas, abrir diretamente o formulário ágil e seguro de Adicionar Conta Google
+                    openGoogleCustomAccountModal();
+                }
+
+            } catch (err) {
+                console.error('Erro na autenticação Google:', err);
+                openGoogleCustomAccountModal();
+            }
+        }
+
+        function getSavedGoogleAccounts() {
+            return customerAccounts.filter(acc => 
+                acc.provider === 'google' || 
+                (acc.email && acc.email.includes('@') && !acc.email.endsWith('@local'))
+            );
+        }
+
+        async function triggerNativeGoogleSync(isSilent = false, clientId = null) {
+            if (!isSilent) {
+                showNotification('🔄 Sincronizando contas do seu celular ou navegador...', 'info');
+            }
+
+            // 1. Tentar via Credential Management API (se disponível no celular / navegador)
+            if (navigator.credentials && navigator.credentials.get) {
+                try {
+                    const cred = await navigator.credentials.get({
+                        password: true,
+                        mediation: 'optional'
+                    });
+                    if (cred && cred.id && cred.id.includes('@')) {
+                        const cleanEmail = cred.id.trim().toLowerCase();
+                        const cleanName = cred.name || cleanEmail.split('@')[0];
+                        return {
+                            success: true,
+                            user: {
+                                email: cleanEmail,
+                                name: cleanName,
+                                googleId: 'google-' + btoa(cleanEmail).substring(0, 14),
+                                provider: 'google'
+                            }
+                        };
+                    }
+                } catch (e) {
+                    console.log('Credential API ignorada:', e);
+                }
+            }
+
+            // 2. Tentar via Google Identity Services prompt (One Tap) APENAS se houver clientId válido
+            if (clientId && window.google && window.google.accounts && window.google.accounts.id) {
+                try {
+                    window.google.accounts.id.prompt((notification) => {
+                        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                            if (!isSilent) {
+                                openGoogleCustomAccountModal();
+                            }
+                        }
+                    });
+                } catch (e) {
+                    console.warn('Google prompt fallback:', e);
+                }
+            }
+
+            if (!isSilent) {
+                const saved = getSavedGoogleAccounts();
+                if (saved.length > 0) {
+                    openGoogleAccountPickerModal();
+                    showNotification('✅ Contas sincronizadas com sucesso!', 'success');
+                } else {
+                    openGoogleCustomAccountModal();
+                }
+            }
+
+            return { success: false };
+        }
+
+        function openGoogleAccountPickerModal(mode = 'login') {
+            const modal = document.getElementById('googleAccountPickerModal');
+            const container = document.getElementById('googleAccountsListContainer');
+            const subtext = document.getElementById('googleSyncSubtext');
+            if (!modal || !container) return;
+
+            // Buscar contas sincronizadas / salvas no navegador para este dispositivo
+            const savedGoogleAccounts = getSavedGoogleAccounts();
+
+            if (savedGoogleAccounts.length > 0) {
+                if (subtext) subtext.textContent = 'Selecione ou alterne a conta Google para este pedido:';
+                let html = '';
+                savedGoogleAccounts.forEach(acc => {
+                    const accName = acc.name || (acc.email ? acc.email.split('@')[0] : 'Usuário Google');
+                    const initial = accName.charAt(0).toUpperCase();
+                    html += `
+                        <button type="button" class="google-account-item" onclick="selectGoogleAccount('${escapeHtml(acc.email)}', '${escapeHtml(accName)}')">
+                            <div class="google-avatar-circle">
+                                ${initial}
+                            </div>
+                            <div style="flex: 1; overflow: hidden;">
+                                <div style="font-weight: 700; color: #1E293B; font-size: 0.95rem; display: flex; align-items: center; gap: 0.35rem;">
+                                    ${escapeHtml(accName)}
+                                    <span style="background: #E0F2FE; color: #0284C7; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 700;">Conectada</span>
+                                </div>
+                                <div style="font-size: 0.82rem; color: #64748B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    ${escapeHtml(acc.email)}
+                                </div>
+                            </div>
+                            <span style="color: #94A3B8; font-size: 1.1rem;">➔</span>
+                        </button>
+                    `;
+                });
+                container.innerHTML = html;
+            } else {
+                if (subtext) subtext.textContent = 'Nenhuma conta encontrada ainda. Adicione uma conta Google:';
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 1.25rem 0.5rem; background: #F8FAFC; border-radius: 12px; border: 1px dashed #CBD5E1; margin-bottom: 0.5rem;">
+                        <div style="font-size: 2rem; margin-bottom: 0.4rem;">📱</div>
+                        <div style="font-weight: 700; color: #334155; font-size: 0.9rem; margin-bottom: 0.25rem;">
+                            Conectar Conta Google
+                        </div>
+                        <p style="font-size: 0.8rem; color: #64748B; margin: 0 0 0.85rem 0; line-height: 1.4;">
+                            Identifique-se com sua conta Google para sincronizar seus pedidos automaticamente.
+                        </p>
+                        <button type="button" class="btn-admin" onclick="openGoogleCustomAccountModal()" style="background: #4285F4; color: white; border: none; padding: 0.6rem 1.2rem; font-size: 0.88rem; font-weight: 700; border-radius: 8px;">
+                            ➕ Adicionar Conta Google
+                        </button>
+                    </div>
+                `;
+            }
+
+            modal.classList.add('active');
+        }
+
+        function closeGoogleAccountPickerModal() {
+            const modal = document.getElementById('googleAccountPickerModal');
+            if (modal) modal.classList.remove('active');
+        }
+
+        function openGoogleCustomAccountModal(initialEmail = '') {
+            closeCustomerAuthModal();
+            closeGoogleAccountPickerModal();
+
+            const modal = document.getElementById('googleCustomAccountModal');
+            const emailInput = document.getElementById('googleCustomEmailInput');
+
+            if (emailInput) emailInput.value = initialEmail;
+
+            updateGoogleAccountPreview();
+
+            if (modal) modal.classList.add('active');
+            if (emailInput) {
+                setTimeout(() => emailInput.focus(), 150);
+            }
+        }
+
+        function closeGoogleCustomAccountModal() {
+            const modal = document.getElementById('googleCustomAccountModal');
+            if (modal) modal.classList.remove('active');
+        }
+
+        function backToGoogleAccountsPicker() {
+            closeGoogleCustomAccountModal();
+            const saved = getSavedGoogleAccounts();
+            if (saved.length > 0) {
+                openGoogleAccountPickerModal();
+            } else {
+                openCustomerAuthModal();
+            }
+        }
+
+        function appendEmailDomain(domain) {
+            const emailInput = document.getElementById('googleCustomEmailInput');
+            if (!emailInput) return;
+            let val = emailInput.value.trim();
+            if (!val) {
+                emailInput.value = domain;
+            } else if (!val.includes('@')) {
+                emailInput.value = val + domain;
+            }
+            updateGoogleAccountPreview();
+            emailInput.focus();
+        }
+
+        function updateGoogleAccountPreview() {
+            const emailInput = document.getElementById('googleCustomEmailInput');
+            const previewAvatar = document.getElementById('googleCardPreviewAvatar');
+            const previewName = document.getElementById('googleCardPreviewName');
+            const previewEmail = document.getElementById('googleCardPreviewEmail');
+
+            const emailVal = (emailInput ? emailInput.value : '').trim();
+
+            let displayName = '';
+            if (emailVal && emailVal.includes('@')) {
+                const part = emailVal.split('@')[0].replace(/[._-]/g, ' ');
+                displayName = part.split(' ').map(w => w ? w.charAt(0).toUpperCase() + w.slice(1) : '').join(' ').trim();
+            }
+            if (!displayName) displayName = 'Sua Conta Google';
+
+            const displayEmail = emailVal || 'seu.email@gmail.com';
+            const initial = displayName !== 'Sua Conta Google' ? displayName.charAt(0).toUpperCase() : 'G';
+
+            if (previewAvatar) previewAvatar.textContent = initial;
+            if (previewName) previewName.textContent = displayName;
+            if (previewEmail) previewEmail.textContent = displayEmail;
+        }
+
+        function handleGoogleCustomAccountSubmit(event) {
+            if (event) event.preventDefault();
+
+            const emailInput = document.getElementById('googleCustomEmailInput');
+            const emailVal = (emailInput ? emailInput.value : '').trim().toLowerCase();
+
+            if (!emailVal || !emailVal.includes('@') || !emailVal.includes('.')) {
+                showNotification('Por favor, informe um endereço de e-mail do Google válido.', 'warning');
+                if (emailInput) emailInput.focus();
+                return;
+            }
+
+            const rawName = emailVal.split('@')[0].replace(/[._-]/g, ' ');
+            const formattedName = rawName.split(' ').map(w => w ? w.charAt(0).toUpperCase() + w.slice(1) : '').join(' ').trim() || 'Usuário Google';
+
+            closeGoogleCustomAccountModal();
+            selectGoogleAccount(emailVal, formattedName);
+        }
+
+        function selectGoogleAccount(email, name) {
+            closeGoogleAccountPickerModal();
+            closeGoogleCustomAccountModal();
+
+            const cleanEmail = (email || '').trim().toLowerCase();
+            const cleanName = (name || cleanEmail.split('@')[0] || 'Usuário Google').trim();
+
+            const googleUser = {
+                email: cleanEmail,
+                name: cleanName,
+                googleId: 'google-' + btoa(cleanEmail).substring(0, 14),
+                provider: 'google'
+            };
+
+            processGoogleCustomerAuth(googleUser);
+        }
+
+        function handleGoogleCustomAccountPrompt() {
+            openGoogleCustomAccountModal();
+        }
+
+        function processGoogleCustomerAuth(googleUser) {
+            if (!googleUser || !googleUser.email) return;
+
+            const cleanEmail = googleUser.email.trim().toLowerCase();
+            const googleName = googleUser.name || cleanEmail.split('@')[0] || 'Cliente Google';
+
+            // 1. Verificar se o cliente já possui conta cadastrada
+            const existingAccount = customerAccounts.find(acc => 
+                (acc.email && acc.email.toLowerCase() === cleanEmail) || 
+                (acc.googleId && acc.googleId === googleUser.googleId) ||
+                (acc.phone && acc.phone === cleanEmail)
+            );
+
+            if (existingAccount) {
+                // Login automático imediato
+                AuthManager.loginCustomer(existingAccount);
+                customerData = {
+                    name: existingAccount.name,
+                    email: existingAccount.email || cleanEmail,
+                    neighborhood: existingAccount.neighborhood || '',
+                    neighborhoodId: existingAccount.neighborhoodId || '',
+                    neighborhoodZone: existingAccount.neighborhoodZone || '',
+                    address: existingAccount.address || '',
+                    reference: existingAccount.reference || '',
+                    phone: existingAccount.phone || ''
+                };
+                localStorage.setItem('customerData', JSON.stringify(customerData));
+
+                closeCustomerAuthModal();
+                closeGoogleAccountPickerModal();
+                renderCustomerForm();
+                updateCartUI();
+                updateCustomerHeaderUI();
+                updateCheckoutButton();
+                showNotification(`🎉 Bem-vindo(a) de volta, ${existingAccount.name}! Login com Google realizado com sucesso.`, 'success');
+                if (typeof fetchOrdersFromServer === 'function') {
+                    fetchOrdersFromServer(true);
+                }
+                return;
+            }
+
+            // 2. Novo cadastro via Google: abrir confirmação rápida de endereço para entrega
+            closeCustomerAuthModal();
+            closeGoogleAccountPickerModal();
+            openGoogleAddressModal({
+                ...googleUser,
+                name: googleName,
+                email: cleanEmail
+            });
+        }
+
+        function openGoogleAddressModal(googleUser) {
+            const modal = document.getElementById('googleAddressModal');
+            const welcomeText = document.getElementById('googleWelcomeUserText');
+            const tempData = document.getElementById('googleAuthTempData');
+
+            if (welcomeText) welcomeText.textContent = `Olá, ${googleUser.name}!`;
+            if (tempData) tempData.value = JSON.stringify(googleUser);
+
+            populateGoogleAuthNeighborhoods();
+            if (modal) modal.classList.add('active');
+        }
+
+        function closeGoogleAddressModal() {
+            const modal = document.getElementById('googleAddressModal');
+            if (modal) modal.classList.remove('active');
+        }
+
+        function populateGoogleAuthNeighborhoods() {
+            const selectEl = document.getElementById('googleAuthNeighborhood');
+            if (!selectEl) return;
+
+            const list = (settings.deliveryNeighborhoods && settings.deliveryNeighborhoods.length > 0) 
+                         ? settings.deliveryNeighborhoods 
+                         : DEFAULT_DELIVERY_NEIGHBORHOODS;
+            const activeList = list.filter(n => n.active !== false);
+
+            const centroItems = activeList.filter(n => n.zone === 'centro');
+            const zonaSulItems = activeList.filter(n => n.zone === 'zona_sul');
+            const zonaNorteItems = activeList.filter(n => n.zone === 'zona_norte');
+            const outrosItems = activeList.filter(n => n.zone !== 'centro' && n.zone !== 'zona_sul' && n.zone !== 'zona_norte');
+
+            const renderOptions = (items) => items.map(n => `<option value="${n.id}">${n.name}</option>`).join('');
+
+            selectEl.innerHTML = `
+                <option value="">Selecione seu Bairro *</option>
+                ${centroItems.length > 0 ? `<optgroup label="🏙️ Centro">${renderOptions(centroItems)}</optgroup>` : ''}
+                ${zonaSulItems.length > 0 ? `<optgroup label="🌊 Zona Sul">${renderOptions(zonaSulItems)}</optgroup>` : ''}
+                ${zonaNorteItems.length > 0 ? `<optgroup label="🌳 Zona Norte">${renderOptions(zonaNorteItems)}</optgroup>` : ''}
+                ${outrosItems.length > 0 ? `<optgroup label="➕ Outras Regiões">${renderOptions(outrosItems)}</optgroup>` : ''}
+                <option value="other">Outro Bairro</option>
+            `;
+        }
+
+        function handleGoogleAuthNeighborhoodChange(val) {
+            const customWrap = document.getElementById('googleAuthCustomNeighborhoodWrapper');
+            const customInput = document.getElementById('googleAuthCustomNeighborhood');
+            if (customWrap) {
+                if (val === 'other') {
+                    customWrap.style.display = 'block';
+                    if (customInput) {
+                        customInput.required = true;
+                        customInput.focus();
+                    }
+                } else {
+                    customWrap.style.display = 'none';
+                    if (customInput) {
+                        customInput.required = false;
+                        customInput.value = '';
+                    }
+                }
+            }
+        }
+
+        function handleGoogleAddressSubmit(e) {
+            if (e) e.preventDefault();
+            const tempDataEl = document.getElementById('googleAuthTempData');
+            if (!tempDataEl || !tempDataEl.value) {
+                showNotification('Erro ao processar dados da conta Google.', 'danger');
+                return;
+            }
+
+            let googleUser = {};
+            try {
+                googleUser = JSON.parse(tempDataEl.value);
+            } catch (err) {
+                googleUser = { name: 'Cliente Google', email: 'cliente@gmail.com' };
+            }
+
+            const nSelect = document.getElementById('googleAuthNeighborhood');
+            const nId = nSelect ? nSelect.value : '';
+            const address = document.getElementById('googleAuthAddress')?.value.trim() || '';
+            const reference = document.getElementById('googleAuthReference')?.value.trim() || '';
+            const phone = document.getElementById('googleAuthPhone')?.value.trim() || '';
+
+            if (!nId) {
+                showNotification('Por favor, selecione seu Bairro para entrega!', 'warning');
+                if (nSelect) nSelect.focus();
+                return;
+            }
+
+            const list = (settings.deliveryNeighborhoods && settings.deliveryNeighborhoods.length > 0) 
+                         ? settings.deliveryNeighborhoods 
+                         : DEFAULT_DELIVERY_NEIGHBORHOODS;
+
+            let nName = '';
+            let nZone = '';
+            let nZoneName = '';
+
+            if (nId === 'other') {
+                const customName = document.getElementById('googleAuthCustomNeighborhood')?.value.trim();
+                if (!customName) {
+                    showNotification('Por favor, digite o nome do seu bairro!', 'warning');
+                    document.getElementById('googleAuthCustomNeighborhood')?.focus();
+                    return;
+                }
+                nName = customName;
+                nZone = 'outra';
+                nZoneName = 'Outra Região';
+            } else if (nId) {
+                const found = list.find(n => n.id === nId);
+                if (found) {
+                    nName = found.name;
+                    nZone = found.zone;
+                    nZoneName = found.zoneName || (found.zone === 'centro' ? 'Centro' : (found.zone === 'zona_sul' ? 'Zona Sul' : (found.zone === 'zona_norte' ? 'Zona Norte' : 'Outra Região')));
+                }
+            }
+
+            const newAccount = {
+                name: googleUser.name,
+                email: googleUser.email,
+                googleId: googleUser.googleId,
+                neighborhoodId: nId,
+                neighborhood: nName,
+                neighborhoodZone: nZoneName || nZone,
+                address,
+                reference,
+                phone: phone || googleUser.email,
+                provider: 'google'
+            };
+
+            customerAccounts.push(newAccount);
+            localStorage.setItem('customerAccounts', JSON.stringify(customerAccounts));
+
+            AuthManager.loginCustomer(newAccount);
+            customerData = {
+                name: newAccount.name,
+                email: newAccount.email,
+                neighborhoodId: nId,
+                neighborhood: nName,
+                neighborhoodZone: nZoneName || nZone,
+                address,
+                reference,
+                phone: newAccount.phone
+            };
+            localStorage.setItem('customerData', JSON.stringify(customerData));
+
+            closeGoogleAddressModal();
+            renderCustomerForm();
+            updateCartUI();
+            updateCustomerHeaderUI();
+            updateCheckoutButton();
+            showNotification(`✨ Conta Google cadastrada com sucesso! Bem-vindo(a), ${newAccount.name}!`, 'success');
+        }
+
+        // ========== LOGIN DE EMPRESA (RESTRITO AOS DADOS CADASTRADOS NO PAINEL DEV) ==========
+        function handleUnifiedCompanyLogin(e) {
+            if (e) e.preventDefault();
+            const emailInput = document.getElementById('unifiedCompLoginEmail');
+            const passwordInput = document.getElementById('unifiedCompLoginPassword');
+            const errorEl = document.getElementById('unifiedCompLoginError');
+
+            const enteredIdentifier = emailInput ? emailInput.value.trim() : '';
+            const enteredPassword = passwordInput ? passwordInput.value.trim() : '';
+
+            if (!enteredPassword) return;
+
+            if (errorEl) errorEl.style.display = 'none';
+
+            const cleanPhone = enteredIdentifier.replace(/\D/g, '');
+            const lowerId = enteredIdentifier.toLowerCase();
+
+            // Validação estrita contra empresas cadastradas no Painel Dev
+            let matchedCompany = companies.find(c => {
+                if (c.adminPassword !== enteredPassword) return false;
+                const cEmail = (c.email || '').trim().toLowerCase();
+                const cPhone = (c.phone || c.whatsapp || '').replace(/\D/g, '');
+                const cSlug = (c.slug || '').trim().toLowerCase();
+
+                if (cEmail && cEmail === lowerId) return true;
+                if (cleanPhone.length >= 8 && cPhone && (cPhone === cleanPhone || cPhone.endsWith(cleanPhone) || cleanPhone.endsWith(cPhone))) {
+                    return true;
+                }
+                if (cSlug && cSlug === lowerId) return true;
+                return false;
+            });
+
+            // Se não encontrou por e-mail/telefone/slug exato, verificar pela senha da empresa cadastrada no Painel Dev
+            if (!matchedCompany) {
+                matchedCompany = companies.find(c => c.adminPassword === enteredPassword);
+            }
+
+            if (matchedCompany) {
+                switchActiveCompany(matchedCompany.id);
+                loginAdminSuccess(matchedCompany);
+                closeCustomerAuthModal();
+                if (emailInput) emailInput.value = '';
+                if (passwordInput) passwordInput.value = '';
+                openAdminPanel();
+                showNotification(`🚀 Acesso concedido à loja ${matchedCompany.name}!`, 'success');
+            } else {
+                if (errorEl) {
+                    errorEl.style.display = 'block';
+                    errorEl.textContent = '❌ E-mail/telefone ou senha incorretos!';
+                }
+                if (passwordInput) {
+                    passwordInput.value = '';
+                    passwordInput.focus();
+                }
+            }
+        }
+
         async function handleCustomerLogin(e) {
             e.preventDefault();
             const phone = document.getElementById('loginPhone').value.trim();
@@ -7681,6 +8308,7 @@
                 AuthManager.loginCustomer(account, token);
                 customerData = {
                     name: account.name,
+                    email: account.email || '',
                     neighborhood: account.neighborhood || '',
                     neighborhoodId: account.neighborhoodId || '',
                     neighborhoodZone: account.neighborhoodZone || '',
@@ -8223,7 +8851,7 @@
             // A. De customerOrders em memória
             DefensiveUtils.safeArray(customerOrders).forEach(ord => {
                 if (!ord || !ord.id) return;
-                const matchesComp = ord.companyId === activeCompId || (!ord.companyId && (activeCompId === 'company-demo-don' || activeCompId === 'company-fb-default'));
+                const matchesComp = ord.companyId === activeCompId || (!ord.companyId && activeCompId === 'company-demo-don');
                 if (matchesComp && !allCompanyOrders.some(o => String(o.id) === String(ord.id) || String(o.id).replace('#', '') === String(ord.id).replace('#', ''))) {
                     allCompanyOrders.push(ord);
                 }
@@ -8266,7 +8894,7 @@
                 if (Array.isArray(storedAll)) {
                     DefensiveUtils.safeArray(storedAll).forEach(ord => {
                         if (!ord || !ord.id) return;
-                        const matchesComp = ord.companyId === activeCompId || (!ord.companyId && (activeCompId === 'company-demo-don' || activeCompId === 'company-fb-default'));
+                        const matchesComp = ord.companyId === activeCompId || (!ord.companyId && activeCompId === 'company-demo-don');
                         if (matchesComp) {
                             const idx = allCompanyOrders.findIndex(o => String(o.id) === String(ord.id) || String(o.id).replace('#', '') === String(ord.id).replace('#', ''));
                             if (idx >= 0) {
@@ -8959,7 +9587,7 @@
             const storeName = (settings.restaurantName || 'DON FOOD').toUpperCase();
             const storeAddress = (settings.address || '').trim();
             const storeCnpj = (settings.cnpj || '').trim();
-            const storeInstagram = (settings.instagram || '@acainaquentinha_do_fb').trim();
+            const storeInstagram = (settings.instagram || '').trim();
 
             let text = '';
             text += '\x1B\x40'; // Inicializar
@@ -9034,7 +9662,7 @@
             const storeName = (settings.restaurantName || 'DON FOOD').toUpperCase();
             const storeAddress = (settings.address || '').trim();
             const storeCnpj = (settings.cnpj || '').trim();
-            const storeInstagram = (settings.instagram || '@acainaquentinha_do_fb').trim();
+            const storeInstagram = (settings.instagram || '').trim();
 
             const items = order.items || [];
             const subtotalVal = typeof order.subtotal === 'number' ? order.subtotal : (parseFloat(order.subtotal) || 0);
@@ -9983,7 +10611,7 @@
 
             // Sincronização em tempo real de pedidos entre abas/janelas
             window.addEventListener('storage', (e) => {
-                const targetKey = `customerOrders_${activeCompanyId || 'company-fb-default'}`;
+                const targetKey = `customerOrders_${activeCompanyId || 'company-demo-don'}`;
                 if (e.key === 'customerOrders' || e.key === targetKey) {
                     try {
                         const parsed = JSON.parse(e.newValue || '[]');
@@ -10352,6 +10980,160 @@
             }
         }
 
+        // ========== LGPD - POLÍTICA DE PRIVACIDADE E DIREITOS DOS TITULARES ==========
+        function openLgpdPolicyModal() {
+            const modal = document.getElementById('lgpdPolicyModal');
+            if (modal) {
+                modal.classList.add('active');
+                modal.style.display = 'flex';
+            }
+        }
+
+        function closeLgpdPolicyModal() {
+            const modal = document.getElementById('lgpdPolicyModal');
+            if (modal) {
+                modal.classList.remove('active');
+                modal.style.display = 'none';
+            }
+        }
+
+        function openLgpdRightsModal() {
+            const modal = document.getElementById('lgpdRightsModal');
+            if (modal) {
+                modal.classList.add('active');
+                modal.style.display = 'flex';
+                if (loggedCustomer) {
+                    const nameInput = document.getElementById('lgpdCustomerName');
+                    const emailInput = document.getElementById('lgpdCustomerEmail');
+                    const phoneInput = document.getElementById('lgpdCustomerPhone');
+                    if (nameInput && !nameInput.value) nameInput.value = loggedCustomer.name || '';
+                    if (emailInput && !emailInput.value) emailInput.value = loggedCustomer.email || '';
+                    if (phoneInput && !phoneInput.value) phoneInput.value = loggedCustomer.phone || '';
+                }
+            }
+        }
+
+        function closeLgpdRightsModal() {
+            const modal = document.getElementById('lgpdRightsModal');
+            if (modal) {
+                modal.classList.remove('active');
+                modal.style.display = 'none';
+            }
+        }
+
+        function filterLgpdPolicy(query) {
+            const term = (query || '').toLowerCase().trim();
+            const cards = document.querySelectorAll('.lgpd-modal-card');
+            cards.forEach(card => {
+                if (!term) {
+                    card.style.display = '';
+                } else {
+                    const text = card.textContent.toLowerCase();
+                    card.style.display = text.includes(term) ? '' : 'none';
+                }
+            });
+        }
+
+        function printLgpdPolicy() {
+            window.print();
+        }
+
+        function copyLgpdPolicyText() {
+            const text = `POLÍTICA DE PRIVACIDADE E PROTEÇÃO DE DADOS (LGPD - LEI Nº 13.709/2018)\nDon Food Cardápio Digital & Delivery\n\nCompromisso: Seus dados são utilizados exclusivamente para entrega de pedidos e contato operacional com os estabelecimentos. Não comercializamos dados com terceiros.\n\nCanal DPO / Encarregado: dpo@donfood.com.br`;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showNotification('Resumo da Política LGPD copiado com sucesso! 📋', 'success');
+                }).catch(() => {
+                    showNotification('Política LGPD copiada!', 'info');
+                });
+            } else {
+                showNotification('Resumo copiado!', 'info');
+            }
+        }
+
+        function handleLgpdRightsSubmit(event) {
+            if (event) event.preventDefault();
+            const name = document.getElementById('lgpdCustomerName')?.value.trim();
+            const email = document.getElementById('lgpdCustomerEmail')?.value.trim();
+            const phone = document.getElementById('lgpdCustomerPhone')?.value.trim();
+            const rightType = document.getElementById('lgpdRightType')?.value || 'access';
+            const details = document.getElementById('lgpdRequestDetails')?.value.trim();
+
+            if (!name || !email) {
+                showNotification('Por favor, preencha seu nome e e-mail para identificação do titular.', 'warning');
+                return;
+            }
+
+            const protocol = 'LGPD-' + Math.floor(100000 + Math.random() * 900000);
+            
+            const lgpdRequests = JSON.parse(localStorage.getItem('lgpdRequests') || '[]');
+            lgpdRequests.push({
+                protocol,
+                name,
+                email,
+                phone,
+                rightType,
+                details,
+                date: new Date().toISOString(),
+                status: 'OPEN'
+            });
+            localStorage.setItem('lgpdRequests', JSON.stringify(lgpdRequests));
+
+            const rightLabels = {
+                access: 'Acesso e Relatório Completo dos Meus Dados',
+                correction: 'Correção ou Atualização de Dados Incompletos',
+                deletion: 'Eliminação / Esquecimento de Dados Pessoais',
+                revocation: 'Revogação de Consentimento',
+                portability: 'Portabilidade de Dados para Outro Provedor',
+                information: 'Informações sobre Compartilhamento com Terceiros'
+            };
+
+            const selectedLabel = rightLabels[rightType] || rightType;
+
+            alert(`✅ Solicitação LGPD Registrada com Sucesso!\n\n📋 Protocolo: ${protocol}\n👤 Titular: ${name} (${email})\n⚖️ Direito Solicitado: ${selectedLabel}\n⏱️ Prazo Legal de Resposta: Até 15 dias úteis nos termos do Art. 19 da LGPD.\n\nNossa equipe de Proteção de Dados (DPO) entrará em contato.`);
+
+            closeLgpdRightsModal();
+            showNotification(`Protocolo ${protocol} gerado com sucesso! 🛡️`, 'success');
+        }
+
+        function sendLgpdTicketWhatsApp() {
+            const activeComp = (companies && companies.find(c => c.id === activeCompanyId)) || settings;
+            const waNumber = (activeComp.whatsappNumber || '5521973987378').replace(/\D/g, '');
+            const msg = encodeURIComponent(`Olá! Gostaria de abrir um chamado formal sobre Privacidade e Proteção de Dados (LGPD) referente aos meus dados cadastrados no Don Food.`);
+            window.open(`https://wa.me/${waNumber}?text=${msg}`, '_blank');
+        }
+
+        function openDpoContact() {
+            window.location.href = 'mailto:dpo@donfood.com.br?subject=Solicitacao%20de%20Direitos%20do%20Titular%20-%20LGPD';
+        }
+
+        function acceptLgpdConsent() {
+            localStorage.setItem('donfood_lgpd_consent', 'accepted_' + new Date().toISOString());
+            const banner = document.getElementById('lgpdConsentBanner');
+            if (banner) {
+                banner.style.opacity = '0';
+                banner.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    banner.style.display = 'none';
+                }, 300);
+            }
+            showNotification('Preferências de cookies e privacidade salvas! 🛡️', 'success');
+        }
+
+        function initLgpdConsentBanner() {
+            const consent = localStorage.getItem('donfood_lgpd_consent');
+            const banner = document.getElementById('lgpdConsentBanner');
+            if (!consent && banner) {
+                setTimeout(() => {
+                    banner.style.display = 'block';
+                    banner.style.opacity = '1';
+                    banner.style.transform = 'translateY(0)';
+                }, 1000);
+            } else if (banner) {
+                banner.style.display = 'none';
+            }
+        }
+
         // Expor todas as funções globais necessárias para eventos onclick do HTML
         window.toggleFaqItem = toggleFaqItem;
         window.updateDemoSavingsCalc = updateDemoSavingsCalc;
@@ -10479,7 +11261,27 @@
         window.logoutAdmin = logoutAdmin;
         window.openCustomerAuthModal = openCustomerAuthModal;
         window.closeCustomerAuthModal = closeCustomerAuthModal;
+        window.switchAuthProfile = switchAuthProfile;
         window.switchAuthTab = switchAuthTab;
+        window.handleGoogleCustomerAuth = handleGoogleCustomerAuth;
+        window.triggerNativeGoogleSync = triggerNativeGoogleSync;
+        window.openGoogleAccountPickerModal = openGoogleAccountPickerModal;
+        window.closeGoogleAccountPickerModal = closeGoogleAccountPickerModal;
+        window.openGoogleCustomAccountModal = openGoogleCustomAccountModal;
+        window.closeGoogleCustomAccountModal = closeGoogleCustomAccountModal;
+        window.backToGoogleAccountsPicker = backToGoogleAccountsPicker;
+        window.appendEmailDomain = appendEmailDomain;
+        window.updateGoogleAccountPreview = updateGoogleAccountPreview;
+        window.handleGoogleCustomAccountSubmit = handleGoogleCustomAccountSubmit;
+        window.selectGoogleAccount = selectGoogleAccount;
+        window.handleGoogleCustomAccountPrompt = handleGoogleCustomAccountPrompt;
+        window.processGoogleCustomerAuth = processGoogleCustomerAuth;
+        window.openGoogleAddressModal = openGoogleAddressModal;
+        window.closeGoogleAddressModal = closeGoogleAddressModal;
+        window.populateGoogleAuthNeighborhoods = populateGoogleAuthNeighborhoods;
+        window.handleGoogleAuthNeighborhoodChange = handleGoogleAuthNeighborhoodChange;
+        window.handleGoogleAddressSubmit = handleGoogleAddressSubmit;
+        window.handleUnifiedCompanyLogin = handleUnifiedCompanyLogin;
         window.populateAuthRegisterNeighborhoods = populateAuthRegisterNeighborhoods;
         window.handleAuthRegisterNeighborhoodChange = handleAuthRegisterNeighborhoodChange;
         window.logoutCustomer = logoutCustomer;
@@ -10535,6 +11337,20 @@
         window.copyAllLeadPhones = copyAllLeadPhones;
         window.exportLeadsCSV = exportLeadsCSV;
         window.deleteDevLead = deleteDevLead;
+
+        // Gerenciamento LGPD & Privacidade
+        window.openLgpdPolicyModal = openLgpdPolicyModal;
+        window.closeLgpdPolicyModal = closeLgpdPolicyModal;
+        window.openLgpdRightsModal = openLgpdRightsModal;
+        window.closeLgpdRightsModal = closeLgpdRightsModal;
+        window.filterLgpdPolicy = filterLgpdPolicy;
+        window.printLgpdPolicy = printLgpdPolicy;
+        window.copyLgpdPolicyText = copyLgpdPolicyText;
+        window.handleLgpdRightsSubmit = handleLgpdRightsSubmit;
+        window.sendLgpdTicketWhatsApp = sendLgpdTicketWhatsApp;
+        window.openDpoContact = openDpoContact;
+        window.acceptLgpdConsent = acceptLgpdConsent;
+        window.initLgpdConsentBanner = initLgpdConsentBanner;
 
         // ========== INICIAR APLICAÇÃO ==========
         init();

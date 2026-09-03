@@ -14,7 +14,7 @@
 </head>
 <body>
     <!-- BOTÕES FLUTUANTES WHATSAPP E INSTAGRAM (SVG PURO) -->
-    <a href="https://instagram.com/acainaquentinha_do_fb" class="instagram-fab" id="instagramFab" target="_blank" rel="noopener noreferrer" title="Siga nosso Instagram">
+    <a href="#" class="instagram-fab" id="instagramFab" target="_blank" rel="noopener noreferrer" title="Siga nosso Instagram" style="display: none;">
         <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
             <defs>
                 <radialGradient id="igFabGrad" cx="0.2" cy="1" r="1.1">
@@ -124,7 +124,7 @@
                 
                 <div class="form-group">
                     <label class="form-label">Nome do Restaurante / Empresa *</label>
-                    <input type="text" class="form-input" id="restaurantName" placeholder="Açaí na Quentinha do FB" oninput="handleAdminNameSlugSync(this)">
+                    <input type="text" class="form-input" id="restaurantName" placeholder="Don Food" oninput="handleAdminNameSlugSync(this)">
                 </div>
 
                 <div class="form-group">
@@ -161,7 +161,7 @@
 
                 <div class="form-group">
                     <label class="form-label">📸 Instagram da Loja</label>
-                    <input type="text" class="form-input" id="restaurantInstagram" placeholder="@sualoja (Ex: @acainaquentinha_do_fb)">
+                    <input type="text" class="form-input" id="restaurantInstagram" placeholder="@sualoja (Ex: @donfood)">
                     <small style="color: var(--gray-600); font-size: 0.75rem; margin-top: 0.25rem; display: block;">Será impresso no rodapé da notinha e no comprovante do cliente.</small>
                 </div>
 
@@ -894,84 +894,282 @@
         </div>
     </div>
 
-    <!-- MODAL DE LOGIN E CADASTRO DO CLIENTE -->
+    <!-- MODAL UNIFICADO DE AUTENTICAÇÃO (CLIENTE COM GOOGLE & EMPRESA COM DADOS DO PAINEL DEV) -->
     <div class="modal" id="customerAuthModal">
-        <div class="modal-content" style="max-width: 440px;">
-            <div class="modal-header">
-                <h3 class="modal-title" id="authModalTitle">👤 Entrar ou Cadastrar</h3>
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header" style="border-bottom: none; padding-bottom: 0.25rem;">
+                <h3 class="modal-title" id="authModalTitle">👤 Entrar</h3>
                 <button class="modal-close" onclick="closeCustomerAuthModal()">✕</button>
             </div>
 
-            <!-- TABS -->
-            <div class="auth-tab-container">
-                <button type="button" class="auth-tab-btn active" id="tabBtnLogin" onclick="switchAuthTab('login')">🔑 Entrar</button>
-                <button type="button" class="auth-tab-btn" id="tabBtnRegister" onclick="switchAuthTab('register')">✨ Cadastrar</button>
+            <!-- SELETOR DE PERFIL: SOU CLIENTE vs SOU EMPRESA -->
+            <div class="auth-profile-segmented" id="authProfileSegmented">
+                <button type="button" class="auth-profile-tab active" id="profileTabCustomer" onclick="switchAuthProfile('customer')">
+                    <span>👤</span> Sou Cliente
+                </button>
+                <button type="button" class="auth-profile-tab" id="profileTabCompany" onclick="switchAuthProfile('company')">
+                    <span>🏬</span> Sou Empresa
+                </button>
             </div>
 
-            <!-- FORM DE LOGIN -->
-            <form id="customerLoginForm" onsubmit="handleCustomerLogin(event)">
-                <div class="form-group">
-                    <label class="form-label">Telefone / WhatsApp *</label>
-                    <input type="tel" class="form-input" id="loginPhone" placeholder="Ex: 21999999999" required>
+            <!-- SEÇÃO 1: AMBIENTE DO CLIENTE -->
+            <div id="authCustomerSection">
+                <!-- TABS CLIENTE: ENTRAR / CADASTRAR -->
+                <div class="auth-tab-container">
+                    <button type="button" class="auth-tab-btn active" id="tabBtnLogin" onclick="switchAuthTab('login')">🔑 Entrar</button>
+                    <button type="button" class="auth-tab-btn" id="tabBtnRegister" onclick="switchAuthTab('register')">✨ Cadastrar</button>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Senha *</label>
-                    <div class="password-input-wrapper">
-                        <input type="password" class="form-input" id="loginPassword" placeholder="Sua senha" required>
-                        <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('loginPassword', this)" title="Mostrar ou ocultar senha" aria-label="Mostrar senha">👁️</button>
+
+                <!-- FORM DE LOGIN DO CLIENTE -->
+                <form id="customerLoginForm" onsubmit="handleCustomerLogin(event)">
+                    <!-- BOTÃO OFICIAL GOOGLE LOGIN -->
+                    <button type="button" class="btn-google-auth" id="btnGoogleLogin" onclick="handleGoogleCustomerAuth('login')" title="Entrar com sua Conta Google">
+                        <svg viewBox="0 0 24 24" width="20" height="20">
+                            <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
+                            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"/>
+                            <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+                            <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+                        </svg>
+                        <span>Entrar com o Google</span>
+                    </button>
+
+                    <div class="auth-divider">
+                        <span>ou acesse com seu telefone</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Telefone / WhatsApp *</label>
+                        <input type="tel" class="form-input" id="loginPhone" placeholder="Ex: 21999999999" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Senha *</label>
+                        <div class="password-input-wrapper">
+                            <input type="password" class="form-input" id="loginPassword" placeholder="Sua senha" required>
+                            <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('loginPassword', this)" title="Mostrar ou ocultar senha" aria-label="Mostrar senha">👁️</button>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-admin btn-success" style="width: 100%; padding: 0.75rem; font-size: 0.95rem;">
+                        🚀 Entrar na Minha Conta
+                    </button>
+                    <p style="text-align: center; margin-top: 1rem; font-size: 0.85rem; color: var(--gray-600);">
+                        Não possui conta ainda? <a href="#" onclick="switchAuthTab('register'); return false;" style="color: var(--primary); font-weight: 700;">Cadastre-se aqui</a>
+                    </p>
+                </form>
+
+                <!-- FORM DE CADASTRO DO CLIENTE -->
+                <form id="customerRegisterForm" onsubmit="handleCustomerRegister(event)" style="display: none;">
+                    <!-- BOTÃO OFICIAL GOOGLE CADASTRO -->
+                    <button type="button" class="btn-google-auth" id="btnGoogleRegister" onclick="handleGoogleCustomerAuth('register')" title="Cadastrar rapidamente com sua Conta Google">
+                        <svg viewBox="0 0 24 24" width="20" height="20">
+                            <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
+                            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"/>
+                            <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+                            <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+                        </svg>
+                        <span>Cadastrar com o Google</span>
+                    </button>
+
+                    <div class="auth-divider">
+                        <span>ou preencha os dados de entrega</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Nome Completo *</label>
+                        <input type="text" class="form-input" id="authRegisterName" placeholder="Ex: João da Silva" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Bairro *</label>
+                        <select id="authRegisterNeighborhood" class="form-input" required onchange="handleAuthRegisterNeighborhoodChange(this.value)" style="font-weight: 600; color: #1E293B;">
+                            <option value="">Selecione seu Bairro...</option>
+                        </select>
+                        <div id="authRegisterCustomNeighborhoodWrapper" style="display: none; margin-top: 0.5rem;">
+                            <input type="text" class="form-input" id="authRegisterCustomNeighborhood" placeholder="Digite o nome do seu bairro *" style="border-color: var(--primary);">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Endereço Completo (Rua, Nº, Complemento) *</label>
+                        <input type="text" class="form-input" id="authRegisterAddress" placeholder="Ex: Rua das Flores, 123 - Apto 101" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Ponto de Referência</label>
+                        <input type="text" class="form-input" id="authRegisterReference" placeholder="Ex: Próximo à padaria, portão branco, em frente à praça">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Telefone (ex: 21999999999) *</label>
+                        <input type="tel" class="form-input" id="authRegisterPhone" placeholder="Ex: 21999999999" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Crie uma Senha *</label>
+                        <div class="password-input-wrapper">
+                            <input type="password" class="form-input" id="authRegisterPassword" placeholder="Mínimo 4 caracteres" required minlength="4">
+                            <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('authRegisterPassword', this)" title="Mostrar ou ocultar senha" aria-label="Mostrar senha">👁️</button>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-admin btn-success" style="width: 100%; padding: 0.75rem; font-size: 0.95rem;">
+                        ✨ Finalizar Cadastro e Entrar
+                    </button>
+                    <p style="text-align: center; margin-top: 0.75rem; font-size: 0.85rem; color: var(--gray-600);">
+                        Já possui conta? <a href="#" onclick="switchAuthTab('login'); return false;" style="color: var(--primary); font-weight: 700;">Fazer Login</a>
+                    </p>
+                    <p style="text-align: center; margin-top: 0.5rem; font-size: 0.75rem; color: #94A3B8;">
+                        🛡️ Seus dados são protegidos conforme a <a href="javascript:void(0)" onclick="openLgpdPolicyModal()" style="color: #64748B; text-decoration: underline;">LGPD (Lei nº 13.709/18)</a>.
+                    </p>
+                </form>
+            </div>
+
+            <!-- SEÇÃO 2: AMBIENTE DA EMPRESA -->
+            <div id="authCompanySection" style="display: none;">
+                <form id="unifiedCompanyLoginForm" onsubmit="handleUnifiedCompanyLogin(event)">
+                    <div class="form-group">
+                        <label class="form-label">📧 E-mail ou 📱 Telefone da Empresa *</label>
+                        <input type="text" class="form-input" id="unifiedCompLoginEmail" placeholder="ex: contato@empresa.com ou (21) 99999-9999" required autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">🔑 Senha da Empresa *</label>
+                        <div class="password-input-wrapper">
+                            <input type="password" class="form-input" id="unifiedCompLoginPassword" placeholder="••••••••" required autocomplete="current-password">
+                            <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('unifiedCompLoginPassword', this)" title="Mostrar ou ocultar senha" aria-label="Mostrar senha">👁️</button>
+                        </div>
+                    </div>
+
+                    <div id="unifiedCompLoginError" style="display: none; background: #FEF2F2; color: #DC2626; border: 1px solid #FCA5A5; padding: 0.6rem; border-radius: 8px; font-size: 0.8rem; font-weight: bold; margin-bottom: 1rem; text-align: center;">
+                        ❌ E-mail/telefone ou senha incorretos!
+                    </div>
+
+                    <button type="submit" class="btn-admin" id="btnUnifiedCompSubmit" style="width: 100%; padding: 0.75rem; font-size: 0.95rem; background: linear-gradient(135deg, var(--primary, #59176B), var(--primary-dark, #3E0C4C)); color: white; font-weight: 700;">
+                        🚀 Entrar no Painel da Loja
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL SELETOR DE CONTA GOOGLE (SINCRONIZAÇÃO E SELEÇÃO DE CONTAS DO DISPOSITIVO/NAVEGADOR) -->
+    <div class="modal" id="googleAccountPickerModal">
+        <div class="modal-content" style="max-width: 440px; border-radius: 16px;">
+            <div class="modal-header" style="border-bottom: none; padding-bottom: 0;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <svg viewBox="0 0 24 24" width="22" height="22">
+                        <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
+                        <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"/>
+                        <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+                        <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+                    </svg>
+                    <h3 class="modal-title" style="font-size: 1.1rem;">Contas Google</h3>
+                </div>
+                <button class="modal-close" onclick="closeGoogleAccountPickerModal()">✕</button>
+            </div>
+            <p style="font-size: 0.85rem; color: #64748B; margin: 0.5rem 0 1.25rem 0;" id="googleSyncSubtext">
+                Selecione ou sincronize a conta Google do seu navegador ou celular:
+            </p>
+
+            <div id="googleAccountsListContainer">
+                <!-- Preenchido dinamicamente com contas sincronizadas do dispositivo/navegador -->
+            </div>
+
+            <div style="border-top: 1px solid #E2E8F0; padding-top: 0.85rem; margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                <button type="button" class="btn-admin" onclick="triggerNativeGoogleSync(false)" style="background: #F1F5F9; color: #1E293B; border: 1px solid #CBD5E1; width: 100%; font-size: 0.85rem; padding: 0.65rem; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 0.45rem;">
+                    🔄 Sincronizar Contas do Celular / Navegador
+                </button>
+                <button type="button" class="btn-admin" onclick="openGoogleCustomAccountModal()" style="background: #FAF5FF; color: var(--primary); border: 1.5px dashed #D8B4FE; width: 100%; font-size: 0.85rem; padding: 0.65rem; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 0.45rem;">
+                    ➕ Adicionar ou usar outra conta Google
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL ADICIONAR OU ENTRAR COM OUTRA CONTA GOOGLE (FORMULÁRIO SEGURO NATIVO) -->
+    <div class="modal" id="googleCustomAccountModal">
+        <div class="modal-content" style="max-width: 440px; border-radius: 16px;">
+            <div class="modal-header" style="border-bottom: none; padding-bottom: 0;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <svg viewBox="0 0 24 24" width="22" height="22">
+                        <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
+                        <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"/>
+                        <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+                        <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+                    </svg>
+                    <h3 class="modal-title" style="font-size: 1.1rem;">Conectar Conta Google</h3>
+                </div>
+                <button class="modal-close" onclick="closeGoogleCustomAccountModal()">✕</button>
+            </div>
+            <p style="font-size: 0.85rem; color: #64748B; margin: 0.5rem 0 1rem 0;">
+                Informe seu e-mail do Google para entrar ou sincronizar com segurança:
+            </p>
+
+            <!-- CARD VISUAL DE PREVIEW DA CONTA GOOGLE -->
+            <div id="googleCardPreview" style="display: flex; align-items: center; gap: 0.85rem; padding: 0.85rem 1rem; border-radius: 12px; border: 1.5px solid #E2E8F0; background: #F8FAFC; margin-bottom: 1.25rem;">
+                <div class="google-avatar-circle" id="googleCardPreviewAvatar">
+                    G
+                </div>
+                <div style="flex: 1; overflow: hidden;">
+                    <div id="googleCardPreviewName" style="font-weight: 700; color: #1E293B; font-size: 0.95rem;">
+                        Sua Conta Google
+                    </div>
+                    <div id="googleCardPreviewEmail" style="font-size: 0.82rem; color: #64748B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        seunome@gmail.com
                     </div>
                 </div>
-                <button type="submit" class="btn-admin btn-success" style="width: 100%; padding: 0.75rem; font-size: 0.95rem;">
-                    🚀 Entrar na Minha Conta
-                </button>
-                <p style="text-align: center; margin-top: 1rem; font-size: 0.85rem; color: var(--gray-600);">
-                    Não possui conta ainda? <a href="#" onclick="switchAuthTab('register'); return false;" style="color: var(--primary); font-weight: 700;">Cadastre-se aqui</a>
-                </p>
-            </form>
+                <span style="background: #E0F2FE; color: #0284C7; font-size: 0.7rem; padding: 3px 7px; border-radius: 6px; font-weight: 700;">Google</span>
+            </div>
 
-            <!-- FORM DE CADASTRO -->
-            <form id="customerRegisterForm" onsubmit="handleCustomerRegister(event)" style="display: none;">
-                <div class="alert alert-info" style="padding: 0.6rem 0.8rem; font-size: 0.8rem; margin-bottom: 0.75rem;">
-                    💡 Cadastre-se para preencher automaticamente seus dados de entrega e acompanhar seus pedidos!
-                </div>
+            <form id="googleCustomAccountForm" onsubmit="handleGoogleCustomAccountSubmit(event)">
                 <div class="form-group">
-                    <label class="form-label">Nome Completo *</label>
-                    <input type="text" class="form-input" id="authRegisterName" placeholder="Ex: João da Silva" required>
+                    <label class="form-label">📧 E-mail do Google *</label>
+                    <input type="email" class="form-input" id="googleCustomEmailInput" placeholder="ex: seu.email@gmail.com" required oninput="updateGoogleAccountPreview()">
+                    <div style="display: flex; gap: 0.4rem; margin-top: 0.4rem;">
+                        <button type="button" class="btn-admin" onclick="appendEmailDomain('@gmail.com')" style="background: #F1F5F9; color: #334155; border: 1px solid #E2E8F0; padding: 2px 8px; font-size: 0.75rem; border-radius: 6px; font-weight: 600;">+ @gmail.com</button>
+                    </div>
                 </div>
+
+                <div style="display: flex; gap: 0.5rem; margin-top: 1.25rem;">
+                    <button type="button" class="btn-admin" onclick="backToGoogleAccountsPicker()" style="flex: 1; background: #F1F5F9; color: #475569; border: 1px solid #CBD5E1; padding: 0.7rem; font-size: 0.88rem;">
+                        Voltar
+                    </button>
+                    <button type="submit" class="btn-admin" style="flex: 2; background: linear-gradient(135deg, #4285F4, #1A73E8); color: white; border: none; padding: 0.7rem; font-size: 0.92rem; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 0.4rem;">
+                        🚀 Continuar com Google
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL DE COMPLEMENTO DE ENDEREÇO DO GOOGLE (QUANDO NOVO CADASTRO VIA GOOGLE) -->
+    <div class="modal" id="googleAddressModal">
+        <div class="modal-content" style="max-width: 440px;">
+            <div class="modal-header">
+                <h3 class="modal-title">📍 Confirmar Endereço de Entrega</h3>
+                <button class="modal-close" onclick="closeGoogleAddressModal()">✕</button>
+            </div>
+            <div class="alert alert-info" style="padding: 0.65rem 0.85rem; font-size: 0.82rem; margin-bottom: 1rem;">
+                <span id="googleWelcomeUserText">Olá!</span> Conectamos sua conta Google com sucesso. Confirme seu bairro e endereço para receber seus pedidos!
+            </div>
+            <form id="googleAddressForm" onsubmit="handleGoogleAddressSubmit(event)">
+                <input type="hidden" id="googleAuthTempData">
                 <div class="form-group">
                     <label class="form-label">Bairro *</label>
-                    <select id="authRegisterNeighborhood" class="form-input" required onchange="handleAuthRegisterNeighborhoodChange(this.value)" style="font-weight: 600; color: #1E293B;">
+                    <select id="googleAuthNeighborhood" class="form-input" required onchange="handleGoogleAuthNeighborhoodChange(this.value)" style="font-weight: 600; color: #1E293B;">
                         <option value="">Selecione seu Bairro...</option>
                     </select>
-                    <div id="authRegisterCustomNeighborhoodWrapper" style="display: none; margin-top: 0.5rem;">
-                        <input type="text" class="form-input" id="authRegisterCustomNeighborhood" placeholder="Digite o nome do seu bairro *" style="border-color: var(--primary);">
+                    <div id="googleAuthCustomNeighborhoodWrapper" style="display: none; margin-top: 0.5rem;">
+                        <input type="text" class="form-input" id="googleAuthCustomNeighborhood" placeholder="Digite o nome do seu bairro *" style="border-color: var(--primary);">
                     </div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Endereço Completo (Rua, Nº, Complemento) *</label>
-                    <input type="text" class="form-input" id="authRegisterAddress" placeholder="Ex: Rua das Flores, 123 - Apto 101" required>
+                    <input type="text" class="form-input" id="googleAuthAddress" placeholder="Ex: Rua das Flores, 123 - Apto 101" required>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Ponto de Referência</label>
-                    <input type="text" class="form-input" id="authRegisterReference" placeholder="Ex: Próximo à padaria, portão branco, em frente à praça">
+                    <input type="text" class="form-input" id="googleAuthReference" placeholder="Ex: Próximo à padaria">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Telefone (ex: 21999999999) *</label>
-                    <input type="tel" class="form-input" id="authRegisterPhone" placeholder="Ex: 21999999999" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Crie uma Senha *</label>
-                    <div class="password-input-wrapper">
-                        <input type="password" class="form-input" id="authRegisterPassword" placeholder="Mínimo 4 caracteres" required minlength="4">
-                        <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('authRegisterPassword', this)" title="Mostrar ou ocultar senha" aria-label="Mostrar senha">👁️</button>
-                    </div>
+                    <label class="form-label">Telefone / WhatsApp para avisos *</label>
+                    <input type="tel" class="form-input" id="googleAuthPhone" placeholder="Ex: 21999999999" required>
                 </div>
                 <button type="submit" class="btn-admin btn-success" style="width: 100%; padding: 0.75rem; font-size: 0.95rem;">
-                    ✨ Finalizar Cadastro e Entrar
+                    🚀 Concluir e Entrar
                 </button>
-                <p style="text-align: center; margin-top: 1rem; font-size: 0.85rem; color: var(--gray-600);">
-                    Já possui conta? <a href="#" onclick="switchAuthTab('login'); return false;" style="color: var(--primary); font-weight: 700;">Fazer Login</a>
-                </p>
             </form>
         </div>
     </div>
@@ -1007,7 +1205,7 @@
             <a href="#" class="logo">
                 <div class="logo-icon" id="logoIcon"></div>
                 <div class="logo-text-wrapper">
-                    <span class="logo-title" id="headerRestaurantName">Açaí na Quentinha do FB</span>
+                    <span class="logo-title" id="headerRestaurantName">Don Food</span>
                     <span class="logo-tagline" id="headerRestaurantTagline">Delivery & Cardápio Digital</span>
                 </div>
             </a>
@@ -1060,7 +1258,7 @@
                     <span>PAINEL EXCLUSIVO DO LOJISTA</span>
                 </div>
                 <h1 class="login-welcome-title">
-                    Bem-vindo à sua Loja <span id="loginViewStoreName" class="login-highlight-store-name">"Açaí na Quentinha do FB"</span>
+                    Bem-vindo à sua Loja <span id="loginViewStoreName" class="login-highlight-store-name">"Don Food"</span>
                 </h1>
                 <p class="login-welcome-subtitle">
                     Acesse o painel para gerenciar cardápio, acompanhar pedidos em tempo real, configurar taxas de entrega e personalizar a identidade visual do seu estabelecimento.
@@ -1289,7 +1487,7 @@
 
                 <div class="demo-benefit-card">
                     <div style="font-size: 0.88rem; font-weight: 800; color: #9A3412; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem;">
-                        Transparência e Lucro Integral no Seu Restaurante
+                        Transparência: 0% de comissão por pedido
                     </div>
                     <div class="demo-benefit-equation">
                         <div class="demo-benefit-side">
@@ -1393,7 +1591,7 @@
             <div class="demo-landing-container">
                 <div class="demo-section-header">
                     <span class="demo-section-badge">POR DENTRO DO PRODUTO</span>
-                    <h2 class="demo-section-title">Veja o Don Food funcionando na prática</h2>
+                    <h2 class="demo-section-title">Veja como um pedido acontece no Don Food</h2>
                     <p class="demo-section-subtitle">
                         Do cardápio do cliente até a impressão da comanda e painel de pedidos.
                     </p>
@@ -1531,7 +1729,7 @@
             <div class="demo-landing-container">
                 <div class="demo-section-header">
                     <span class="demo-section-badge">RECURSOS COMPLETOS</span>
-                    <h2 class="demo-section-title">Tudo o que seu delivery precisa</h2>
+                    <h2 class="demo-section-title">Tudo para colocar seu delivery no seu próprio canal</h2>
                     <p class="demo-section-subtitle">
                         Ferramentas desenvolvidas para o dia a dia real de um restaurante.
                     </p>
@@ -1663,7 +1861,7 @@
                     <div class="demo-comp-card donfood">
                         <span class="demo-comp-badge">Com o Don Food</span>
                         <h3 class="demo-comp-title">Seu Canal Próprio</h3>
-                        <p style="font-size: 0.88rem; color: #78350F; margin-bottom: 1rem;">Autonomia, fidelização e 100% do dinheiro no seu caixa.</p>
+                        <p style="font-size: 0.88rem; color: #78350F; margin-bottom: 1rem;">Autonomia, fidelização e 0% de comissão por pedido.</p>
                         
                         <ul class="demo-comp-list">
                             <li class="demo-comp-item">
@@ -1703,7 +1901,7 @@
                     <span class="demo-section-badge">ECONOMIA REAL</span>
                     <h2 class="demo-section-title">Quanto você poderia economizar?</h2>
                     <p class="demo-section-subtitle">
-                        Simule seu faturamento e veja quanto representa uma comissão de 15% ao longo do ano:
+                        Simule seu faturamento e veja quanto representa uma taxa simulada de 15% em outros canais ao longo do ano:
                     </p>
                 </div>
 
@@ -1751,7 +1949,7 @@
                         </div>
 
                         <div class="demo-calc-res-card">
-                            <div class="demo-calc-res-label" style="color: #DC2626;">Taxas Marketplaces (15%)</div>
+                            <div class="demo-calc-res-label" style="color: #DC2626;">Taxas Marketplaces (Simulação 15%)</div>
                             <div class="demo-calc-res-val" id="calcFeeDisplay" style="color: #DC2626;">- R$ 2.250</div>
                             <div class="demo-calc-res-sub" style="color: #EF4444;">Perdido em comissões/mês</div>
                         </div>
@@ -1770,7 +1968,7 @@
                     </div>
 
                     <p class="demo-calc-disclaimer">
-                        *Exemplo ilustrativo. As taxas de marketplaces de terceiros variam geralmente entre 12% e 27% sobre as vendas. Com o Don Food, sua comissão por pedido é 0%.
+                        *Simulação meramente ilustrativa com base em uma taxa média estimada de 15%. As taxas de marketplaces de terceiros variam geralmente entre 12% e 27% sobre as vendas. Com o Don Food, sua comissão por pedido é 0%.
                     </p>
                 </div>
             </div>
@@ -1816,7 +2014,7 @@
 
                         <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1.25rem;">
                             <button type="button" onclick="openQrCodeModal()" class="btn-admin" style="background: #4F46E5; color: white; font-weight: 800; font-size: 0.9rem; padding: 0.75rem 1.6rem; border-radius: 50px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem;">
-                                🏷️ Ver Gerador de QR Code
+                                🏷️ TESTAR QR CODE
                             </button>
                             <button type="button" onclick="openAcquireAppModal()" class="btn-admin" style="background: #FEF3C7; color: #92400E; border: 1.5px solid #FCD34D; font-weight: 800; font-size: 0.9rem; padding: 0.75rem 1.6rem; border-radius: 50px; cursor: pointer;">
                                 Quero no Meu Restaurante
@@ -1878,7 +2076,7 @@
                             <div class="demo-test-avatar" style="background: linear-gradient(135deg, #7C3AED, #9333EA);">F</div>
                             <div>
                                 <div class="demo-test-info-name">Sr. Fabiano Felix</div>
-                                <div class="demo-test-info-role">Açaí na Quentinha do FB • Duque de Caxias, RJ</div>
+                                <div class="demo-test-info-role">Açaí Tropical & Sorvetes • Rio de Janeiro, RJ</div>
                             </div>
                         </div>
                     </div>
@@ -2006,11 +2204,154 @@
                             <p>Sim. O Don Food oferece integração com impressoras térmicas padrão 58mm e 80mm para impressão automática ou em 1 clique de comandas de cozinha e balcão.</p>
                         </div>
                     </div>
+
+                    <!-- FAQ 8 -->
+                    <div class="demo-faq-item">
+                        <div class="demo-faq-question" onclick="toggleFaqItem(this)">
+                            <span>Quanto custa?</span>
+                            <span class="demo-faq-chevron">▼</span>
+                        </div>
+                        <div class="demo-faq-answer">
+                            <p>O Don Food trabalha com planos acessíveis e transparentes, <strong>sem cobrança de comissão percentual por pedido</strong>. Você mantém 100% do faturamento no seu caixa e paga apenas uma assinatura previsível com suporte dedicado.</p>
+                        </div>
+                    </div>
+
+                    <!-- FAQ 9 -->
+                    <div class="demo-faq-item">
+                        <div class="demo-faq-question" onclick="toggleFaqItem(this)">
+                            <span>Como começo?</span>
+                            <span class="demo-faq-chevron">▼</span>
+                        </div>
+                        <div class="demo-faq-answer">
+                            <p>Para começar é simples e rápido: clique em <strong>"Quero Testar"</strong> ou chame nossa equipe no WhatsApp. Configuramos seu cardápio com sua identidade visual, fotos e produtos para você começar a vender imediatamente pelo seu canal próprio.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
 
-        <!-- 11. CTA FINAL DE ALTA CONVERSÃO -->
+        <!-- 11. SEÇÃO POLÍTICA, SEGURANÇA E CONFORMIDADE LGPD -->
+        <section class="demo-lgpd-section" id="demoLgpd">
+            <div class="demo-landing-container">
+                <div class="demo-section-header">
+                    <span class="demo-section-badge" style="background: #E0F2FE; color: #0284C7; border: 1px solid #BAE6FD;">🛡️ PRIVACIDADE & CONFORMIDADE LGPD</span>
+                    <h2 class="demo-section-title">Política, Segurança e Proteção de Dados (LGPD)</h2>
+                    <p class="demo-section-subtitle">
+                        Desenvolvido com respeito absoluto à sua privacidade e aos dados dos seus clientes, em conformidade com a <strong>Lei Federal nº 13.709/2018 (Lei Geral de Proteção de Dados)</strong>.
+                    </p>
+                </div>
+
+                <!-- 6 PILARES DE SEGURANÇA E PRIVACIDADE -->
+                <div class="demo-lgpd-grid">
+                    <!-- PILAR 1 -->
+                    <div class="demo-lgpd-card">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div class="demo-lgpd-icon-wrap" style="background: linear-gradient(135deg, #4F46E5, #3730A3);">
+                                🏢
+                            </div>
+                            <span class="demo-lgpd-card-badge">Multi-Tenant</span>
+                        </div>
+                        <h3 class="demo-lgpd-card-title">Isolamento Total por Empresa</h3>
+                        <p class="demo-lgpd-card-desc">
+                            Cada estabelecimento cadastrado opera em ambiente e banco de dados logicamente isolados. Nenhuma outra loja tem acesso aos seus relatórios, faturamento ou base de clientes.
+                        </p>
+                    </div>
+
+                    <!-- PILAR 2 -->
+                    <div class="demo-lgpd-card">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div class="demo-lgpd-icon-wrap" style="background: linear-gradient(135deg, #10B981, #047857);">
+                                🔒
+                            </div>
+                            <span class="demo-lgpd-card-badge" style="background: #D1FAE5; color: #065F46;">Criptografia</span>
+                        </div>
+                        <h3 class="demo-lgpd-card-title">Criptografia Ponta a Ponta (HTTPS / SSL)</h3>
+                        <p class="demo-lgpd-card-desc">
+                            Todo o tráfego entre clientes, lojas e servidores é 100% criptografado com certificados SSL/TLS modernos, garantindo sigilo na transmissão de pedidos, senhas e credenciais.
+                        </p>
+                    </div>
+
+                    <!-- PILAR 3 -->
+                    <div class="demo-lgpd-card">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div class="demo-lgpd-icon-wrap" style="background: linear-gradient(135deg, #0EA5E9, #0369A1);">
+                                👤
+                            </div>
+                            <span class="demo-lgpd-card-badge">Art. 18 LGPD</span>
+                        </div>
+                        <h3 class="demo-lgpd-card-title">Direitos do Titular Garantidos</h3>
+                        <p class="demo-lgpd-card-desc">
+                            Transparência e autonomia total. Clientes e lojistas podem a qualquer momento consultar, corrigir, anonimizar, exportar ou solicitar a exclusão definitiva dos seus dados pessoais.
+                        </p>
+                    </div>
+
+                    <!-- PILAR 4 -->
+                    <div class="demo-lgpd-card">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div class="demo-lgpd-icon-wrap" style="background: linear-gradient(135deg, #F59E0B, #D97706);">
+                                💳
+                            </div>
+                            <span class="demo-lgpd-card-badge" style="background: #FEF3C7; color: #92400E;">Pix Direto</span>
+                        </div>
+                        <h3 class="demo-lgpd-card-title">Pagamentos Seguros Sem Retenção</h3>
+                        <p class="demo-lgpd-card-desc">
+                            O Don Food não retém números de cartões ou senhas financeiras. Os pagamentos via Pix vão direto para a conta do estabelecimento, reduzindo riscos de vazamentos financeiros.
+                        </p>
+                    </div>
+
+                    <!-- PILAR 5 -->
+                    <div class="demo-lgpd-card">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div class="demo-lgpd-icon-wrap" style="background: linear-gradient(135deg, #EC4899, #BE185D);">
+                                🚫
+                            </div>
+                            <span class="demo-lgpd-card-badge" style="background: #FCE7F3; color: #9D174D;">Anti-Spam</span>
+                        </div>
+                        <h3 class="demo-lgpd-card-title">Zero Venda ou Repasse de Dados</h3>
+                        <p class="demo-lgpd-card-desc">
+                            Sua base de clientes pertence 100% ao seu estabelecimento. O Don Food nunca vende, compartilha ou utiliza os dados dos clientes para anúncios de terceiros ou empresas parceiras.
+                        </p>
+                    </div>
+
+                    <!-- PILAR 6 -->
+                    <div class="demo-lgpd-card">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div class="demo-lgpd-icon-wrap" style="background: linear-gradient(135deg, #8B5CF6, #6D28D9);">
+                                📋
+                            </div>
+                            <span class="demo-lgpd-card-badge" style="background: #EDE9FE; color: #5B21B6;">Base Legal</span>
+                        </div>
+                        <h3 class="demo-lgpd-card-title">Finalidade Estrita e Logs Auditáveis</h3>
+                        <p class="demo-lgpd-card-desc">
+                            A coleta de nome, telefone e endereço ocorre exclusivamente para a execução do contrato de entrega (Art. 7º, V da LGPD), com registros seguros e rastreabilidade contra acessos indevidos.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- BOX DE AÇÕES RÁPIDAS E POLÍTICA COMPLETA -->
+                <div class="demo-lgpd-action-box">
+                    <div class="demo-lgpd-action-info">
+                        <div class="demo-lgpd-action-title">
+                            <span>📜</span>
+                            <span>Transparência e Governança em Primeiro Lugar</span>
+                        </div>
+                        <p class="demo-lgpd-action-subtitle">
+                            Consulte na íntegra nossos Termos de Uso, Política de Privacidade e Guia de Atendimento a Direitos do Titular LGPD.
+                        </p>
+                    </div>
+                    <div class="demo-lgpd-action-btns">
+                        <button type="button" class="btn-admin" onclick="openLgpdPolicyModal()" style="background: #38BDF8; color: #0F172A; font-weight: 800; font-size: 0.9rem; padding: 0.75rem 1.4rem; border-radius: 10px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.45rem; box-shadow: 0 4px 14px rgba(56, 189, 248, 0.35);">
+                            📄 Ler Política LGPD Completa
+                        </button>
+                        <button type="button" class="btn-admin" onclick="openLgpdRightsModal()" style="background: rgba(255,255,255,0.12); color: #FFFFFF; font-weight: 700; font-size: 0.9rem; padding: 0.75rem 1.2rem; border-radius: 10px; border: 1px solid rgba(255,255,255,0.25); cursor: pointer; display: inline-flex; align-items: center; gap: 0.45rem;">
+                            ⚖️ Exercer Direitos do Titular
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 12. CTA FINAL DE ALTA CONVERSÃO -->
         <section class="demo-cta-final-section" id="demoCtaFinal">
             <div class="demo-landing-container">
                 <div class="demo-cta-final-box">
@@ -2035,19 +2376,19 @@
             </div>
         </section>
 
-        <!-- 12. RODAPÉ COMERCIAL DA LANDING PAGE -->
+        <!-- 13. RODAPÉ COMERCIAL DA LANDING PAGE -->
         <footer class="demo-commercial-footer">
             <div class="demo-footer-grid">
                 <div>
-                    <div style="display: flex; align-items: center; margin-bottom: 0.75rem;">
-                        <img src="/Don_Food.png" alt="Don Food" style="height: 42px; width: auto;" onerror="this.onerror=null; this.src='Don_food.png';">
+                    <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 0.75rem;">
+                        <img src="/Don_Food.png" alt="Don Food" style="height: 42px; width: auto; display: block; margin: 0 auto;" onerror="this.onerror=null; this.src='Don_food.png';">
                     </div>
                     <p style="color: #9CA3AF; line-height: 1.5; font-size: 0.85rem; margin-bottom: 1rem;">
                         A plataforma completa de cardápio digital, pedidos no WhatsApp e gestão de delivery com 0% de comissões para restaurantes, lanchonetes e confeitarias.
                     </p>
-                    <div class="demo-footer-security-badge">
-                        <span>🔒</span>
-                        <span><strong>Dados Isolados por Empresa:</strong> Cada estabelecimento possui seu próprio ambiente seguro e seus dados são separados de outras lojas.</span>
+                    <div class="demo-footer-security-badge" onclick="openLgpdPolicyModal()" style="cursor: pointer;" title="Clique para ler a Política e Segurança LGPD">
+                        <span>🛡️</span>
+                        <span><strong>100% Conforme à LGPD:</strong> Criptografia SSL, isolamento por empresa e proteção de dados pessoais.</span>
                     </div>
                 </div>
 
@@ -2062,17 +2403,20 @@
                         <li><a href="#demoQrCode">QR Code</a></li>
                         <li><a href="#demoDepoimentos">Depoimentos</a></li>
                         <li><a href="#demoFaq">FAQ</a></li>
+                        <li><a href="#demoLgpd" style="color: #38BDF8; font-weight: 600;">🛡️ Privacidade & LGPD</a></li>
                     </ul>
                 </div>
 
                 <div>
-                    <h4 class="demo-footer-title">Soluções</h4>
+                    <h4 class="demo-footer-title">Soluções & Legal</h4>
                     <ul class="demo-footer-links">
                         <li><a href="javascript:void(0)" onclick="switchToStoreView('footer')">Loja Demo</a></li>
                         <li><a href="#demoQrCode">Placas com QR Code</a></li>
                         <li><a href="#demoEconomia">Simulador de Economia</a></li>
                         <li><a href="javascript:void(0)" onclick="openAcquireAppModal()">Adquirir Sistema</a></li>
                         <li><a href="javascript:void(0)" onclick="openUnifiedAuthModal('admin')">Acesso da Empresa</a></li>
+                        <li><a href="javascript:void(0)" onclick="openLgpdPolicyModal()">Política de Privacidade</a></li>
+                        <li><a href="javascript:void(0)" onclick="openLgpdRightsModal()">Direitos do Titular (LGPD)</a></li>
                     </ul>
                 </div>
 
@@ -2088,8 +2432,12 @@
             </div>
 
             <div class="demo-footer-bottom">
-                <div>
-                    © 2026 Don Food. Todos os direitos reservados.
+                <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; justify-content: center;">
+                    <span>© 2026 Don Food. Todos os direitos reservados.</span>
+                    <span>•</span>
+                    <a href="javascript:void(0)" onclick="openLgpdPolicyModal()" style="color: #9CA3AF; text-decoration: underline;">Termos & Privacidade LGPD</a>
+                    <span>•</span>
+                    <a href="javascript:void(0)" onclick="openLgpdRightsModal()" style="color: #9CA3AF; text-decoration: underline;">Gerenciar Meus Dados</a>
                 </div>
                 <div>
                     Desenvolvido com excelência por <a href="https://www.donfim.com.br" target="_blank" style="color: #F59E0B; text-decoration: none; font-weight: 700;">Donfim Tech</a>
@@ -2179,7 +2527,7 @@
     </section>
     <footer class="footer">
         <div class="footer-content-wrap">
-            <span id="footerDevTrigger" onclick="handleDevLogoClick(event)" class="footer-dev-trigger" title="Don Food">
+            <span class="footer-dev-trigger" title="Don Food">
                 <span>Aplicativo</span>
                 <strong class="don-delivery-highlight">
                     <img src="/Don_Food.png" alt="Don Food" class="footer-logo-don" onerror="if(this.src.indexOf('Don_Food.png') === -1) { this.src = '/Don_Food.png'; } else { this.src = 'Don_food.png'; }">
@@ -2189,6 +2537,12 @@
                 <span>| Desenvolvido por</span>
                 <a href="https://www.donfim.com.br" target="_blank" rel="noopener noreferrer" class="footer-dev-link" title="Donfim Tech - Soluções em Tecnologia (www.donfim.com.br)">
                     <img src="/Donfimtech.png" onerror="if(this.src.indexOf('donfimtech.png') === -1) { this.src = '/donfimtech.png'; } else { this.src = 'Donfimtech.png'; }" alt="Donfim Tech Logo" class="footer-logo-donfim">
+                </a>
+            </span>
+            <span style="display: inline-flex; align-items: center; gap: 0.35rem; margin-left: 0.5rem; font-size: 0.78rem;">
+                <span>|</span>
+                <a href="javascript:void(0)" onclick="openLgpdPolicyModal()" style="color: #94A3B8; text-decoration: none; display: inline-flex; align-items: center; gap: 0.25rem;" onmouseover="this.style.color='#38BDF8'" onmouseout="this.style.color='#94A3B8'">
+                    🔒 <span>Privacidade & LGPD</span>
                 </a>
             </span>
         </div>
@@ -2222,580 +2576,6 @@
         </div>
     </div>
 
-    <!-- MODAL DE SENHA DEVELOPER -->
-    <div class="modal" id="devPasswordModal" style="z-index: 3500;">
-        <div class="modal-content" style="max-width: 420px; text-align: center;">
-            <div style="background: linear-gradient(135deg, #312E81, #1E1B4B); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.25rem; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
-                <span style="font-size: 2.2rem; display: block; margin-bottom: 0.25rem;">🛠️</span>
-                <h3 style="font-size: 1.2rem; font-weight: 800; margin: 0; color: #EEF2FF;">Donfim Tech</h3>
-            </div>
-            <form id="devPasswordForm" onsubmit="handleDevPasswordSubmit(event)">
-                <div class="password-input-wrapper" style="margin-bottom: 0.75rem;">
-                    <input type="password" id="devPasswordInput" class="form-input" placeholder="Digite a senha... " style="text-align: center; font-size: 1.1rem;" required autofocus>
-                    <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('devPasswordInput', this)" title="Mostrar ou ocultar senha" aria-label="Mostrar senha">👁️</button>
-                </div>
-                <div id="devPasswordError" style="color: var(--danger); font-size: 0.8rem; font-weight: bold; display: none; margin-bottom: 0.75rem;">❌ Senha incorreta! Tente novamente.</div>
-                <div style="display: flex; gap: 0.5rem;">
-                    <button type="button" class="btn-admin" onclick="closeDevPasswordModal()" style="flex: 1; background: var(--gray-200); color: var(--gray-800);">Cancelar</button>
-                    <button type="submit" class="btn-admin" style="flex: 1; background: #4F46E5; color: white; font-weight: bold;">Acessar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODAL PAINEL DO DESENVOLVEDOR (DONFIM TECH UNIVERSAL) -->
-    <div class="modal" id="devPanelModal" style="z-index: 3400;">
-        <div class="modal-content" style="max-width: 780px; border-top: 5px solid #4F46E5;">
-            <div class="modal-header" style="border-bottom: 1px solid var(--gray-200); padding-bottom: 0.75rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h3 class="modal-title" style="color: #312E81; display: flex; align-items: center; gap: 0.5rem; font-size: 1.2rem;">
-                        🛠️ Painel Desenvolvedor
-                    </h3>
-                    <small style="color: var(--gray-600);">Gerencie empresas, clientes, crie novas lojas e analise dados</small>
-                </div>
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <button type="button" class="btn-admin" onclick="logoutDev()" title="Sair da sessão de Desenvolvedor" style="background: #EF4444; color: white; border-radius: 8px; font-size: 0.8rem; padding: 0.35rem 0.75rem; font-weight: bold; display: inline-flex; align-items: center; gap: 0.3rem;">
-                        🚪 Sair Dev
-                    </button>
-                    <button class="modal-close" onclick="closeDevPanelModal()">✕</button>
-                </div>
-            </div>
-
-            <!-- TABS DO PAINEL DEV -->
-            <div style="display: flex; gap: 0.5rem; margin-bottom: 1.25rem; border-bottom: 2px solid var(--gray-100); padding-bottom: 0.5rem; align-items: center; flex-wrap: wrap;">
-                <button type="button" class="btn-admin" id="devTabCompaniesBtn" onclick="switchDevTab('companies')" style="background: #4F46E5; color: white; border-radius: 20px; font-size: 0.82rem; padding: 0.4rem 0.9rem; font-weight: bold;">
-                    🏢 Empresas (<span id="devCompanyCount">1</span>)
-                </button>
-                <button type="button" class="btn-admin" id="devTabLeadsBtn" onclick="switchDevTab('leads')" style="background: var(--gray-200); color: var(--gray-800); border-radius: 20px; font-size: 0.82rem; padding: 0.4rem 0.9rem; font-weight: bold;">
-                    🎯 Contatos Demo 24h (<span id="devLeadsCount">0</span>)
-                </button>
-                <button type="button" class="btn-admin" id="devTabCustomersBtn" onclick="switchDevTab('customers')" style="background: var(--gray-200); color: var(--gray-800); border-radius: 20px; font-size: 0.82rem; padding: 0.4rem 0.9rem; font-weight: bold;">
-                    👥 Gestão de Clientes (<span id="devCustomerCount">0</span>)
-                </button>
-                <button type="button" class="btn-admin" id="devTabMigrateBtn" onclick="switchDevTab('migrate')" style="background: var(--gray-200); color: var(--gray-800); border-radius: 20px; font-size: 0.82rem; padding: 0.4rem 0.9rem; font-weight: bold;">
-                    🚀 Implantação / Migração
-                </button>
-                <button type="button" class="btn-admin" id="devTabCreateBtn" onclick="switchDevTab('create')" style="background: var(--gray-200); color: var(--gray-800); border-radius: 20px; font-size: 0.82rem; padding: 0.4rem 0.9rem; font-weight: bold;">
-                    ➕ Criar Nova Empresa
-                </button>
-                <button type="button" class="btn-admin" id="devTabSupabaseBtn" onclick="switchDevTab('supabase')" style="background: var(--gray-200); color: var(--gray-800); border-radius: 20px; font-size: 0.82rem; padding: 0.4rem 0.9rem; font-weight: bold;">
-                    ⚡ Supabase
-                </button>
-            </div>
-
-            <!-- ABA 1: LISTAGEM DE EMPRESAS -->
-            <div id="devTabCompanies">
-                <div id="devCompanyList" style="display: flex; flex-direction: column; gap: 0.75rem; max-height: 420px; overflow-y: auto; padding-right: 4px;">
-                    <!-- Lista de empresas gerada via JS -->
-                </div>
-            </div>
-
-            <!-- ABA DE GESTÃO E ANÁLISE DE CLIENTES -->
-            <div id="devTabCustomers" style="display: none;">
-                <!-- Filtros e Métricas de Clientes -->
-                <div style="background: #F8FAFC; border: 1px solid var(--gray-200); border-radius: 10px; padding: 0.85rem; margin-bottom: 1rem;">
-                    <div style="display: flex; gap: 0.75rem; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 0.75rem;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1; min-width: 240px;">
-                            <label style="font-size: 0.82rem; font-weight: 700; color: #1E293B; white-space: nowrap;">🏬 Filtrar por Empresa:</label>
-                            <select id="devCustomerCompanyFilter" class="form-input" onchange="renderDevCustomerList()" style="font-size: 0.82rem; padding: 0.35rem 0.6rem; font-weight: 600;">
-                                <option value="ALL">🌐 Todas as Empresas (Visão Global)</option>
-                                <!-- Opções geradas via JS -->
-                            </select>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1; min-width: 200px;">
-                            <input type="text" id="devCustomerSearchInput" class="form-input" placeholder="🔍 Buscar nome, tel ou endereço..." oninput="renderDevCustomerList()" style="font-size: 0.82rem; padding: 0.35rem 0.6rem;">
-                        </div>
-                    </div>
-
-                    <!-- Cards de Resumo/Métricas -->
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem;">
-                        <div style="background: white; border: 1px solid var(--gray-200); border-radius: 8px; padding: 0.5rem 0.75rem; text-align: center;">
-                            <span style="display: block; font-size: 0.7rem; color: var(--gray-600); text-transform: uppercase; font-weight: 700;">Total Clientes</span>
-                            <strong id="devMetricTotalCust" style="font-size: 1.15rem; color: #1E1B4B;">0</strong>
-                        </div>
-                        <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 0.5rem 0.75rem; text-align: center;">
-                            <span style="display: block; font-size: 0.7rem; color: #166534; text-transform: uppercase; font-weight: 700;">✅ Cadastrados</span>
-                            <strong id="devMetricRegisteredCust" style="font-size: 1.15rem; color: #15803D;">0</strong>
-                        </div>
-                        <div style="background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 8px; padding: 0.5rem 0.75rem; text-align: center;">
-                            <span style="display: block; font-size: 0.7rem; color: #92400E; text-transform: uppercase; font-weight: 700;">📋 Não Cadastrados</span>
-                            <strong id="devMetricGuestCust" style="font-size: 1.15rem; color: #D97706;">0</strong>
-                        </div>
-                        <div style="background: #EEF2FF; border: 1px solid #C7D2FE; border-radius: 8px; padding: 0.5rem 0.75rem; text-align: center;">
-                            <span style="display: block; font-size: 0.7rem; color: #3730A3; text-transform: uppercase; font-weight: 700;">📦 Pedidos Realizados</span>
-                            <strong id="devMetricTotalOrders" style="font-size: 1.15rem; color: #4338CA;">0</strong>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Lista de Clientes -->
-                <div id="devCustomerList" style="display: flex; flex-direction: column; gap: 0.6rem; max-height: 340px; overflow-y: auto; padding-right: 4px;">
-                    <!-- Clientes renderizados via JS -->
-                </div>
-            </div>
-
-            <!-- ABA DE IMPLANTAÇÃO / MIGRAÇÃO DE BASE DE DADOS -->
-            <div id="devTabMigrate" style="display: none;">
-                <div style="background: #0F172A; color: white; border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; border: 1px solid #334155;">
-                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                        <span style="font-size: 1.4rem;">🚀</span>
-                        <h4 style="margin: 0; color: #38BDF8; font-size: 1.05rem;">Módulo de Implantação e Migração de Clientes</h4>
-                    </div>
-                    <p style="font-size: 0.82rem; color: #94A3B8; margin: 0 0 1rem 0; line-height: 1.5;">
-                        Quando cadastrar uma nova empresa ou receber dados do cliente legado, use este assistente para importar e implantar sua carteira completa de clientes em lote via <strong>CSV, Planilha Excel (copiar/colar) ou JSON</strong> diretamente no sistema.
-                    </p>
-
-                    <!-- SELEÇÃO DA EMPRESA DESTINO -->
-                    <div style="background: #1E293B; border: 1px solid #334155; border-radius: 8px; padding: 0.85rem; margin-bottom: 1rem;">
-                        <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #E2E8F0; margin-bottom: 0.4rem;">
-                            🏬 Selecione a Empresa Destino da Implantação *
-                        </label>
-                        <select id="devMigrateTargetCompany" class="form-input" style="background: #0F172A; color: white; border-color: #475569; font-weight: 600;">
-                            <!-- Preenchido via JS com as empresas cadastradas -->
-                        </select>
-                        <small style="color: #94A3B8; display: block; margin-top: 0.25rem;">
-                            Os clientes importados serão vinculados automaticamente à empresa selecionada.
-                        </small>
-                    </div>
-
-                    <!-- FORMATO DE IMPORTAÇÃO -->
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
-                        <div class="form-group" style="margin: 0;">
-                            <label style="font-size: 0.8rem; font-weight: 600; color: #CBD5E1; margin-bottom: 0.3rem; display: block;">
-                                Tipo de Cadastro Importado:
-                            </label>
-                            <select id="devMigrateAccountType" class="form-input" style="background: #1E293B; color: white; border-color: #475569; font-size: 0.82rem;">
-                                <option value="REGISTERED">✅ Criar como Contas Cadastradas (Conta Ativa)</option>
-                                <option value="GUEST">📋 Importar como Base de Entrega (Não Cadastrado)</option>
-                            </select>
-                        </div>
-                        <div class="form-group" style="margin: 0;">
-                            <label style="font-size: 0.8rem; font-weight: 600; color: #CBD5E1; margin-bottom: 0.3rem; display: block;">
-                                Senha Padrão para os Clientes:
-                            </label>
-                            <input type="text" id="devMigrateDefaultPassword" class="form-input" value="123" placeholder="Senha padrão (ex: 123)" style="background: #1E293B; color: white; border-color: #475569; font-size: 0.82rem;">
-                        </div>
-                    </div>
-
-                    <!-- ÁREA DE CARREGAMENTO / COLAGEM DE DADOS -->
-                    <div style="margin-bottom: 1rem;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-                            <label style="font-size: 0.82rem; font-weight: 700; color: #E2E8F0;">
-                                📋 Cole os dados dos Clientes ou carregue arquivo (.csv / .json / .txt):
-                            </label>
-                            <button type="button" onclick="loadSampleMigrationData()" style="background: #334155; color: #38BDF8; border: none; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; cursor: pointer; font-weight: bold;">
-                                💡 Inserir Exemplo
-                            </button>
-                        </div>
-                        <textarea id="devMigrateDataInput" class="form-input" rows="7" placeholder="Exemplos aceitos:&#10;1) CSV / Linhas: Nome; Telefone; Endereço; Senha&#10;Maria Silva; 21999887766; Rua das Flores 123, Centro; 123456&#10;João Santos; 21988776655; Av Brasil 450 apto 201&#10;&#10;2) JSON array: [{ &quot;name&quot;: &quot;Carlos&quot;, &quot;phone&quot;: &quot;21977665544&quot;, &quot;address&quot;: &quot;Rua A 10&quot; }]" style="font-family: monospace; font-size: 0.8rem; background: #020617; color: #38BDF8; border-color: #334155;"></textarea>
-                    </div>
-
-                    <!-- BOTÃO DE UPLOAD DE ARQUIVO E AÇÕES -->
-                    <div style="display: flex; gap: 0.75rem; align-items: center; justify-content: space-between; flex-wrap: wrap;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <input type="file" id="devMigrateFileInput" accept=".csv,.json,.txt" style="display: none;" onchange="handleMigrationFileUpload(event)">
-                            <button type="button" onclick="document.getElementById('devMigrateFileInput').click()" class="btn-admin" style="background: #475569; color: white; font-size: 0.82rem; padding: 0.45rem 0.85rem;">
-                                📂 Carregar Arquivo (.CSV / .JSON)
-                            </button>
-                            <button type="button" onclick="downloadCustomerTemplateCSV()" class="btn-admin" style="background: #1E293B; border: 1px solid #475569; color: #94A3B8; font-size: 0.82rem; padding: 0.45rem 0.85rem;">
-                                📥 Baixar Modelo CSV
-                            </button>
-                        </div>
-
-                        <div style="display: flex; gap: 0.5rem;">
-                            <button type="button" onclick="previewMigrationData()" class="btn-admin" style="background: #6366F1; color: white; font-weight: bold; font-size: 0.85rem; padding: 0.5rem 1rem;">
-                                🔍 Analisar e Visualizar
-                            </button>
-                            <button type="button" onclick="executeCustomerMigration()" class="btn-admin" style="background: #10B981; color: white; font-weight: 800; font-size: 0.85rem; padding: 0.5rem 1.25rem;">
-                                🚀 Executar Implantação
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- ÁREA DE PREVIEW / RELATÓRIO DA MIGRAÇÃO -->
-                    <div id="devMigratePreviewArea" style="display: none; margin-top: 1rem; background: #020617; border: 1px solid #1E293B; border-radius: 8px; padding: 0.85rem;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                            <strong style="color: #38BDF8; font-size: 0.85rem;">Pré-visualização da Implantação (<span id="devMigrateValidCount">0</span> clientes válidos)</strong>
-                            <span id="devMigrateSummaryBadge" style="font-size: 0.72rem; padding: 2px 6px; border-radius: 10px; background: #065F46; color: #6EE7B7; font-weight: bold;">PRONTO</span>
-                        </div>
-                        <div id="devMigratePreviewList" style="max-height: 180px; overflow-y: auto; font-size: 0.76rem; color: #CBD5E1; display: flex; flex-direction: column; gap: 0.35rem;">
-                            <!-- Preview de clientes -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ABA 2: CRIAR NOVA EMPRESA -->
-            <div id="devTabCreate" style="display: none;">
-                <form id="devCreateCompanyForm" onsubmit="handleDevCreateCompany(event)">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                        <div class="form-group">
-                            <label class="form-label">Nome da Empresa / Estabelecimento *</label>
-                            <input type="text" class="form-input" id="devNewCompName" required placeholder="Ex: Burger King ou Pizzaria Bella" oninput="handleDevNewNameSlugSync(this)">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">E-mail de Acesso da Empresa (Login) *</label>
-                            <input type="email" class="form-input" id="devNewCompEmail" required placeholder="ex: contato@suaempresa.com.br">
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Slug / Link Exclusivo de Acesso (donfood.com)</label>
-                        <div style="display: flex; align-items: center; gap: 0;">
-                            <span style="font-size: 0.82rem; color: #4F46E5; font-family: monospace; background: #EEF2FF; padding: 0.6rem 0.65rem; border: 1.5px solid #C7D2FE; border-radius: 8px 0 0 8px; border-right: none; font-weight: bold; white-space: nowrap;">www.donfood.com/?empresa=</span>
-                            <input type="text" class="form-input" id="devNewCompSlug" placeholder="ex: burger-king" style="border-radius: 0 8px 8px 0; border-left: 1.5px solid #C7D2FE;" oninput="handleSlugSanitize(this)">
-                        </div>
-                        <small style="color: var(--gray-600); font-size: 0.75rem; margin-top: 0.25rem; display: block;">Link direto que direciona os clientes para esta empresa.</small>
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                        <div class="form-group">
-                            <label class="form-label">Subtítulo Promocional</label>
-                            <input type="text" class="form-input" id="devNewCompSubtitle" placeholder="Ex: O melhor artesanal da cidade!">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">WhatsApp com DDI *</label>
-                            <input type="text" class="form-input" id="devNewCompWhatsapp" required placeholder="5521999999999">
-                        </div>
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                        <div class="form-group">
-                            <label class="form-label">📸 Instagram da Loja</label>
-                            <input type="text" class="form-input" id="devNewCompInstagram" placeholder="@sualoja (Ex: @acainaquentinha_do_fb)">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">🏢 CNPJ da Loja</label>
-                            <input type="text" class="form-input" id="devNewCompCnpj" placeholder="00.000.000/0001-00">
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">📍 Endereço da Loja Atual</label>
-                        <input type="text" class="form-input" id="devNewCompAddress" placeholder="Ex: Rua das Flores, 100 - Centro">
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                        <div class="form-group">
-                            <label class="form-label">Senha Admin da Loja *</label>
-                            <div class="password-input-wrapper">
-                                <input type="password" class="form-input" id="devNewCompPassword" required placeholder="admin123">
-                                <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('devNewCompPassword', this)" title="Mostrar ou ocultar senha" aria-label="Mostrar senha">👁️</button>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Taxa de Entrega Inicial (R$)</label>
-                            <input type="number" class="form-input" id="devNewCompFee" step="0.01" value="6.00">
-                        </div>
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                        <div class="form-group">
-                            <label class="form-label">Tempo de Entrega Estimado</label>
-                            <input type="text" class="form-input" id="devNewCompDeliveryTime" placeholder="Ex: 30 - 45 min" value="30 - 45 min">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">URL do Logo ou Foto</label>
-                            <input type="text" class="form-input" id="devNewCompLogo" placeholder="Ex: Logo.jpg ou URL da foto">
-                        </div>
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                        <div class="form-group">
-                            <label class="form-label">Cardápio Inicial Pronto (Preset)</label>
-                            <select class="form-input" id="devNewCompPreset" style="font-weight: 600;">
-                                <option value="acai" selected>🍧 Açaí & Sorvetes (Super Barca, 300ml, 400ml)</option>
-                                <option value="burguer">🍔 Hamburgueria Artesanal (X-Burguer, Smash, Batata)</option>
-                                <option value="pizzaria">🍕 Pizzaria (Calabresa, Quatro Queijos, Brotinho)</option>
-                                <option value="marmitaria">🍲 Marmitaria Executiva (Bife Acebolado, Feijoada)</option>
-                                <option value="confeitaria">🍰 Confeitaria (Torta Holandesa, Bolo no Pote)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Paleta de Cores do Tema</label>
-                            <select class="form-input" id="devNewCompTheme" style="font-weight: 600;">
-                                <option value="acai" selected>🟣 Açaí Roxo (#59176B)</option>
-                                <option value="fastfood">🔴 Fast Food Vermelho (#DC2626)</option>
-                                <option value="burguer">🟧 Hamburgueria Laranja (#EA580C)</option>
-                                <option value="pizzaria">🟢 Pizzaria Verde (#059669)</option>
-                                <option value="sorveteria">🔵 Sorveteria Azul (#2563EB)</option>
-                                <option value="confeitaria">🌸 Confeitaria Rosa (#DB2777)</option>
-                                <option value="darkgourmet">🖤 Gourmet Gold (#1E1B4B)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <button type="submit" class="btn-admin" style="width: 100%; background: #4F46E5; color: white; font-size: 0.95rem; padding: 0.75rem; font-weight: bold; margin-top: 0.5rem;">
-                        🚀 Cadastrar e Ativar Nova Empresa
-                    </button>
-                </form>
-            </div>
-
-            <!-- ABA 3: SUPABASE MULTI-TENANT COM ISOLAMENTO -->
-            <div id="devTabSupabase" style="display: none;">
-                <div style="background: #0F172A; border-radius: 12px; padding: 1.25rem; color: #F8FAFC; margin-bottom: 1rem; border: 1px solid #334155;">
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <span style="font-size: 1.5rem;">⚡</span>
-                            <h4 style="margin: 0; font-size: 1.1rem; color: #38BDF8;">Supabase Multi-Tenant Architecture</h4>
-                        </div>
-                        <span id="supabaseStatusBadge" style="background: #10B981; color: white; font-size: 0.75rem; font-weight: 800; padding: 0.25rem 0.6rem; border-radius: 20px;">
-                            🔒 ISOLAMENTO ATIVO
-                        </span>
-                    </div>
-                    <p style="font-size: 0.85rem; color: #94A3B8; margin-bottom: 1rem; line-height: 1.5;">
-                        Cada empresa cadastrada opera sob um <strong>Tenant ID isolado (<code>company_id</code>)</strong>. O banco Supabase conta com <strong>Row Level Security (RLS)</strong> ativo em todas as tabelas (<code>companies</code>, <code>products</code>, <code>orders</code>, <code>settings</code>, <code>coupons</code>), garantindo <strong>zero cruzamento de dados</strong> entre empresas.
-                    </p>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
-                        <div style="background: #1E293B; padding: 0.75rem; border-radius: 8px; border: 1px solid #334155;">
-                            <span style="display: block; font-size: 0.75rem; color: #64748B; text-transform: uppercase; font-weight: 700;">Empresa Ativa Atual</span>
-                            <span id="supabaseActiveCompName" style="font-weight: 700; color: #F1F5F9; font-size: 0.95rem;">-</span>
-                            <span id="supabaseActiveCompId" style="display: block; font-size: 0.75rem; color: #38BDF8; font-family: monospace;">-</span>
-                        </div>
-                        <div style="background: #1E293B; padding: 0.75rem; border-radius: 8px; border: 1px solid #334155;">
-                            <span style="display: block; font-size: 0.75rem; color: #64748B; text-transform: uppercase; font-weight: 700;">Segurança e RLS</span>
-                            <span style="font-weight: 700; color: #34D399; font-size: 0.95rem;">✓ RLS Restrito por Empresa</span>
-                            <span style="display: block; font-size: 0.75rem; color: #94A3B8;">company_id Foreign Key Cascade</span>
-                        </div>
-                    </div>
-
-                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                        <button type="button" class="btn-admin" onclick="syncCurrentCompanyToSupabaseUI()" style="flex: 1; background: #3B82F6; color: white; font-weight: bold; font-size: 0.85rem; padding: 0.6rem;">
-                            ☁️ Sincronizar Empresa Atual
-                        </button>
-                        <button type="button" class="btn-admin" onclick="downloadSupabaseSQL()" style="flex: 1; background: #059669; color: white; font-weight: bold; font-size: 0.85rem; padding: 0.6rem;">
-                            📄 Baixar Script SQL (supabase_schema.sql)
-                        </button>
-                    </div>
-                </div>
-
-                <div style="background: #F8FAFC; border: 1px solid var(--gray-200); border-radius: 8px; padding: 0.85rem;">
-                    <h5 style="margin: 0 0 0.5rem 0; color: var(--gray-800); font-size: 0.9rem;">Como conectar suas chaves do Supabase no servidor:</h5>
-                    <ol style="margin: 0; padding-left: 1.2rem; font-size: 0.8rem; color: var(--gray-600); line-height: 1.6;">
-                        <li>Crie seu projeto no console do <a href="https://supabase.com" target="_blank" style="color: #4F46E5; font-weight: bold;">Supabase.com</a>.</li>
-                        <li>Execute o script SQL fornecido no <strong>SQL Editor</strong> do Supabase.</li>
-                        <li>Defina as variáveis <code>SUPABASE_URL</code> e <code>SUPABASE_ANON_KEY</code> (ou <code>SUPABASE_SERVICE_ROLE_KEY</code>).</li>
-                        <li>O servidor e o app gerenciam automaticamente todo o roteamento isolado por empresa.</li>
-                    </ol>
-                </div>
-            </div>
-
-            <!-- ABA 6: GESTÃO DE LEADS E CONTATOS CAPTURADOS NA DEMO (TESTES 24H) -->
-            <div id="devTabLeads" style="display: none;">
-                <div style="background: #F8FAFC; border: 1px solid var(--gray-200); border-radius: 12px; padding: 1rem; margin-bottom: 1rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
-                        <div>
-                            <h4 style="margin: 0; color: #1E1B4B; font-size: 1.05rem; display: flex; align-items: center; gap: 0.4rem;">
-                                🎯 Leads & Contatos Capturados na Loja Demo
-                            </h4>
-                            <small style="color: var(--gray-600);">Telefones de clientes interessados que liberaram o teste grátis de 24 horas</small>
-                        </div>
-                        <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
-                            <button type="button" class="btn-admin" onclick="copyAllLeadPhones()" style="background: #4F46E5; color: white; font-size: 0.78rem; padding: 0.35rem 0.7rem; font-weight: 700; border-radius: 8px;" title="Copiar todos os números para colar em lista de transmissão">
-                                📋 Copiar Telefones
-                            </button>
-                            <button type="button" class="btn-admin" onclick="exportLeadsCSV()" style="background: #059669; color: white; font-size: 0.78rem; padding: 0.35rem 0.7rem; font-weight: 700; border-radius: 8px;" title="Baixar planilha CSV para CRM">
-                                📥 Exportar CSV
-                            </button>
-                            <button type="button" class="btn-admin" onclick="fetchDevLeads()" style="background: var(--gray-200); color: var(--gray-800); font-size: 0.78rem; padding: 0.35rem 0.7rem; font-weight: 700; border-radius: 8px;">
-                                🔄 Atualizar
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Métricas dos Leads -->
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem; margin-bottom: 0.75rem;">
-                        <div style="background: white; border: 1px solid var(--gray-200); border-radius: 8px; padding: 0.5rem 0.75rem; text-align: center;">
-                            <span style="display: block; font-size: 0.7rem; color: var(--gray-600); text-transform: uppercase; font-weight: 700;">Total Contatos</span>
-                            <strong id="devMetricTotalLeads" style="font-size: 1.15rem; color: #1E1B4B;">0</strong>
-                        </div>
-                        <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 8px; padding: 0.5rem 0.75rem; text-align: center;">
-                            <span style="display: block; font-size: 0.7rem; color: #065F46; text-transform: uppercase; font-weight: 700;">🟢 Ativos (24h)</span>
-                            <strong id="devMetricActiveLeads" style="font-size: 1.15rem; color: #059669;">0</strong>
-                        </div>
-                        <div style="background: #FFF7ED; border: 1px solid #FFEDD5; border-radius: 8px; padding: 0.5rem 0.75rem; text-align: center;">
-                            <span style="display: block; font-size: 0.7rem; color: #9A3412; text-transform: uppercase; font-weight: 700;">⏳ Expirados</span>
-                            <strong id="devMetricExpiredLeads" style="font-size: 1.15rem; color: #EA580C;">0</strong>
-                        </div>
-                    </div>
-
-                    <!-- Campo de Busca -->
-                    <div style="position: relative;">
-                        <input type="text" id="devLeadsSearchInput" class="form-input" placeholder="🔍 Filtrar por telefone ou nome..." oninput="filterDevLeadsList()" style="font-size: 0.85rem; padding: 0.4rem 0.75rem;">
-                    </div>
-                </div>
-
-                <!-- Lista de Leads Renderizados -->
-                <div id="devLeadsList" style="display: flex; flex-direction: column; gap: 0.6rem; max-height: 380px; overflow-y: auto; padding-right: 4px;">
-                    <!-- Leads renderizados via JS -->
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL EDITAR CLIENTE (DESENVOLVEDOR) -->
-    <div class="modal" id="devEditCustomerModal" style="z-index: 3500;">
-        <div class="modal-content" style="max-width: 550px; border-top: 5px solid #10B981;">
-            <div class="modal-header" style="border-bottom: 1px solid var(--gray-200); padding-bottom: 0.75rem; margin-bottom: 1rem;">
-                <div>
-                    <h3 class="modal-title" style="color: #065F46; display: flex; align-items: center; gap: 0.5rem; font-size: 1.15rem;">
-                        👤 Editar Dados do Cliente
-                    </h3>
-                    <small style="color: var(--gray-600);">Atualize nome, telefone, endereço, senha ou tipo de cadastro</small>
-                </div>
-                <button class="modal-close" onclick="closeDevEditCustomerModal()">✕</button>
-            </div>
-
-            <form id="devEditCustomerForm" onsubmit="handleDevSaveEditCustomer(event)">
-                <input type="hidden" id="devEditCustomerOldPhone">
-                
-                <div class="form-group">
-                    <label class="form-label">Nome Completo do Cliente *</label>
-                    <input type="text" class="form-input" id="devEditCustomerName" required placeholder="Ex: Maria da Silva">
-                </div>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                    <div class="form-group">
-                        <label class="form-label">Telefone / WhatsApp *</label>
-                        <input type="text" class="form-input" id="devEditCustomerPhone" required placeholder="Ex: 21999999999">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Status da Conta</label>
-                        <select class="form-input" id="devEditCustomerIsReg" style="font-weight: 600;">
-                            <option value="true">✅ Cadastrado (Com Conta Ativa)</option>
-                            <option value="false">📋 Não Cadastrado (Dados de Entrega)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Endereço de Entrega Completo</label>
-                    <textarea class="form-input" id="devEditCustomerAddress" rows="2" placeholder="Rua, número, complemento, bairro..."></textarea>
-                </div>
-
-                <div class="form-group" id="devEditCustomerPasswordGroup">
-                    <label class="form-label">Senha de Acesso do Cliente</label>
-                    <div class="password-input-wrapper">
-                        <input type="password" class="form-input" id="devEditCustomerPassword" placeholder="Senha do cliente (opcional)">
-                        <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('devEditCustomerPassword', this)" title="Mostrar senha" aria-label="Mostrar senha">👁️</button>
-                    </div>
-                </div>
-
-                <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                    <button type="button" class="btn-admin" onclick="closeDevEditCustomerModal()" style="flex: 1; background: var(--gray-200); color: var(--gray-800);">Cancelar</button>
-                    <button type="submit" class="btn-admin" style="flex: 1.5; background: #10B981; color: white; font-weight: bold;">💾 Salvar Cliente</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    <div class="modal" id="devEditCompanyModal" style="z-index: 3500;">
-        <div class="modal-content" style="max-width: 650px; border-top: 5px solid #3B82F6;">
-            <div class="modal-header" style="border-bottom: 1px solid var(--gray-200); padding-bottom: 0.75rem; margin-bottom: 1rem;">
-                <div>
-                    <h3 class="modal-title" style="color: #1E3A8A; display: flex; align-items: center; gap: 0.5rem; font-size: 1.15rem;">
-                        ✏️ Editar Cadastro da Empresa
-                    </h3>
-                    <small style="color: var(--gray-600);">Atualize nome, e-mail de login, senha, WhatsApp e taxas do estabelecimento</small>
-                </div>
-                <button class="modal-close" onclick="closeDevEditCompanyModal()">✕</button>
-            </div>
-
-            <form id="devEditCompanyForm" onsubmit="handleDevSaveEditCompany(event)">
-                <input type="hidden" id="devEditCompId">
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                    <div class="form-group">
-                        <label class="form-label">Nome da Empresa / Loja *</label>
-                        <input type="text" class="form-input" id="devEditCompName" required placeholder="Ex: Burger King">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">E-mail de Acesso (Login) *</label>
-                        <input type="email" class="form-input" id="devEditCompEmail" required placeholder="contato@empresa.com">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Slug / Link Exclusivo de Acesso (donfood.com)</label>
-                    <div style="display: flex; align-items: center; gap: 0;">
-                        <span style="font-size: 0.82rem; color: #4F46E5; font-family: monospace; background: #EEF2FF; padding: 0.6rem 0.65rem; border: 1.5px solid #C7D2FE; border-radius: 8px 0 0 8px; border-right: none; font-weight: bold; white-space: nowrap;">www.donfood.com/?empresa=</span>
-                        <input type="text" class="form-input" id="devEditCompSlug" placeholder="ex: burger-king" style="border-radius: 0 8px 8px 0; border-left: 1.5px solid #C7D2FE;" oninput="handleSlugSanitize(this)">
-                    </div>
-                    <small style="color: var(--gray-600); font-size: 0.75rem; margin-top: 0.25rem; display: block;">Link direto que direciona os clientes para esta empresa.</small>
-                </div>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                    <div class="form-group">
-                        <label class="form-label">Senha Admin da Loja *</label>
-                        <div class="password-input-wrapper">
-                            <input type="password" class="form-input" id="devEditCompPassword" required placeholder="Senha de login">
-                            <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('devEditCompPassword', this)" title="Mostrar ou ocultar senha" aria-label="Mostrar senha">👁️</button>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">WhatsApp com DDI *</label>
-                        <input type="text" class="form-input" id="devEditCompWhatsapp" required placeholder="5521999999999">
-                    </div>
-                </div>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                    <div class="form-group">
-                        <label class="form-label">Subtítulo Promocional</label>
-                        <input type="text" class="form-input" id="devEditCompSubtitle" placeholder="Subtítulo do cardápio">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Taxa de Entrega (R$)</label>
-                        <input type="number" class="form-input" id="devEditCompFee" step="0.01" value="6.00">
-                    </div>
-                </div>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                    <div class="form-group">
-                        <label class="form-label">📸 Instagram da Loja</label>
-                        <input type="text" class="form-input" id="devEditCompInstagram" placeholder="@sualoja (Ex: @acainaquentinha_do_fb)">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">🏢 CNPJ da Loja</label>
-                        <input type="text" class="form-input" id="devEditCompCnpj" placeholder="00.000.000/0001-00">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">📍 Endereço da Loja Atual</label>
-                    <input type="text" class="form-input" id="devEditCompAddress" placeholder="Ex: Rua das Flores, 100 - Centro">
-                </div>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                    <div class="form-group">
-                        <label class="form-label">Tempo de Entrega Estimado</label>
-                        <input type="text" class="form-input" id="devEditCompDeliveryTime" placeholder="Ex: 30 - 45 min">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">URL do Logo ou Foto do Estabelecimento</label>
-                        <input type="text" class="form-input" id="devEditCompLogo" placeholder="Logo.jpg ou URL de imagem">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Paleta de Cores do Tema</label>
-                    <select class="form-input" id="devEditCompTheme" style="font-weight: 600;">
-                        <option value="acai">🟣 Roxo (#59176B)</option>
-                        <option value="fastfood">🔴 Food Vermelho (#DC2626)</option>
-                        <option value="burguer">🟧 Laranja (#EA580C)</option>
-                        <option value="pizzaria">🟢 Verde (#059669)</option>
-                        <option value="sorveteria">🔵 Azul (#2563EB)</option>
-                        <option value="confeitaria">🌸 Rosa (#DB2777)</option>
-                        <option value="darkgourmet">🖤 Gourmet Gold (#1E1B4B)</option>
-                    </select>
-                </div>
-
-                <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                    <button type="button" class="btn-admin" onclick="closeDevEditCompanyModal()" style="flex: 1; background: var(--gray-200); color: var(--gray-800);">Cancelar</button>
-                    <button type="submit" class="btn-admin" style="flex: 1.5; background: #3B82F6; color: white; font-weight: bold;">💾 Salvar Alterações</button>
-                </div>
-            </form>
-        </div>
-    </div>
 
     <!-- MODAL SELETOR DE ÍCONES / EMOJIS (COLEÇÃO DIVERSIFICADA E ORGANIZADA) -->
     <div id="iconPickerModal" onclick="if (event.target === this) closeIconPickerModal()">
@@ -2915,7 +2695,7 @@
             <!-- CARD EXIBIÇÃO DO QR CODE -->
             <div style="background: #FAF5FF; border: 2px dashed #C084FC; border-radius: 16px; padding: 1.25rem; margin-bottom: 1rem; display: flex; flex-direction: column; align-items: center; justify-content: center;">
                 <div id="qrCodeTargetTitle" style="font-size: 0.95rem; font-weight: 800; color: #59176B; margin-bottom: 0.4rem;">
-                    Açaí na Quentinha do FB
+                    Don Food
                 </div>
                 
                 <div style="background: white; padding: 12px; border-radius: 14px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 0.6rem; display: flex; align-items: center; justify-content: center; min-height: 220px; min-width: 220px;">
@@ -2923,7 +2703,7 @@
                 </div>
 
                 <div style="font-family: monospace; font-size: 0.8rem; color: #4F46E5; background: #EEF2FF; padding: 4px 10px; border-radius: 6px; word-break: break-all; max-width: 100%; border: 1px solid #C7D2FE;" id="qrCodeTargetUrl">
-                    https://www.donfood.com/?empresa=acai-fb
+                    https://www.donfood.com/?empresa=demo
                 </div>
                 <small style="color: #6B7280; font-size: 0.72rem; margin-top: 0.35rem;">Aponte a câmera do seu celular para abrir o cardápio</small>
             </div>
@@ -3130,6 +2910,272 @@
                     ⚡ Acesso Imediato
                 </small>
             </div>
+        </div>
+    </div>
+
+    <!-- MODAL POLÍTICA DE PRIVACIDADE E TERMOS LGPD (LEI 13.709/2018) -->
+    <div class="modal" id="lgpdPolicyModal" style="z-index: 3900; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(6px);" onclick="if(event.target === this) closeLgpdPolicyModal()">
+        <div class="lgpd-policy-modal-card" onclick="event.stopPropagation()">
+            <!-- HEADER -->
+            <div class="lgpd-policy-header">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div style="width: 42px; height: 42px; border-radius: 10px; background: linear-gradient(135deg, #0284C7, #0369A1); display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
+                        🛡️
+                    </div>
+                    <div>
+                        <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #FFFFFF; line-height: 1.2;">
+                            Termos de Uso, Segurança & Política LGPD
+                        </h3>
+                        <small style="color: #94A3B8; font-size: 0.78rem;">
+                            Conformidade com a Lei Geral de Proteção de Dados (Lei Federal nº 13.709/2018)
+                        </small>
+                    </div>
+                </div>
+                <button class="modal-close" onclick="closeLgpdPolicyModal()" style="color: #94A3B8; font-size: 1.4rem; background: none; border: none; cursor: pointer;">✕</button>
+            </div>
+
+            <!-- BUSCA RÁPIDA DE TERMOS -->
+            <div style="padding: 0.75rem 1.5rem; background: #F8FAFC; border-bottom: 1px solid #E2E8F0; display: flex; align-items: center; gap: 0.75rem;">
+                <span style="font-size: 1rem; color: #64748B;">🔍</span>
+                <input type="text" id="lgpdSearchInput" placeholder="Buscar termos na política (ex: exclusão, cookies, pagamentos, pix, dpo)..." oninput="filterLgpdPolicy(this.value)" style="width: 100%; border: 1px solid #CBD5E1; background: #FFFFFF; padding: 0.45rem 0.75rem; border-radius: 8px; font-size: 0.85rem; outline: none;">
+            </div>
+
+            <!-- CORPO DO DOCUMENTO COM CAPÍTULOS -->
+            <div class="lgpd-policy-body" id="lgpdPolicyContent">
+                <!-- RESUMO EXECUTIVO -->
+                <div class="lgpd-highlight-box">
+                    <strong>📌 Resumo de Compromisso e Transparência:</strong> O Don Food e a Donfim Tech prezam pelo sigilo e proteção total dos seus dados. Nunca vendemos informações a terceiros. Seus dados são utilizados exclusivamente para identificar seu cadastro e processar a entrega dos seus pedidos no estabelecimento escolhido.
+                </div>
+
+                <!-- CAPÍTULO 1 -->
+                <div class="lgpd-policy-section-block" data-keywords="controlador operador dpo empresa dados identificação donfim tech">
+                    <h4 class="lgpd-policy-chapter-title">
+                        <span class="badge-num">1</span>
+                        <span>Controlador, Operador e Identificação Legal</span>
+                    </h4>
+                    <p>
+                        A plataforma <strong>Don Food</strong> é desenvolvida e mantida pela <strong>Donfim Tech Soluções em Tecnologia</strong>, atuando como operadora da infraestrutura tecnológica e garantindo o isolamento e a segurança do software. O estabelecimento gastronômico (restaurante, lanchonete, pizzaria, confeitaria) contratante atua como controlador primário dos dados de seus respectivos clientes e pedidos.
+                    </p>
+                </div>
+
+                <!-- CAPÍTULO 2 -->
+                <div class="lgpd-policy-section-block" data-keywords="coleta dados pessoais base legal artigo 7 nome telefone endereco whatsapp pedido">
+                    <h4 class="lgpd-policy-chapter-title">
+                        <span class="badge-num">2</span>
+                        <span>Dados Coletados e Base Legal (Art. 7º, V da LGPD)</span>
+                    </h4>
+                    <p>
+                        Coletamos e processamos apenas os dados estritamente necessários para a operacionalização dos pedidos de delivery e retirada, fundamentados no <strong>Artigo 7º, Inciso V da Lei nº 13.709/2018 (Execução de Contrato e Procedimentos Preliminares)</strong>:
+                    </p>
+                    <ul style="margin: 0.5rem 0 0.5rem 1.25rem; color: #475569;">
+                        <li><strong>Identificação do Cliente:</strong> Nome completo ou nome social para identificar o destinatário da entrega.</li>
+                        <li><strong>Contato e Notificações:</strong> Número de WhatsApp/Telefone e E-mail para envio de status do pedido e confirmação.</li>
+                        <li><strong>Logística e Entrega:</strong> Endereço completo (Rua, Número, Bairro, Complemento e Ponto de Referência) e localização estimada para cálculo de frete.</li>
+                        <li><strong>Detalhes da Compra:</strong> Itens selecionados, opcionais, observações e forma de pagamento escolhida.</li>
+                    </ul>
+                </div>
+
+                <!-- CAPÍTULO 3 -->
+                <div class="lgpd-policy-section-block" data-keywords="segurança criptografia ssl isolamento multi-tenant banco proteção">
+                    <h4 class="lgpd-policy-chapter-title">
+                        <span class="badge-num">3</span>
+                        <span>Segurança da Informação e Isolamento Multi-Tenant</span>
+                    </h4>
+                    <p>
+                        Implementamos salvaguardas técnicas de alto padrão para prevenir vazamentos, alterações ou acessos não autorizados:
+                    </p>
+                    <ul style="margin: 0.5rem 0 0.5rem 1.25rem; color: #475569;">
+                        <li><strong>Criptografia em Trânsito:</strong> Comunicação 100% protegida por certificados SSL/TLS com protocolo HTTPS rigoroso.</li>
+                        <li><strong>Isolamento Lógico:</strong> Cada loja possui identificador exclusivo (`companySlug`), impedindo que estabelecimentos distintos acessem cadastros uns dos outros.</li>
+                        <li><strong>Senhas Protegidas:</strong> Credenciais administrativas e de clientes armazenadas sob hash criptográfico seguro.</li>
+                    </ul>
+                </div>
+
+                <!-- CAPÍTULO 4 -->
+                <div class="lgpd-policy-section-block" data-keywords="pagamentos pix cartao financeiro seguranca retencao">
+                    <h4 class="lgpd-policy-chapter-title">
+                        <span class="badge-num">4</span>
+                        <span>Transações Financeiras e Pagamentos Diretos</span>
+                    </h4>
+                    <p>
+                        <strong>Não armazenamos números de cartão de crédito, CVV ou senhas bancárias.</strong> O Don Food opera com tecnologia de pagamento direto (Pix com chave do lojista, dinheiro ou máquina de cartão no momento da entrega), minimizando riscos financeiros e garantindo 0% de custódia indevida de dados bancários de clientes.
+                    </p>
+                </div>
+
+                <!-- CAPÍTULO 5 -->
+                <div class="lgpd-policy-section-block" data-keywords="compartilhamento nao venda anti-spam publicidade terceiros">
+                    <h4 class="lgpd-policy-chapter-title">
+                        <span class="badge-num">5</span>
+                        <span>Política Anti-Comercialização de Dados</span>
+                    </h4>
+                    <p>
+                        O Don Food <strong>NUNCA comercializa, aluga, troca ou repassa bases de dados</strong> para empresas de telemarketing, corretoras de dados ou redes de publicidade direcionada. As informações coletadas pertencem à relação direta e soberana entre o cliente e o restaurante atendente.
+                    </p>
+                </div>
+
+                <!-- CAPÍTULO 6 -->
+                <div class="lgpd-policy-section-block" data-keywords="direitos titular art 18 exclusao consulta correcao anonimizacao portabilidade">
+                    <h4 class="lgpd-policy-chapter-title">
+                        <span class="badge-num">6</span>
+                        <span>Direitos do Titular de Dados (Art. 18 da LGPD)</span>
+                    </h4>
+                    <p>
+                        O titular dos dados pessoais tem direito a obter a qualquer momento, mediante requisição expressa e gratuita:
+                    </p>
+                    <ul style="margin: 0.5rem 0 0.5rem 1.25rem; color: #475569;">
+                        <li>Confirmação da existência de tratamento dos seus dados;</li>
+                        <li>Acesso facilitado às informações coletadas e histórico de pedidos;</li>
+                        <li>Correção imediata de dados incompletos, inexatos ou desatualizados;</li>
+                        <li>Anonimização, bloqueio ou eliminação definitiva de dados desnecessários ou tratados em desconformidade;</li>
+                        <li>Portabilidade dos seus dados cadastrais para outro fornecedor;</li>
+                        <li>Revogação formal de consentimentos previamente concedidos.</li>
+                    </ul>
+                </div>
+
+                <!-- CAPÍTULO 7 -->
+                <div class="lgpd-policy-section-block" data-keywords="cookies localstorage sessao rastreamento essenciais">
+                    <h4 class="lgpd-policy-chapter-title">
+                        <span class="badge-num">7</span>
+                        <span>Cookies e Tecnologias de Armazenamento Local</span>
+                    </h4>
+                    <p>
+                        Utilizamos exclusivamente o armazenamento local seguro do navegador (HTML5 LocalStorage / SessionStorage) para finalidades estritamente funcionais: manter itens salvos no carrinho de compras durante sua navegação, lembrar preferências de endereço e manter você conectado à sua conta com segurança. Não utilizamos cookies de rastreamento invasivo de terceiros.
+                    </p>
+                </div>
+
+                <!-- CAPÍTULO 8 -->
+                <div class="lgpd-policy-section-block" data-keywords="contato encarregado dpo canal atendimento anpd prazo requisicao">
+                    <h4 class="lgpd-policy-chapter-title">
+                        <span class="badge-num">8</span>
+                        <span>Encarregado de Proteção de Dados (DPO) e Atendimento</span>
+                    </h4>
+                    <p>
+                        Para exercer quaisquer dos seus direitos estabelecidos pela LGPD ou esclarecer dúvidas sobre esta política, entre em contato diretamente com nosso Encarregado pelo tratamento de dados pessoais (DPO):
+                    </p>
+                    <div style="background: #F1F5F9; border-radius: 10px; padding: 0.85rem 1rem; margin-top: 0.5rem; font-size: 0.88rem; color: #1E293B;">
+                        📧 <strong>E-mail do DPO:</strong> <a href="mailto:dpo@donfim.com.br" style="color: #0284C7; font-weight: 700; text-decoration: none;">dpo@donfim.com.br</a><br>
+                        🏢 <strong>Empresa Mantenedora:</strong> Donfim Tech Soluções em Tecnologia (www.donfim.com.br)<br>
+                        ⏱️ <strong>Prazo de Resposta:</strong> Atendimento em conformidade com as diretrizes da Autoridade Nacional de Proteção de Dados (ANPD).
+                    </div>
+                </div>
+            </div>
+
+            <!-- FOOTER COM AÇÕES -->
+            <div class="lgpd-policy-footer">
+                <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                    <button type="button" class="btn-admin" onclick="printLgpdPolicy()" style="background: #E2E8F0; color: #1E293B; font-weight: 700; font-size: 0.82rem; padding: 0.5rem 0.9rem; border-radius: 8px;">
+                        🖨️ Imprimir / Salvar PDF
+                    </button>
+                    <button type="button" class="btn-admin" onclick="copyLgpdPolicyText()" style="background: #E2E8F0; color: #1E293B; font-weight: 700; font-size: 0.82rem; padding: 0.5rem 0.9rem; border-radius: 8px;">
+                        📋 Copiar Política
+                    </button>
+                    <button type="button" class="btn-admin" onclick="openLgpdRightsModal()" style="background: #0284C7; color: white; font-weight: 700; font-size: 0.82rem; padding: 0.5rem 0.9rem; border-radius: 8px;">
+                        ⚖️ Exercer Direitos
+                    </button>
+                </div>
+                <button type="button" class="btn-admin" onclick="closeLgpdPolicyModal()" style="background: #0F172A; color: white; font-weight: 700; font-size: 0.85rem; padding: 0.5rem 1.2rem; border-radius: 8px;">
+                    ✕ Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE EXERCÍCIO DE DIREITOS DO TITULAR (LGPD ART. 18) -->
+    <div class="modal" id="lgpdRightsModal" style="z-index: 3950; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(6px);" onclick="if(event.target === this) closeLgpdRightsModal()">
+        <div class="modal-content" style="max-width: 520px; border-radius: 18px; padding: 1.75rem;" onclick="event.stopPropagation()">
+            <div class="modal-header" style="padding-bottom: 0.75rem; margin-bottom: 0.75rem; border-bottom: 1px solid #E2E8F0;">
+                <div style="display: flex; align-items: center; gap: 0.6rem;">
+                    <div style="width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, #0EA5E9, #0284C7); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; color: white;">
+                        ⚖️
+                    </div>
+                    <div>
+                        <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #0F172A;">
+                            Direitos do Titular (LGPD)
+                        </h3>
+                        <small style="color: #64748B; font-size: 0.78rem;">
+                            Art. 18 da Lei Federal nº 13.709/2018
+                        </small>
+                    </div>
+                </div>
+                <button class="modal-close" onclick="closeLgpdRightsModal()">✕</button>
+            </div>
+
+            <p style="font-size: 0.86rem; color: #475569; line-height: 1.5; margin-bottom: 1.1rem;">
+                Utilize este canal oficial para solicitar acesso, correção, anonimização, exportação ou exclusão definitiva dos seus dados cadastrais.
+            </p>
+
+            <form id="lgpdRightsForm" onsubmit="handleLgpdRightsSubmit(event)">
+                <div class="form-group" style="margin-bottom: 0.85rem;">
+                    <label class="form-label" style="font-size: 0.82rem; font-weight: 700; color: #334155;">👤 Seu Nome Completo *</label>
+                    <input type="text" class="form-input" id="lgpdRequesterName" placeholder="Ex: Carlos Santos" required style="font-size: 0.9rem;">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0.85rem;">
+                    <label class="form-label" style="font-size: 0.82rem; font-weight: 700; color: #334155;">📧 E-mail Cadastrado *</label>
+                    <input type="email" class="form-input" id="lgpdRequesterEmail" placeholder="ex: seu.email@exemplo.com" required style="font-size: 0.9rem;">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0.85rem;">
+                    <label class="form-label" style="font-size: 0.82rem; font-weight: 700; color: #334155;">📱 Telefone / WhatsApp *</label>
+                    <input type="tel" class="form-input" id="lgpdRequesterPhone" placeholder="ex: (21) 99999-9999" required style="font-size: 0.9rem;">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0.85rem;">
+                    <label class="form-label" style="font-size: 0.82rem; font-weight: 700; color: #334155;">📋 Tipo de Solicitação (Art. 18 LGPD) *</label>
+                    <select class="form-input" id="lgpdRequestType" required style="font-size: 0.9rem; padding: 0.6rem;">
+                        <option value="consulta">🔍 Consultar meus dados e histórico cadastrados</option>
+                        <option value="correcao">✏️ Correção / Atualização de dados pessoais</option>
+                        <option value="exclusao">🗑️ Exclusão definitiva e anonimização de cadastro</option>
+                        <option value="portabilidade">📦 Exportação / Portabilidade de dados (JSON/CSV)</option>
+                        <option value="duvida">💬 Dúvida sobre o tratamento de dados pelo Don Food</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1.1rem;">
+                    <label class="form-label" style="font-size: 0.82rem; font-weight: 700; color: #334155;">📝 Detalhes adicionais (opcional)</label>
+                    <textarea class="form-input" id="lgpdRequestDetails" rows="2" placeholder="Descreva informações que possam ajudar a localizar seu cadastro com precisão..." style="font-size: 0.88rem; resize: vertical;"></textarea>
+                </div>
+
+                <div style="display: flex; gap: 0.6rem;">
+                    <button type="button" class="btn-admin" onclick="closeLgpdRightsModal()" style="flex: 1; background: #E2E8F0; color: #334155; font-weight: 600; padding: 0.75rem; border-radius: 8px;">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn-admin" style="flex: 1.5; background: linear-gradient(135deg, #0284C7, #0369A1); color: white; font-weight: 700; padding: 0.75rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);">
+                        🚀 Enviar Solicitação Oficial
+                    </button>
+                </div>
+            </form>
+
+            <div id="lgpdProtocolConfirmation" style="display: none; background: #F0FDF4; border: 1.5px solid #86EFAC; border-radius: 12px; padding: 1.25rem; text-align: center; margin-top: 1rem;">
+                <div style="font-size: 2rem; margin-bottom: 0.35rem;">✅</div>
+                <h4 style="color: #166534; font-size: 1.05rem; font-weight: 800; margin: 0 0 0.35rem 0;">Solicitação Registrada com Sucesso!</h4>
+                <p style="color: #15803D; font-size: 0.85rem; line-height: 1.4; margin: 0 0 0.75rem 0;">
+                    Seu protocolo de atendimento LGPD foi gerado:
+                </p>
+                <div id="lgpdProtocolNumber" style="font-family: monospace; font-size: 1.15rem; font-weight: 800; background: #DCFCE7; color: #166534; padding: 0.5rem; border-radius: 8px; margin-bottom: 0.85rem; border: 1px dashed #4ADE80;">
+                    PROT-LGPD-2026-0000
+                </div>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button type="button" class="btn-admin" id="btnSendLgpdViaWhatsapp" onclick="sendLgpdTicketWhatsApp()" style="flex: 1; background: #25D366; color: white; font-weight: 700; font-size: 0.85rem; padding: 0.6rem; border-radius: 8px;">
+                        💬 Confirmar via WhatsApp
+                    </button>
+                    <button type="button" class="btn-admin" onclick="closeLgpdRightsModal()" style="flex: 1; background: #166534; color: white; font-weight: 700; font-size: 0.85rem; padding: 0.6rem; border-radius: 8px;">
+                        Concluir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BANNER FLUTUANTE DE CONSENTIMENTO LGPD (AVISO INICIAL DISCRETO) -->
+    <div class="lgpd-consent-banner" id="lgpdConsentBanner" style="display: none;">
+        <div class="lgpd-consent-text">
+            <span>🛡️ <strong>Privacidade & Segurança LGPD:</strong> Este sistema utiliza armazenamento local estritamente necessário para garantir o funcionamento seguro do seu carrinho e entrega de pedidos, conforme a Lei Federal nº 13.709/2018. <a href="javascript:void(0)" onclick="openLgpdPolicyModal()">Ler Política Completa</a></span>
+        </div>
+        <div class="lgpd-consent-buttons">
+            <button type="button" class="btn-admin" onclick="acceptLgpdConsent()" style="background: #38BDF8; color: #0F172A; font-weight: 800; font-size: 0.82rem; padding: 6px 14px; border-radius: 50px; border: none; cursor: pointer; white-space: nowrap;">
+                ✓ Entendi e Aceito
+            </button>
         </div>
     </div>
 
