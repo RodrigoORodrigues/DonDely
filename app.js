@@ -1564,7 +1564,7 @@
                     if (json && json.success && Array.isArray(json.data) && json.data.length > 0) {
                         const serverComps = json.data;
                         const compMap = new Map();
-                        // Garantir demo padrão
+                        // Garantir demo padrão intacta
                         compMap.set(defaultDemoCompany.id, defaultDemoCompany);
                         // Adicionar empresas locais
                         (companies || []).forEach(c => {
@@ -1584,7 +1584,7 @@
                         companies = Array.from(compMap.values());
                         localStorage.setItem('companies', JSON.stringify(companies));
 
-                        // Reavaliar empresa ativa se necessário
+                        // Reavaliar empresa ativa se necessário a partir da URL
                         const urlParams = new URLSearchParams(window.location.search);
                         const requestedParam = urlParams.get('empresa') || urlParams.get('loja') || urlParams.get('c') || urlParams.get('slug') || urlParams.get('tenant');
                         if (requestedParam) {
@@ -1592,10 +1592,19 @@
                             const target = companies.find(c => 
                                 (c.slug && c.slug.toLowerCase() === cleanParam) || 
                                 (c.id && c.id.toLowerCase() === cleanParam) ||
-                                (c.name && sanitizeSlug(c.name).toLowerCase() === cleanParam)
+                                (c.name && sanitizeSlug(c.name).toLowerCase() === cleanParam) ||
+                                (cleanParam === 'demo' && (c.id === 'company-demo-don' || c.isDemo || c.slug === 'demo'))
                             );
                             if (target && target.id !== activeCompanyId) {
                                 activeCompanyId = target.id;
+                                localStorage.setItem('activeCompanyId', activeCompanyId);
+                            }
+                        } else {
+                            // Se não há parâmetro na URL (acesso ao link principal www.donfood.site):
+                            // SEMPRE abrir a Loja Demo do Don Food!
+                            const demoComp = companies.find(c => isCompanyDemo(c)) || defaultDemoCompany;
+                            if (activeCompanyId !== demoComp.id) {
+                                activeCompanyId = demoComp.id;
                                 localStorage.setItem('activeCompanyId', activeCompanyId);
                             }
                         }
@@ -2408,18 +2417,18 @@
 
         function isCompanyDemo(comp) {
             if (!comp) return false;
-            if (comp.isCustomized) return false;
-            if (comp.name && comp.name !== 'Don Food' && !comp.name.includes('Demonstração')) return false;
-            if (comp.slug && comp.slug !== 'demo') return false;
-            if (comp.isDemo === false) return false;
-            return Boolean(comp.isDemo && comp.slug === 'demo' && (comp.name === 'Don Food' || !comp.name));
+            if (comp.id === 'company-demo-don') return true;
+            if (comp.isDemo === true) return true;
+            if (comp.slug === 'demo') return true;
+            if (comp.name && (comp.name === 'Don Food' || comp.name.includes('Demonstração')) && (!comp.slug || comp.slug === 'demo')) return true;
+            return false;
         }
 
         function getCompanySlug(comp) {
             if (!comp) return 'demo';
+            if (isCompanyDemo(comp)) return 'demo';
             if (comp.slug && comp.slug !== 'demo') return sanitizeSlug(comp.slug);
             if (comp.name && comp.name !== 'Don Food') return generateSlug(comp.name);
-            if (isCompanyDemo(comp)) return 'demo';
             return comp.slug ? sanitizeSlug(comp.slug) : generateSlug(comp.name || comp.id);
         }
 
@@ -2428,6 +2437,9 @@
             const origin = (typeof window !== 'undefined' && window.location && window.location.origin) 
                 ? window.location.origin 
                 : 'https://donfood.site';
+            if (isCompanyDemo(comp) || slug === 'demo') {
+                return `${origin}/?empresa=demo`;
+            }
             return `${origin}/?empresa=${encodeURIComponent(slug)}`;
         }
 
@@ -2715,33 +2727,29 @@
                 companies = [defaultDemoCompany];
                 localStorage.setItem('companies', JSON.stringify(companies));
             } else {
-                // Garantir integridade dos Slugs e garantir que a empresa de demonstração exista
-                let hasDemo = companies.some(c => c.id === 'company-demo-don' || c.isDemo || c.slug === 'demo');
-                if (!hasDemo) {
+                // Garantir integridade dos Slugs e garantir que a empresa de demonstração exista intacta
+                let demoIndex = companies.findIndex(c => c.id === 'company-demo-don' || c.isDemo || c.slug === 'demo');
+                if (demoIndex === -1) {
                     companies.unshift(defaultDemoCompany);
+                } else {
+                    companies[demoIndex] = {
+                        ...defaultDemoCompany,
+                        ...companies[demoIndex],
+                        id: 'company-demo-don',
+                        slug: 'demo',
+                        isDemo: true,
+                        name: 'Don Food',
+                        logoUrl: companies[demoIndex].logoUrl || 'Logo_Don.png'
+                    };
                 }
-                // Garantir que cada empresa tenha slug, logo e produtos da demo atualizados
+                // Garantir que cada empresa tenha slug e campos válidos
                 companies.forEach(comp => {
-                     comp.slug = getCompanySlug(comp);
-                     if (comp.whatsappNumber === '5521972888819') {
-                         comp.whatsappNumber = '5521999999999';
-                     }
-                     const isPureDemo = comp.id === 'company-demo-don' && (!comp.slug || comp.slug === 'demo') && (!comp.name || comp.name === 'Don Food') && !comp.isCustomized;
-                     if (isPureDemo) {
-                         comp.name = 'Don Food';
-                         comp.slug = 'demo';
-                         comp.isDemo = true;
-                         if (!comp.logoUrl) comp.logoUrl = 'Logo_Don.png';
-                         if (!comp.products || comp.products.length === 0) {
-                             comp.products = defaultDemoCompany.products;
-                         }
-                         if (!comp.themeColors) {
-                             comp.themeColors = defaultDemoCompany.themeColors;
-                         }
-                     } else if (comp.id === 'company-demo-don' && (comp.name !== 'Don Food' || (comp.slug && comp.slug !== 'demo') || comp.isCustomized)) {
-                         comp.isDemo = false;
-                         comp.isCustomized = true;
-                     }
+                    if (comp.id !== 'company-demo-don') {
+                        comp.slug = getCompanySlug(comp);
+                    }
+                    if (comp.whatsappNumber === '5521972888819') {
+                        comp.whatsappNumber = '5521999999999';
+                    }
                 });
                 localStorage.setItem('companies', JSON.stringify(companies));
             }
@@ -2758,49 +2766,37 @@
                     (c.slug && c.slug.toLowerCase() === cleanParam) || 
                     (c.id && c.id.toLowerCase() === cleanParam) ||
                     (c.name && sanitizeSlug(c.name).toLowerCase() === cleanParam) ||
-                    (cleanParam === 'demo' && (c.isDemo || c.slug === 'demo'))
+                    (cleanParam === 'demo' && (c.id === 'company-demo-don' || c.isDemo || c.slug === 'demo'))
                 );
-                // Se a loja não foi localizada pelo slug, vincular à empresa ativa existente
-                if (!targetCompany && companies.length > 0) {
-                    const savedActiveId = localStorage.getItem('activeCompanyId');
-                    const currentComp = companies.find(c => c.id === savedActiveId) || companies[0];
-                    if (currentComp) {
-                        currentComp.slug = cleanParam;
-                        targetCompany = currentComp;
-                    }
-                }
             }
 
-            // Fallback por pathname se for rota direta como /demo (excluindo /login, /dev e assets)
+            // Fallback por pathname se for rota direta como /burger-king (excluindo /login, /dev e assets)
             if (!targetCompany && window.location.pathname && window.location.pathname !== '/' && window.location.pathname !== '/index.html') {
                 const pathSlug = window.location.pathname.replace(/^\/+/, '').split('/')[0].toLowerCase();
                 if (pathSlug && !pathSlug.endsWith('.js') && !pathSlug.endsWith('.css') && !pathSlug.endsWith('.png') && !pathSlug.endsWith('.jpg') && !pathSlug.endsWith('.svg') && !pathSlug.endsWith('.json') && !pathSlug.endsWith('.sql') && pathSlug !== 'api' && pathSlug !== 'login' && pathSlug !== 'dev') {
                     targetCompany = companies.find(c => 
                         (c.slug && c.slug.toLowerCase() === pathSlug) || 
-                        (c.id && c.id.toLowerCase() === pathSlug)
+                        (c.id && c.id.toLowerCase() === pathSlug) ||
+                        (pathSlug === 'demo' && (c.id === 'company-demo-don' || c.isDemo || c.slug === 'demo'))
                     );
                 }
             }
 
             if (targetCompany) {
+                // Link direto de uma empresa específica (ex: www.donfood.site/?empresa=sua-empresa)
                 activeCompanyId = targetCompany.id;
                 localStorage.setItem('activeCompanyId', activeCompanyId);
             } else {
-                // Se acessou link principal sem parâmetros:
-                const savedActiveId = localStorage.getItem('activeCompanyId');
-                if (savedActiveId && savedActiveId !== 'company-fb-default' && companies.some(c => c.id === savedActiveId)) {
-                    activeCompanyId = savedActiveId;
-                } else {
-                    // Padrão de apresentação no link principal: Loja Demonstração
-                    const demoComp = companies.find(c => isCompanyDemo(c));
-                    activeCompanyId = demoComp ? demoComp.id : 'company-demo-don';
-                    localStorage.setItem('activeCompanyId', activeCompanyId);
-                }
+                // Acesso ao link principal do portal (ex: www.donfood.site ou /):
+                // SEMPRE abrir a Loja Demo padrão Don Food!
+                const demoComp = companies.find(c => c.id === 'company-demo-don' || isCompanyDemo(c)) || defaultDemoCompany;
+                activeCompanyId = demoComp.id;
+                localStorage.setItem('activeCompanyId', activeCompanyId);
             }
 
             let activeComp = companies.find(c => c.id === activeCompanyId);
             if (!activeComp) {
-                activeComp = companies[0];
+                activeComp = companies.find(c => c.id === 'company-demo-don') || defaultDemoCompany;
                 activeCompanyId = activeComp.id;
             }
 
@@ -2815,14 +2811,13 @@
 
             if (isLoginRoute) {
                 currentAppView = 'login';
-            } else if (requestedParam) {
-                // Ao acessar o link direto da loja (?empresa=...), ABRIR SEMPRE O CARDÁPIO DA EMPRESA!
+            } else if (requestedParam && requestedParam.toLowerCase() !== 'demo') {
+                // Ao acessar link direto de uma empresa personalizada (?empresa=...), ABRIR SEMPRE O CARDÁPIO DA EMPRESA!
                 currentAppView = 'store';
             } else if (!isCurrentDemo) {
-                // Loja cadastrada/personalizada acessada: abrir diretamente o cardápio
                 currentAppView = 'store';
             } else {
-                if (hashLower === '#loja-demo' || hashLower === '#cardapio' || hashLower === '#inicio') {
+                if (hashLower === '#loja-demo' || hashLower === '#cardapio' || hashLower === '#inicio' || viewParam === 'store') {
                     currentAppView = 'store';
                 } else {
                     currentAppView = 'landing';
@@ -2954,8 +2949,19 @@
         }
 
         function switchActiveCompany(companyId) {
+            const target = (companies || []).find(c => c.id === companyId);
             activeCompanyId = companyId;
             localStorage.setItem('activeCompanyId', activeCompanyId);
+            
+            // Atualizar a URL no navegador para refletir a empresa ativa
+            try {
+                if (target && !isCompanyDemo(target) && target.slug) {
+                    window.history.pushState({ view: 'store' }, '', `/?empresa=${encodeURIComponent(target.slug)}`);
+                } else {
+                    window.history.pushState({ view: 'store' }, '', '/?empresa=demo');
+                }
+            } catch (e) {}
+
             loadData();
             renderAll();
             fetchOrdersFromServer(true);
@@ -4854,9 +4860,9 @@
             companies.push(newCompany);
             saveData();
             await syncCompaniesToServer();
-            switchActiveCompany(newCompanyId);
             renderDevCompanyList();
-            alert(`🎉 Empresa "${name}" cadastrada com sucesso!\n🌐 Link Oficial: https://www.donfood.com/?empresa=${slug}\n📧 E-mail de Login: ${email}\n🔑 Senha: ${password}`);
+            const officialUrl = getCompanyOfficialUrl(newCompany);
+            alert(`🎉 Empresa "${name}" cadastrada com sucesso!\n\n🌐 Link Oficial Exclusivo:\n${officialUrl}\n\n📧 E-mail de Login: ${email}\n🔑 Senha: ${password}`);
             switchDevTab('companies');
         }
 
