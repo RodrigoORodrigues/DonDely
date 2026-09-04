@@ -1685,7 +1685,8 @@
                     if (!c) return false;
                     const cSlug = sanitizeSlug(c.slug || '').toLowerCase();
                     const cNameSlug = sanitizeSlug(c.name || '').toLowerCase();
-                    return cSlug.includes(clean) || clean.includes(cSlug) || cNameSlug.includes(clean);
+                    return (cSlug && (cSlug.includes(clean) || (cSlug.length >= 3 && clean.includes(cSlug)))) ||
+                           (cNameSlug && (cNameSlug.includes(clean) || (cNameSlug.length >= 3 && clean.includes(cNameSlug))));
                 });
                 if (found) return found;
             }

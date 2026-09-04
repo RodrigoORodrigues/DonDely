@@ -164,6 +164,23 @@ function sanitizeString(str, maxLength = 255) {
         .replace(/[<>]/g, ''); // Evita tags HTML maliciosas
 }
 
+function sanitizeSlug(text) {
+    if (!text) return '';
+    return String(text)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .substring(0, 50);
+}
+
+function generateSlug(text) {
+    const clean = sanitizeSlug(text);
+    return clean || ('loja-' + Date.now().toString(36));
+}
+
 function sanitizeNumber(val, defaultVal = 0, min = 0, max = 999999) {
     const num = Number(val);
     if (isNaN(num)) return defaultVal;
@@ -985,7 +1002,8 @@ app.get(['/api/companies/lookup', '/api/company/lookup', '/api/company/:identifi
                 if (!c) return false;
                 const cSlug = sanitizeSlug(c.slug || '').toLowerCase();
                 const cNameSlug = sanitizeSlug(c.name || '').toLowerCase();
-                return cSlug.includes(cleanQuery) || cleanQuery.includes(cSlug) || cNameSlug.includes(cleanQuery);
+                return (cSlug && (cSlug.includes(cleanQuery) || (cSlug.length >= 3 && cleanQuery.includes(cSlug)))) ||
+                       (cNameSlug && (cNameSlug.includes(cleanQuery) || (cNameSlug.length >= 3 && cleanQuery.includes(cNameSlug))));
             });
         }
 
@@ -995,7 +1013,8 @@ app.get(['/api/companies/lookup', '/api/company/lookup', '/api/company/:identifi
 
         res.status(404).json({ success: false, error: 'Empresa não encontrada.' });
     } catch (err) {
-        res.status(500).json({ success: false, error: 'Erro ao buscar dados da empresa.' });
+        console.error('[LOOKUP ERROR]:', err);
+        res.status(500).json({ success: false, error: 'Erro ao buscar dados da empresa: ' + err.message });
     }
 });
 
