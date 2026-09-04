@@ -1654,7 +1654,7 @@
             const clean = sanitizeSlug(identifier).toLowerCase();
             const rawLower = String(identifier).toLowerCase().trim();
 
-            if (clean === 'demo' || rawLower === 'demo') {
+            if (clean === 'demo' || rawLower === 'demo' || clean === 'donfood' || rawLower === 'don food') {
                 return compList.find(c => c && (c.id === 'company-demo-don' || isCompanyDemo(c) || c.slug === 'demo')) || null;
             }
 
@@ -1666,11 +1666,31 @@
             found = compList.find(c => c && c.id && (c.id.toLowerCase() === rawLower || c.id.toLowerCase() === clean));
             if (found) return found;
 
-            // 3. Por Nome da empresa (slug do nome ou nome direto)
+            // 3. Por aliases ou presetType (ex: hamburgueria, pizzaria, marmitas-fitnes, sorveteria, etc.)
+            found = compList.find(c => {
+                if (!c) return false;
+                const cPreset = (c.presetType || '').toLowerCase().trim();
+                const aliases = Array.isArray(c.aliases) ? c.aliases.map(a => sanitizeSlug(a).toLowerCase()) : [];
+                return cPreset === clean || cPreset === rawLower || aliases.includes(clean) || aliases.includes(rawLower);
+            });
+            if (found) return found;
+
+            // 4. Por Nome da empresa (slug do nome ou nome direto)
             found = compList.find(c => c && c.name && (sanitizeSlug(c.name).toLowerCase() === clean || c.name.toLowerCase().trim() === rawLower));
             if (found) return found;
 
-            // 4. Por e-mail da empresa
+            // 5. Por aproximação no nome ou slug se o termo tiver 3 ou mais caracteres
+            if (clean.length >= 3) {
+                found = compList.find(c => {
+                    if (!c) return false;
+                    const cSlug = sanitizeSlug(c.slug || '').toLowerCase();
+                    const cNameSlug = sanitizeSlug(c.name || '').toLowerCase();
+                    return cSlug.includes(clean) || clean.includes(cSlug) || cNameSlug.includes(clean);
+                });
+                if (found) return found;
+            }
+
+            // 6. Por e-mail da empresa
             found = compList.find(c => c && c.email && c.email.toLowerCase().trim() === rawLower);
             if (found) return found;
 
@@ -1793,14 +1813,6 @@
                         localStorage.setItem('activeCompanyId', activeCompanyId);
                         currentAppView = 'store';
                     }
-                } else {
-                    // Se não há parâmetro na URL (acesso à home www.donfood.site):
-                    // Abrir Loja Demo padrão Don Food
-                    const demoComp = companies.find(c => c.id === 'company-demo-don' || isCompanyDemo(c)) || defaultDemoCompany;
-                    if (activeCompanyId !== demoComp.id && !AuthManager.isCompanyOwner(activeCompanyId)) {
-                        activeCompanyId = demoComp.id;
-                        localStorage.setItem('activeCompanyId', activeCompanyId);
-                    }
                 }
 
                 loadData();
@@ -1812,7 +1824,15 @@
         }
 
         async function init() {
-            loadData();
+            const requestedIdent = extractRequestedCompanyIdentifier();
+            
+            // Se houver parâmetro de loja na URL (ex: ?empresa=marmitas-fitnes), buscar do servidor primeiro para renderizar a loja correta de imediato
+            if (requestedIdent) {
+                await fetchCompaniesFromServer();
+            } else {
+                loadData();
+            }
+
             loadPrinterSettings();
             if (sessionStorage.getItem('isAdminLoggedIn') === 'true') {
                 isAdminLoggedIn = true;
@@ -1822,8 +1842,10 @@
             renderPresetCatalog();
             attachEventListeners();
             
-            // Buscar empresas salvas no servidor central (garante que links compartilhados abram a loja certa em qualquer aparelho)
-            await fetchCompaniesFromServer();
+            if (!requestedIdent) {
+                // Sincronização em background se não havia loja específica na URL
+                await fetchCompaniesFromServer();
+            }
             
             // Buscar pedidos mais recentes no servidor central
             fetchOrdersFromServer(true);
@@ -2810,12 +2832,13 @@
         const defaultDemoCompany = {
             id: 'company-demo-don',
             slug: 'demo',
+            aliases: ['acai', 'donfood', 'don-food', 'acaiteria'],
             isDemo: true,
             name: 'Don Food',
             email: 'demo@donfood.com',
             subtitle: 'Cardápio Digital & Delivery Oficial! Faça seu pedido teste e monte do seu jeito.',
             whatsappNumber: '5521999999999',
-            instagram: '',
+            instagram: '@donfood.com',
             cnpj: '00.000.000/0001-99',
             address: 'Av. Brasil, 500 - Loja Modelo',
             logoUrl: 'Logo_Don.png',
@@ -2843,7 +2866,8 @@
                     price: 28.90,
                     image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&fit=crop',
                     available: true,
-                    isAcai: false
+                    isAcai: false,
+                    isCustomizable: true
                 },
                 {
                     id: 201,
@@ -2853,7 +2877,8 @@
                     price: 45.00,
                     image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500&fit=crop',
                     available: true,
-                    isAcai: false
+                    isAcai: false,
+                    isCustomizable: true
                 },
                 {
                     id: 1,
@@ -2863,7 +2888,8 @@
                     price: 22.90,
                     image: 'acai_copo.svg',
                     available: true,
-                    isAcai: true
+                    isAcai: true,
+                    isCustomizable: true
                 },
                 {
                     id: 301,
@@ -2873,7 +2899,8 @@
                     price: 24.90,
                     image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&fit=crop',
                     available: true,
-                    isAcai: false
+                    isAcai: false,
+                    isCustomizable: false
                 },
                 {
                     id: 401,
@@ -2883,7 +2910,8 @@
                     price: 14.50,
                     image: 'https://images.unsplash.com/photo-1587314168485-3236d6710814?w=500&fit=crop',
                     available: true,
-                    isAcai: false
+                    isAcai: false,
+                    isCustomizable: false
                 },
                 {
                     id: 104,
@@ -2893,7 +2921,8 @@
                     price: 6.50,
                     image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=500&fit=crop',
                     available: true,
-                    isAcai: false
+                    isAcai: false,
+                    isCustomizable: false
                 }
             ],
             schedule: defaultSettings.schedule,
@@ -2905,6 +2934,357 @@
             ]
         };
 
+        const DEFAULT_INITIAL_COMPANIES = [
+            defaultDemoCompany,
+            {
+                id: "company-burger-don",
+                slug: "hamburgueria",
+                aliases: ["burger", "burguer", "don-burger", "donburger", "hamburguer", "smash"],
+                isDemo: false,
+                name: "Don Burger Delivery",
+                email: "contato@donburger.com",
+                subtitle: "Hambúrgueres artesanais na brasa, smash burgers e batata frita sequinha!",
+                whatsappNumber: "5521999999999",
+                instagram: "@donburger.delivery",
+                cnpj: "12.345.678/0001-90",
+                address: "Rua dos Burgers, 120 - Centro",
+                logoUrl: "",
+                adminPassword: "admin",
+                deliveryFee: 6.00,
+                deliveryTime: "30 - 45 min",
+                presetType: "burguer",
+                themeColors: {
+                    name: "🔥 Hamburgueria Fire Red",
+                    primary: "#DC2626",
+                    primaryDark: "#991B1B",
+                    secondary: "#EA580C",
+                    bgAccent: "#FFF7ED"
+                },
+                coupons: [
+                    { code: "BURGER10", discount: 10, type: "percent", minOrder: 35, active: true }
+                ],
+                deliveryNeighborhoods: [
+                    { id: "b1", name: "Centro", fee: 4.00, time: "20 - 35 min", zone: "Zona 1" },
+                    { id: "b2", name: "Bairros Próximos", fee: 6.00, time: "30 - 45 min", zone: "Zona 2" }
+                ],
+                products: [
+                    {
+                        id: 101,
+                        name: "Combo X-Burguer Artesanal Duplo",
+                        tag: "🔥 O MAIS PEDIDO!",
+                        description: "Hambúrguer duplo 160g de blend artesanal, cheddar cremoso, bacon crocante + Batata Frita + Refrigerante",
+                        price: 32.90,
+                        image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&fit=crop",
+                        available: true,
+                        isCustomizable: true
+                    },
+                    {
+                        id: 102,
+                        name: "Smash Burguer Bacon Especial",
+                        tag: "⚡ NOVIDADE",
+                        description: "Duas carnes smash 80g, queijo cheddar fatiado, bacon crocante e maionese artesanal defumada",
+                        price: 24.90,
+                        image: "https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=500&fit=crop",
+                        available: true,
+                        isCustomizable: true
+                    },
+                    {
+                        id: 103,
+                        name: "Porção de Batata Frita Crocante (300g)",
+                        tag: "🍟 ACOMPANHAMENTO",
+                        description: "Batata frita bem crocante servida com molho de queijo cheddar e bacon em cubinhos",
+                        price: 16.00,
+                        image: "https://images.unsplash.com/photo-1576107232684-1279f3908594?w=500&fit=crop",
+                        available: true,
+                        isCustomizable: false
+                    },
+                    {
+                        id: 104,
+                        name: "Refrigerante Lata 350ml",
+                        tag: "🥤 BEBIDA",
+                        description: "Coca-Cola, Guaraná Antarctica ou Sprite geladinhos",
+                        price: 6.00,
+                        image: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=500&fit=crop",
+                        available: true,
+                        isCustomizable: false
+                    }
+                ]
+            },
+            {
+                id: "company-pizza-don",
+                slug: "pizzaria",
+                aliases: ["pizza", "don-pizza", "donpizza", "pizzas"],
+                isDemo: false,
+                name: "Don Pizza Express",
+                email: "contato@donpizza.com",
+                subtitle: "Pizzas artesanais de fermentação natural, forno a lenha e bordas recheadas!",
+                whatsappNumber: "5521999999999",
+                instagram: "@donpizza.express",
+                cnpj: "23.456.789/0001-01",
+                address: "Av. das Pizzas, 400 - Forno Nobre",
+                logoUrl: "",
+                adminPassword: "admin",
+                deliveryFee: 7.00,
+                deliveryTime: "35 - 50 min",
+                presetType: "pizzaria",
+                themeColors: {
+                    name: "🟢 Pizzaria Basil Emerald",
+                    primary: "#059669",
+                    primaryDark: "#064E3B",
+                    secondary: "#10B981",
+                    bgAccent: "#ECFDF5"
+                },
+                coupons: [
+                    { code: "PIZZA10", discount: 10, type: "percent", minOrder: 50, active: true }
+                ],
+                deliveryNeighborhoods: [
+                    { id: "b1", name: "Região Central", fee: 5.00, time: "30 - 45 min", zone: "Zona 1" },
+                    { id: "b2", name: "Bairros Adjacentes", fee: 7.00, time: "40 - 55 min", zone: "Zona 2" }
+                ],
+                products: [
+                    {
+                        id: 201,
+                        name: "Pizza Grande Calabresa Especial",
+                        tag: "🔥 CAMPEÃO DE VENDAS",
+                        description: "Massa artesanal, molho de tomate fresco, muita calabresa fatiada, cebola roxa e azeitonas pretas",
+                        price: 45.00,
+                        image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500&fit=crop",
+                        available: true,
+                        isCustomizable: true
+                    },
+                    {
+                        id: 202,
+                        name: "Pizza Quatro Queijos Cremosa",
+                        tag: "🧀 SUPREMA",
+                        description: "Mussarela, catupiry original, provolone e gorgonzola com orégano fresco",
+                        price: 48.00,
+                        image: "https://images.unsplash.com/photo-1573821663912-569905455b1c?w=500&fit=crop",
+                        available: true,
+                        isCustomizable: true
+                    },
+                    {
+                        id: 203,
+                        name: "Pizza Brotinho Doce de Leite com Morango",
+                        tag: "🍓 SOBREMESA",
+                        description: "Massa fininha recheada com doce de leite cremoso e fatias de morango",
+                        price: 28.00,
+                        image: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=500&fit=crop",
+                        available: true,
+                        isCustomizable: false
+                    },
+                    {
+                        id: 204,
+                        name: "Guaraná Antarctica 2 Litros",
+                        tag: "🥤 BEBIDA",
+                        description: "Refrigerante Guaraná 2L trincando de gelado",
+                        price: 12.00,
+                        image: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=500&fit=crop",
+                        available: true,
+                        isCustomizable: false
+                    }
+                ]
+            },
+            {
+                id: "company-marmita-don",
+                slug: "marmitas-fitnes",
+                aliases: ["marmitaria", "marmitas", "marmitas-fitness", "marmita", "fit", "fitness", "saudavel"],
+                isDemo: false,
+                name: "Don Marmitas Fit & Saudáveis",
+                email: "contato@donmarmitas.com",
+                subtitle: "Marmitas caseiras balanceadas, frescas e saborosas todos os dias!",
+                whatsappNumber: "5521999999999",
+                instagram: "@donmarmitas.fit",
+                cnpj: "34.567.890/0001-12",
+                address: "Rua da Saúde, 330 - Bairro Verde",
+                logoUrl: "",
+                adminPassword: "admin",
+                deliveryFee: 5.00,
+                deliveryTime: "25 - 40 min",
+                presetType: "marmitaria",
+                themeColors: {
+                    name: "🍱 Marmitaria Caseira & Sabor",
+                    primary: "#D97706",
+                    primaryDark: "#92400E",
+                    secondary: "#F59E0B",
+                    bgAccent: "#FFFBEB"
+                },
+                coupons: [
+                    { code: "FIT10", discount: 10, type: "percent", minOrder: 40, active: true }
+                ],
+                deliveryNeighborhoods: [
+                    { id: "b1", name: "Centro e Arredores", fee: 4.00, time: "25 - 40 min", zone: "Zona 1" }
+                ],
+                products: [
+                    {
+                        id: 301,
+                        name: "Marmita Executiva Bife Acebolado",
+                        tag: "⭐ TRADICIONAL",
+                        description: "Bife acebolado macio, arroz branco soltinho, feijão caseiro, farofa crocante e salada de alface",
+                        price: 22.00,
+                        image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&fit=crop",
+                        available: true,
+                        isCustomizable: false
+                    },
+                    {
+                        id: 302,
+                        name: "Marmita Fit Frango com Batata Doce",
+                        tag: "💪 FIT & LEVE",
+                        description: "Filé de frango grelhado em cubos, batata doce assada no alecrim e mix de legumes no vapor",
+                        price: 24.00,
+                        image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&fit=crop",
+                        available: true,
+                        isCustomizable: false
+                    },
+                    {
+                        id: 303,
+                        name: "Marmita Feijoada Completa",
+                        tag: "🔥 SEXTA & SÁBADO",
+                        description: "Feijoada saborosa com carne seca, costelinha e calabresa + couve refogada, farofa e laranjinha",
+                        price: 26.00,
+                        image: "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?w=500&fit=crop",
+                        available: true,
+                        isCustomizable: false
+                    },
+                    {
+                        id: 304,
+                        name: "Suco Natural de Laranja 500ml",
+                        tag: "🍊 100% NATURAL",
+                        description: "Suco 100% natural feito na hora sem adição de conservantes ou açúcar",
+                        price: 8.00,
+                        image: "https://images.unsplash.com/photo-1613478223719-2ab802602423?w=500&fit=crop",
+                        available: true,
+                        isCustomizable: false
+                    }
+                ]
+            },
+            {
+                id: "company-sorvete-don",
+                slug: "sorveteria",
+                aliases: ["sorvete", "gelato", "gelateria", "don-gelato", "paletas"],
+                isDemo: false,
+                name: "Don Gelato Artesanal",
+                email: "contato@dongelato.com",
+                subtitle: "Gelatos italianos puros, taças gourmet e sorvetes refrescantes!",
+                whatsappNumber: "5521999999999",
+                instagram: "@dongelato.artesanal",
+                cnpj: "45.678.901/0001-23",
+                address: "Praça do Sol, 88 - Vila Doce",
+                logoUrl: "",
+                adminPassword: "admin",
+                deliveryFee: 5.00,
+                deliveryTime: "20 - 35 min",
+                presetType: "sorveteria",
+                themeColors: {
+                    name: "🔵 Sorveteria Azure Sky",
+                    primary: "#0284C7",
+                    primaryDark: "#0369A1",
+                    secondary: "#38BDF8",
+                    bgAccent: "#F0F9FF"
+                },
+                coupons: [
+                    { code: "GELATO10", discount: 10, type: "percent", minOrder: 30, active: true }
+                ],
+                deliveryNeighborhoods: [
+                    { id: "b1", name: "Bairros da Cidade", fee: 5.00, time: "20 - 35 min", zone: "Zona 1" }
+                ],
+                products: [
+                    {
+                        id: 501,
+                        name: "Taça Sundae de Morango e Chantilly",
+                        tag: "🍨 ESPECIAL",
+                        description: "Sorvete cremoso com bastante calda de morango, chantilly e castanhas",
+                        price: 18.90,
+                        image: "https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=500&fit=crop",
+                        available: true,
+                        isCustomizable: true
+                    },
+                    {
+                        id: 502,
+                        name: "Copão de Sorvete Artesanal 2 Bolas",
+                        tag: "🍦 REFRESCANTE",
+                        description: "Escolha 2 sabores cremosos com direito a 2 coberturas à sua escolha",
+                        price: 14.00,
+                        image: "https://images.unsplash.com/photo-1497034825429-c343d7c6a68f?w=500&fit=crop",
+                        available: true,
+                        isCustomizable: true
+                    },
+                    {
+                        id: 503,
+                        name: "Pote de Sorvete 1 Litro (Sabores Variados)",
+                        tag: "📦 FAMÍLIA",
+                        description: "Pote de 1L com sorvete ultra cremoso para saborear em casa",
+                        price: 28.00,
+                        image: "https://images.unsplash.com/photo-1570197788417-0e82375c9371?w=500&fit=crop",
+                        available: true,
+                        isCustomizable: false
+                    }
+                ]
+            },
+            {
+                id: "company-doces-don",
+                slug: "confeitaria",
+                aliases: ["doceria", "doces", "bolos", "don-doces", "confeitaria-sweet"],
+                isDemo: false,
+                name: "Don Sweet Doceria & Bolos",
+                email: "contato@dondoces.com",
+                subtitle: "Bolos artesanais, tortas holandesas e doces finos para alegrar o seu dia!",
+                whatsappNumber: "5521999999999",
+                instagram: "@dondoces.bolos",
+                cnpj: "56.789.012/0001-34",
+                address: "Alameda dos Doces, 55 - Centro Gourmet",
+                logoUrl: "",
+                adminPassword: "admin",
+                deliveryFee: 6.00,
+                deliveryTime: "30 - 45 min",
+                presetType: "confeitaria",
+                themeColors: {
+                    name: "🌸 Confeitaria Sweet Berry",
+                    primary: "#DB2777",
+                    primaryDark: "#9D174D",
+                    secondary: "#F472B6",
+                    bgAccent: "#FDF2F8"
+                },
+                coupons: [
+                    { code: "DOCE10", discount: 10, type: "percent", minOrder: 30, active: true }
+                ],
+                deliveryNeighborhoods: [
+                    { id: "b1", name: "Todos os Bairros", fee: 6.00, time: "30 - 45 min", zone: "Zona 1" }
+                ],
+                products: [
+                    {
+                        id: 401,
+                        name: "Torta Holandesa de Chocolate (Fatia)",
+                        tag: "🍰 SUPREMO",
+                        description: "Deliciosa fatia de torta holandesa com creme suave de baunilha e cobertura de ganache meio amargo",
+                        price: 14.90,
+                        image: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=500&fit=crop",
+                        available: true,
+                        isCustomizable: false
+                    },
+                    {
+                        id: 402,
+                        name: "Bolo de Pote Ninho com Nutella",
+                        tag: "🍫 DELÍCIA",
+                        description: "Massa fofinha de pão de ló intercalada com creme ninho e recheio de Nutella pura",
+                        price: 12.00,
+                        image: "https://images.unsplash.com/photo-1587314168485-3236d6710814?w=500&fit=crop",
+                        available: true,
+                        isCustomizable: false
+                    },
+                    {
+                        id: 403,
+                        name: "Caixa de Brigadeiros Gourmet (6 un)",
+                        tag: "🍬 DOCE FINO",
+                        description: "Brigadeiros belga artesanais enrolados com confeitos crocantes",
+                        price: 18.00,
+                        image: "https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?w=500&fit=crop",
+                        available: true,
+                        isCustomizable: false
+                    }
+                ]
+            }
+        ];
+
         function loadData() {
             // 1. Carregar Coleção de Empresas
             const savedCompanies = localStorage.getItem('companies');
@@ -2914,41 +3294,34 @@
                 } catch(e) { companies = []; }
             }
 
-            // Limpar empresas legadas de FB se existirem em localStorage
+            // Limpar empresas legadas se existirem
             if (Array.isArray(companies)) {
                 companies = companies.filter(c => c && c.id !== 'company-fb-default' && c.slug !== 'acai-fb');
             }
 
-            // Se nenhuma empresa cadastrada, inicializar exclusivamente com a Empresa Demo (Don Food)
+            // Se nenhuma empresa cadastrada ou empresas incompletas, mesclar com as empresas padrão
             if (!companies || companies.length === 0) {
-                companies = [defaultDemoCompany];
+                companies = JSON.parse(JSON.stringify(DEFAULT_INITIAL_COMPANIES));
                 localStorage.setItem('companies', JSON.stringify(companies));
             } else {
-                // Garantir que a empresa de demonstração exista isolada e protegida
-                let demoIndex = companies.findIndex(c => c.id === 'company-demo-don');
-                if (demoIndex === -1) {
-                    companies.unshift(defaultDemoCompany);
-                } else {
-                    companies[demoIndex] = {
-                        ...defaultDemoCompany,
-                        ...companies[demoIndex],
-                        id: 'company-demo-don',
-                        slug: 'demo',
-                        isDemo: true,
-                        name: 'Don Food',
-                        logoUrl: companies[demoIndex].logoUrl || 'Logo_Don.png'
-                    };
-                }
-                // Garantir que cada empresa personalizada mantenha seu slug e dados exclusivos
-                companies.forEach(comp => {
-                    if (comp.id !== 'company-demo-don') {
-                        comp.isDemo = false;
-                        comp.slug = comp.slug ? sanitizeSlug(comp.slug) : generateSlug(comp.name || comp.id);
-                    }
-                    if (comp.whatsappNumber === '5521972888819') {
-                        comp.whatsappNumber = '5521999999999';
+                // Garantir que todas as empresas modelo (DEFAULT_INITIAL_COMPANIES) existam na coleção
+                const compMap = new Map();
+                DEFAULT_INITIAL_COMPANIES.forEach(dc => {
+                    compMap.set(dc.id, JSON.parse(JSON.stringify(dc)));
+                });
+                // Sobrescrever com personalizações salvas
+                companies.forEach(c => {
+                    if (c && c.id) {
+                        const base = compMap.get(c.id) || {};
+                        compMap.set(c.id, {
+                            ...base,
+                            ...c,
+                            isDemo: c.id === 'company-demo-don',
+                            slug: c.slug ? sanitizeSlug(c.slug) : (base.slug || generateSlug(c.name || c.id))
+                        });
                     }
                 });
+                companies = Array.from(compMap.values());
                 localStorage.setItem('companies', JSON.stringify(companies));
             }
 
@@ -2965,21 +3338,23 @@
                 activeCompanyId = targetCompany.id;
                 localStorage.setItem('activeCompanyId', activeCompanyId);
             } else if (requestedParam && requestedParam.toLowerCase() !== 'demo') {
-                // Se o link especificou uma empresa que ainda não está no localStorage, preservar ou aguardar sync
-                const prevActive = companies.find(c => c.id === activeCompanyId);
-                if (!prevActive || isCompanyDemo(prevActive)) {
-                    const firstCustom = companies.find(c => c.id !== 'company-demo-don');
-                    if (firstCustom) {
-                        activeCompanyId = firstCustom.id;
-                        localStorage.setItem('activeCompanyId', activeCompanyId);
-                    }
+                // Se o link especificou uma empresa que ainda não foi encontrada, tenta buscar na lista
+                const foundAgain = findCompanyInList(companies, requestedParam);
+                if (foundAgain) {
+                    activeCompanyId = foundAgain.id;
+                    localStorage.setItem('activeCompanyId', activeCompanyId);
                 }
             } else {
-                // Acesso ao link principal do portal (ex: www.donfood.site ou /):
-                // SEMPRE abrir a Loja Demo padrão Don Food!
-                const demoComp = companies.find(c => c.id === 'company-demo-don' || isCompanyDemo(c)) || defaultDemoCompany;
-                activeCompanyId = demoComp.id;
-                localStorage.setItem('activeCompanyId', activeCompanyId);
+                // Acesso sem parâmetro na URL: verificar se há empresa ativa salva anteriormente
+                const savedActiveId = localStorage.getItem('activeCompanyId');
+                const existingComp = savedActiveId ? companies.find(c => c && c.id === savedActiveId) : null;
+                if (existingComp) {
+                    activeCompanyId = existingComp.id;
+                } else {
+                    const demoComp = companies.find(c => c.id === 'company-demo-don' || isCompanyDemo(c)) || defaultDemoCompany;
+                    activeCompanyId = demoComp.id;
+                    localStorage.setItem('activeCompanyId', activeCompanyId);
+                }
             }
 
             let activeComp = companies.find(c => c.id === activeCompanyId);
@@ -3139,17 +3514,26 @@
             debouncedSyncCompaniesToServer();
         }
 
-        function switchActiveCompany(companyId) {
-            const target = (companies || []).find(c => c.id === companyId);
-            activeCompanyId = companyId;
+        function switchActiveCompany(identifier) {
+            if (!identifier) return;
+            let target = (companies || []).find(c => c && (c.id === identifier || c.slug === identifier));
+            if (!target) {
+                target = findCompanyInList(companies, identifier);
+            }
+            if (!target) {
+                target = companies.find(c => c.id === 'company-demo-don') || defaultDemoCompany;
+            }
+
+            activeCompanyId = target.id;
             localStorage.setItem('activeCompanyId', activeCompanyId);
+            currentAppView = 'store';
             
             // Atualizar a URL no navegador para refletir a empresa ativa
             try {
                 if (target && !isCompanyDemo(target) && target.slug) {
-                    window.history.pushState({ view: 'store' }, '', `/?empresa=${encodeURIComponent(target.slug)}`);
+                    window.history.pushState({ view: 'store', company: target.slug }, '', `/?empresa=${encodeURIComponent(target.slug)}`);
                 } else {
-                    window.history.pushState({ view: 'store' }, '', '/?empresa=demo');
+                    window.history.pushState({ view: 'store', company: 'demo' }, '', '/?empresa=demo');
                 }
             } catch (e) {}
 
@@ -3157,8 +3541,14 @@
             renderAll();
             fetchOrdersFromServer(true);
             connectOrdersRealtimeStream();
-            showNotification(`Empresa alternada para: ${settings.restaurantName} 🏪`, 'success');
+            showNotification(`Loja aberta: ${settings.restaurantName} 🏪`, 'success');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
+
+        function openStoreBySlug(slug) {
+            switchActiveCompany(slug);
+        }
+        window.openStoreBySlug = openStoreBySlug;
 
         function switchActiveCompanyFromSelect(companyId) {
             switchActiveCompany(companyId);
@@ -12076,6 +12466,7 @@
         window.handleDevCreateCompany = handleDevCreateCompany;
         window.switchActiveCompany = switchActiveCompany;
         window.switchActiveCompanyFromSelect = switchActiveCompanyFromSelect;
+        window.openStoreBySlug = openStoreBySlug;
         window.handleDevLogoClick = handleDevLogoClick;
         window.syncCurrentCompanyToSupabaseUI = syncCurrentCompanyToSupabaseUI;
         window.downloadSupabaseSQL = downloadSupabaseSQL;

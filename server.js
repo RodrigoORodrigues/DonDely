@@ -938,19 +938,56 @@ app.get(['/api/companies/lookup', '/api/company/lookup', '/api/company/:identifi
         const rawLower = String(query).toLowerCase().trim();
         const companies = readJsonFile(COMPANIES_FILE, []);
 
-        if (!cleanQuery || cleanQuery === 'demo' || rawLower === 'demo') {
+        if (!cleanQuery || cleanQuery === 'demo' || rawLower === 'demo' || cleanQuery === 'donfood' || rawLower === 'don food') {
             const demo = companies.find(c => c && (c.id === 'company-demo-don' || c.slug === 'demo'));
             return res.json({ success: true, data: demo ? trimCompanyOutput(demo) : null });
         }
 
-        const found = companies.find(c => {
+        // 1. Busca por slug exato ou slug sanitizado
+        let found = companies.find(c => {
             if (!c) return false;
             const cSlug = sanitizeSlug(c.slug || '').toLowerCase();
-            const cId = (c.id || '').toLowerCase();
-            const cNameSlug = sanitizeSlug(c.name || '').toLowerCase();
-            const cNameRaw = (c.name || '').toLowerCase().trim();
-            return cSlug === cleanQuery || cId === rawLower || cNameSlug === cleanQuery || cNameRaw === rawLower;
+            return cSlug === cleanQuery || cSlug === rawLower;
         });
+
+        // 2. Busca por ID
+        if (!found) {
+            found = companies.find(c => {
+                if (!c) return false;
+                const cId = (c.id || '').toLowerCase();
+                return cId === rawLower || cId === cleanQuery;
+            });
+        }
+
+        // 3. Busca por aliases ou presetType (ex: hamburgueria, pizzaria, marmitas-fitnes, etc.)
+        if (!found) {
+            found = companies.find(c => {
+                if (!c) return false;
+                const cPreset = (c.presetType || '').toLowerCase().trim();
+                const aliases = Array.isArray(c.aliases) ? c.aliases.map(a => sanitizeSlug(a).toLowerCase()) : [];
+                return cPreset === cleanQuery || cPreset === rawLower || aliases.includes(cleanQuery) || aliases.includes(rawLower);
+            });
+        }
+
+        // 4. Busca por Nome da empresa
+        if (!found) {
+            found = companies.find(c => {
+                if (!c) return false;
+                const cNameSlug = sanitizeSlug(c.name || '').toLowerCase();
+                const cNameRaw = (c.name || '').toLowerCase().trim();
+                return cNameSlug === cleanQuery || cNameRaw === rawLower;
+            });
+        }
+
+        // 5. Busca por aproximação no nome ou slug se o termo tiver 3 ou mais caracteres
+        if (!found && cleanQuery.length >= 3) {
+            found = companies.find(c => {
+                if (!c) return false;
+                const cSlug = sanitizeSlug(c.slug || '').toLowerCase();
+                const cNameSlug = sanitizeSlug(c.name || '').toLowerCase();
+                return cSlug.includes(cleanQuery) || cleanQuery.includes(cSlug) || cNameSlug.includes(cleanQuery);
+            });
+        }
 
         if (found) {
             return res.json({ success: true, data: trimCompanyOutput(found) });

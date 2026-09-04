@@ -1,1 +1,476 @@
-[]
+[
+  {
+    "id": "company-demo-don",
+    "slug": "demo",
+    "aliases": ["acai", "donfood", "don-food", "acaiteria"],
+    "isDemo": true,
+    "name": "Don Food",
+    "email": "demo@donfood.com",
+    "subtitle": "Cardápio Digital & Delivery Oficial! Faça seu pedido teste e monte do seu jeito.",
+    "whatsappNumber": "5521999999999",
+    "instagram": "@donfood.com",
+    "cnpj": "00.000.000/0001-99",
+    "address": "Av. Brasil, 500 - Loja Modelo",
+    "logoUrl": "Logo_Don.png",
+    "adminPassword": "admin",
+    "deliveryFee": 5,
+    "deliveryTime": "25 - 40 min",
+    "presetType": "burguer",
+    "themeColors": {
+      "primary": "#DC2626",
+      "primaryDark": "#991B1B",
+      "secondary": "#EA580C",
+      "bgAccent": "#FFFDF7"
+    },
+    "coupons": [
+      {
+        "code": "DON10",
+        "discount": 10,
+        "type": "percent",
+        "minOrder": 30,
+        "active": true
+      },
+      {
+        "code": "BEMVINDO",
+        "discount": 5,
+        "type": "fixed",
+        "minOrder": 20,
+        "active": true
+      },
+      {
+        "code": "FRETEGRATIS",
+        "discount": 5,
+        "type": "fixed",
+        "minOrder": 40,
+        "active": true
+      }
+    ],
+    "deliveryNeighborhoods": [
+      { "id": "b1", "name": "Centro / Região Central", "fee": 3.00, "time": "20 - 35 min", "zone": "Zona 1" },
+      { "id": "b2", "name": "Jardins / Bairro Nobre", "fee": 5.00, "time": "25 - 40 min", "zone": "Zona 2" },
+      { "id": "b3", "name": "Vila Nova / Zona Sul", "fee": 7.00, "time": "30 - 45 min", "zone": "Zona 3" },
+      { "id": "b4", "name": "Planalto / Zona Norte", "fee": 9.00, "time": "35 - 50 min", "zone": "Zona 4" }
+    ],
+    "products": [
+      {
+        "id": 101,
+        "name": "🍔 Don Smash Burger Bacon Duplo",
+        "tag": "🔥 HAMBURGUERIA",
+        "description": "Pão brioche tostado, 2x smash burger artesanal 90g com crostinha crocante, cheddar duplo derretido, bacon fatiado e maionese secreta da casa.",
+        "price": 28.9,
+        "image": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&fit=crop",
+        "available": true,
+        "isAcai": false,
+        "isCustomizable": true
+      },
+      {
+        "id": 201,
+        "name": "🍕 Pizza Calabresa Artesanal Especial",
+        "tag": "🍕 PIZZARIA",
+        "description": "Massa artesanal italiana de longa fermentação, molho pelati fresco, calabresa selecionada fatiada, muçarela derretida, cebola roxa e orégano.",
+        "price": 45,
+        "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500&fit=crop",
+        "available": true,
+        "isAcai": false,
+        "isCustomizable": true
+      },
+      {
+        "id": 1,
+        "name": "🍧 Copo de Açaí Supremo 500ml Turbinado",
+        "tag": "🍧 AÇAÍ & SORVETES",
+        "description": "Açaí artesanal super cremoso montado em camadas com Leite Ninho, Nutella pura, Morangos frescos fatiados, Banana e Granola crocante + adicionais à sua escolha.",
+        "price": 22.9,
+        "image": "acai_copo.svg",
+        "available": true,
+        "isAcai": true,
+        "isCustomizable": true
+      },
+      {
+        "id": 301,
+        "name": "🍱 Marmita Executiva Bife Acebolado Premium",
+        "tag": "🍱 MARMITARIA",
+        "description": "Bife bovino macio grelhado na chapa com cebolas douradas, arroz branco soltinho, feijão carioca fresquinho, farofa crocante e salada da horta.",
+        "price": 24.9,
+        "image": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&fit=crop",
+        "available": true,
+        "isAcai": false,
+        "isCustomizable": false
+      },
+      {
+        "id": 401,
+        "name": "🍰 Bolo de Pote Ninho com Nutella & Morango",
+        "tag": "🍰 CONFEITARIA",
+        "description": "Pão de ló leve e molhadinho intercalado com camadas generosas de brigadeiro de Leite Ninho, Nutella pura e pedaços de morangos frescos.",
+        "price": 14.5,
+        "image": "https://images.unsplash.com/photo-1587314168485-3236d6710814?w=500&fit=crop",
+        "available": true,
+        "isAcai": false,
+        "isCustomizable": false
+      },
+      {
+        "id": 104,
+        "name": "🥤 Coca-Cola Original Lata 350ml Geladíssima",
+        "tag": "🥤 BEBIDAS",
+        "description": "Refrigerante Coca-Cola lata 350ml trincando de gelada.",
+        "price": 6.5,
+        "image": "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=500&fit=crop",
+        "available": true,
+        "isAcai": false,
+        "isCustomizable": false
+      }
+    ],
+    "orders": []
+  },
+  {
+    "id": "company-burger-don",
+    "slug": "hamburgueria",
+    "aliases": ["burger", "burguer", "don-burger", "donburger", "hamburguer", "smash"],
+    "isDemo": false,
+    "name": "Don Burger Delivery",
+    "email": "contato@donburger.com",
+    "subtitle": "Hambúrgueres artesanais na brasa, smash burgers e batata frita sequinha!",
+    "whatsappNumber": "5521999999999",
+    "instagram": "@donburger.delivery",
+    "cnpj": "12.345.678/0001-90",
+    "address": "Rua dos Burgers, 120 - Centro",
+    "logoUrl": "",
+    "adminPassword": "admin",
+    "deliveryFee": 6.0,
+    "deliveryTime": "30 - 45 min",
+    "presetType": "burguer",
+    "themeColors": {
+      "name": "🔥 Hamburgueria Fire Red",
+      "primary": "#DC2626",
+      "primaryDark": "#991B1B",
+      "secondary": "#EA580C",
+      "bgAccent": "#FFF7ED"
+    },
+    "coupons": [
+      { "code": "BURGER10", "discount": 10, "type": "percent", "minOrder": 35, "active": true }
+    ],
+    "deliveryNeighborhoods": [
+      { "id": "b1", "name": "Centro", "fee": 4.00, "time": "20 - 35 min", "zone": "Zona 1" },
+      { "id": "b2", "name": "Bairros Próximos", "fee": 6.00, "time": "30 - 45 min", "zone": "Zona 2" }
+    ],
+    "products": [
+      {
+        "id": 101,
+        "name": "Combo X-Burguer Artesanal Duplo",
+        "tag": "🔥 O MAIS PEDIDO!",
+        "description": "Hambúrguer duplo 160g de blend artesanal, cheddar cremoso, bacon crocante + Batata Frita + Refrigerante",
+        "price": 32.90,
+        "image": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&fit=crop",
+        "available": true,
+        "isCustomizable": true
+      },
+      {
+        "id": 102,
+        "name": "Smash Burguer Bacon Especial",
+        "tag": "⚡ NOVIDADE",
+        "description": "Duas carnes smash 80g, queijo cheddar fatiado, bacon crocante e maionese artesanal defumada",
+        "price": 24.90,
+        "image": "https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=500&fit=crop",
+        "available": true,
+        "isCustomizable": true
+      },
+      {
+        "id": 103,
+        "name": "Porção de Batata Frita Crocante (300g)",
+        "tag": "🍟 ACOMPANHAMENTO",
+        "description": "Batata frita bem crocante servida com molho de queijo cheddar e bacon em cubinhos",
+        "price": 16.00,
+        "image": "https://images.unsplash.com/photo-1576107232684-1279f3908594?w=500&fit=crop",
+        "available": true,
+        "isCustomizable": false
+      },
+      {
+        "id": 104,
+        "name": "Refrigerante Lata 350ml",
+        "tag": "🥤 BEBIDA",
+        "description": "Coca-Cola, Guaraná Antarctica ou Sprite geladinhos",
+        "price": 6.00,
+        "image": "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=500&fit=crop",
+        "available": true,
+        "isCustomizable": false
+      }
+    ],
+    "orders": []
+  },
+  {
+    "id": "company-pizza-don",
+    "slug": "pizzaria",
+    "aliases": ["pizza", "don-pizza", "donpizza", "pizzas"],
+    "isDemo": false,
+    "name": "Don Pizza Express",
+    "email": "contato@donpizza.com",
+    "subtitle": "Pizzas artesanais de fermentação natural, forno a lenha e bordas recheadas!",
+    "whatsappNumber": "5521999999999",
+    "instagram": "@donpizza.express",
+    "cnpj": "23.456.789/0001-01",
+    "address": "Av. das Pizzas, 400 - Forno Nobre",
+    "logoUrl": "",
+    "adminPassword": "admin",
+    "deliveryFee": 7.0,
+    "deliveryTime": "35 - 50 min",
+    "presetType": "pizzaria",
+    "themeColors": {
+      "name": "🟢 Pizzaria Basil Emerald",
+      "primary": "#059669",
+      "primaryDark": "#064E3B",
+      "secondary": "#10B981",
+      "bgAccent": "#ECFDF5"
+    },
+    "coupons": [
+      { "code": "PIZZA10", "discount": 10, "type": "percent", "minOrder": 50, "active": true }
+    ],
+    "deliveryNeighborhoods": [
+      { "id": "b1", "name": "Região Central", "fee": 5.00, "time": "30 - 45 min", "zone": "Zona 1" },
+      { "id": "b2", "name": "Bairros Adjacentes", "fee": 7.00, "time": "40 - 55 min", "zone": "Zona 2" }
+    ],
+    "products": [
+      {
+        "id": 201,
+        "name": "Pizza Grande Calabresa Especial",
+        "tag": "🔥 CAMPEÃO DE VENDAS",
+        "description": "Massa artesanal, molho de tomate fresco, muita calabresa fatiada, cebola roxa e azeitonas pretas",
+        "price": 45.00,
+        "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500&fit=crop",
+        "available": true,
+        "isCustomizable": true
+      },
+      {
+        "id": 202,
+        "name": "Pizza Quatro Queijos Cremosa",
+        "tag": "🧀 SUPREMA",
+        "description": "Mussarela, catupiry original, provolone e gorgonzola com orégano fresco",
+        "price": 48.00,
+        "image": "https://images.unsplash.com/photo-1573821663912-569905455b1c?w=500&fit=crop",
+        "available": true,
+        "isCustomizable": true
+      },
+      {
+        "id": 203,
+        "name": "Pizza Brotinho Doce de Leite com Morango",
+        "tag": "🍓 SOBREMESA",
+        "description": "Massa fininha recheada com doce de leite cremoso e fatias de morango",
+        "price": 28.00,
+        "image": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=500&fit=crop",
+        "available": true,
+        "isCustomizable": false
+      },
+      {
+        "id": 204,
+        "name": "Guaraná Antarctica 2 Litros",
+        "tag": "🥤 BEBIDA",
+        "description": "Refrigerante Guaraná 2L trincando de gelado",
+        "price": 12.00,
+        "image": "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=500&fit=crop",
+        "available": true,
+        "isCustomizable": false
+      }
+    ],
+    "orders": []
+  },
+  {
+    "id": "company-marmita-don",
+    "slug": "marmitas-fitnes",
+    "aliases": ["marmitaria", "marmitas", "marmitas-fitness", "marmita", "fit", "fitness", "saudavel"],
+    "isDemo": false,
+    "name": "Don Marmitas Fit & Saudáveis",
+    "email": "contato@donmarmitas.com",
+    "subtitle": "Marmitas caseiras balanceadas, frescas e saborosas todos os dias!",
+    "whatsappNumber": "5521999999999",
+    "instagram": "@donmarmitas.fit",
+    "cnpj": "34.567.890/0001-12",
+    "address": "Rua da Saúde, 330 - Bairro Verde",
+    "logoUrl": "",
+    "adminPassword": "admin",
+    "deliveryFee": 5.0,
+    "deliveryTime": "25 - 40 min",
+    "presetType": "marmitaria",
+    "themeColors": {
+      "name": "🍱 Marmitaria Caseira & Sabor",
+      "primary": "#D97706",
+      "primaryDark": "#92400E",
+      "secondary": "#F59E0B",
+      "bgAccent": "#FFFBEB"
+    },
+    "coupons": [
+      { "code": "FIT10", "discount": 10, "type": "percent", "minOrder": 40, "active": true }
+    ],
+    "deliveryNeighborhoods": [
+      { "id": "b1", "name": "Centro e Arredores", "fee": 4.00, "time": "25 - 40 min", "zone": "Zona 1" }
+    ],
+    "products": [
+      {
+        "id": 301,
+        "name": "Marmita Executiva Bife Acebolado",
+        "tag": "⭐ TRADICIONAL",
+        "description": "Bife acebolado macio, arroz branco soltinho, feijão caseiro, farofa crocante e salada de alface",
+        "price": 22.00,
+        "image": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&fit=crop",
+        "available": true,
+        "isCustomizable": false
+      },
+      {
+        "id": 302,
+        "name": "Marmita Fit Frango com Batata Doce",
+        "tag": "💪 FIT & LEVE",
+        "description": "Filé de frango grelhado em cubos, batata doce assada no alecrim e mix de legumes no vapor",
+        "price": 24.00,
+        "image": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&fit=crop",
+        "available": true,
+        "isCustomizable": false
+      },
+      {
+        "id": 303,
+        "name": "Marmita Feijoada Completa",
+        "tag": "🔥 SEXTA & SÁBADO",
+        "description": "Feijoada saborosa com carne seca, costelinha e calabresa + couve refogada, farofa e laranjinha",
+        "price": 26.00,
+        "image": "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?w=500&fit=crop",
+        "available": true,
+        "isCustomizable": false
+      },
+      {
+        "id": 304,
+        "name": "Suco Natural de Laranja 500ml",
+        "tag": "🍊 100% NATURAL",
+        "description": "Suco 100% natural feito na hora sem adição de conservantes ou açúcar",
+        "price": 8.00,
+        "image": "https://images.unsplash.com/photo-1613478223719-2ab802602423?w=500&fit=crop",
+        "available": true,
+        "isCustomizable": false
+      }
+    ],
+    "orders": []
+  },
+  {
+    "id": "company-sorvete-don",
+    "slug": "sorveteria",
+    "aliases": ["sorvete", "gelato", "gelateria", "don-gelato", "paletas"],
+    "isDemo": false,
+    "name": "Don Gelato Artesanal",
+    "email": "contato@dongelato.com",
+    "subtitle": "Gelatos italianos puros, taças gourmet e sorvetes refrescantes!",
+    "whatsappNumber": "5521999999999",
+    "instagram": "@dongelato.artesanal",
+    "cnpj": "45.678.901/0001-23",
+    "address": "Praça do Sol, 88 - Vila Doce",
+    "logoUrl": "",
+    "adminPassword": "admin",
+    "deliveryFee": 5.0,
+    "deliveryTime": "20 - 35 min",
+    "presetType": "sorveteria",
+    "themeColors": {
+      "name": "🔵 Sorveteria Azure Sky",
+      "primary": "#0284C7",
+      "primaryDark": "#0369A1",
+      "secondary": "#38BDF8",
+      "bgAccent": "#F0F9FF"
+    },
+    "coupons": [
+      { "code": "GELATO10", "discount": 10, "type": "percent", "minOrder": 30, "active": true }
+    ],
+    "deliveryNeighborhoods": [
+      { "id": "b1", "name": "Bairros da Cidade", "fee": 5.00, "time": "20 - 35 min", "zone": "Zona 1" }
+    ],
+    "products": [
+      {
+        "id": 501,
+        "name": "Taça Sundae de Morango e Chantilly",
+        "tag": "🍨 ESPECIAL",
+        "description": "Sorvete cremoso com bastante calda de morango, chantilly e castanhas",
+        "price": 18.90,
+        "image": "https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=500&fit=crop",
+        "available": true,
+        "isCustomizable": true
+      },
+      {
+        "id": 502,
+        "name": "Copão de Sorvete Artesanal 2 Bolas",
+        "tag": "🍦 REFRESCANTE",
+        "description": "Escolha 2 sabores cremosos com direito a 2 coberturas à sua escolha",
+        "price": 14.00,
+        "image": "https://images.unsplash.com/photo-1497034825429-c343d7c6a68f?w=500&fit=crop",
+        "available": true,
+        "isCustomizable": true
+      },
+      {
+        "id": 503,
+        "name": "Pote de Sorvete 1 Litro (Sabores Variados)",
+        "tag": "📦 FAMÍLIA",
+        "description": "Pote de 1L com sorvete ultra cremoso para saborear em casa",
+        "price": 28.00,
+        "image": "https://images.unsplash.com/photo-1570197788417-0e82375c9371?w=500&fit=crop",
+        "available": true,
+        "isCustomizable": false
+      }
+    ],
+    "orders": []
+  },
+  {
+    "id": "company-doces-don",
+    "slug": "confeitaria",
+    "aliases": ["doceria", "doces", "bolos", "don-doces", "confeitaria-sweet"],
+    "isDemo": false,
+    "name": "Don Sweet Doceria & Bolos",
+    "email": "contato@dondoces.com",
+    "subtitle": "Bolos artesanais, tortas holandesas e doces finos para alegrar o seu dia!",
+    "whatsappNumber": "5521999999999",
+    "instagram": "@dondoces.bolos",
+    "cnpj": "56.789.012/0001-34",
+    "address": "Alameda dos Doces, 55 - Centro Gourmet",
+    "logoUrl": "",
+    "adminPassword": "admin",
+    "deliveryFee": 6.0,
+    "deliveryTime": "30 - 45 min",
+    "presetType": "confeitaria",
+    "themeColors": {
+      "name": "🌸 Confeitaria Sweet Berry",
+      "primary": "#DB2777",
+      "primaryDark": "#9D174D",
+      "secondary": "#F472B6",
+      "bgAccent": "#FDF2F8"
+    },
+    "coupons": [
+      { "code": "DOCE10", "discount": 10, "type": "percent", "minOrder": 30, "active": true }
+    ],
+    "deliveryNeighborhoods": [
+      { "id": "b1", "name": "Todos os Bairros", "fee": 6.00, "time": "30 - 45 min", "zone": "Zona 1" }
+    ],
+    "products": [
+      {
+        "id": 401,
+        "name": "Torta Holandesa de Chocolate (Fatia)",
+        "tag": "🍰 SUPREMO",
+        "description": "Deliciosa fatia de torta holandesa com creme suave de baunilha e cobertura de ganache meio amargo",
+        "price": 14.90,
+        "image": "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=500&fit=crop",
+        "available": true,
+        "isCustomizable": false
+      },
+      {
+        "id": 402,
+        "name": "Bolo de Pote Ninho com Nutella",
+        "tag": "🍫 DELÍCIA",
+        "description": "Massa fofinha de pão de ló intercalada com creme ninho e recheio de Nutella pura",
+        "price": 12.00,
+        "image": "https://images.unsplash.com/photo-1587314168485-3236d6710814?w=500&fit=crop",
+        "available": true,
+        "isCustomizable": false
+      },
+      {
+        "id": 403,
+        "name": "Caixa de Brigadeiros Gourmet (6 un)",
+        "tag": "🍬 DOCE FINO",
+        "description": "Brigadeiros belga artesanais enrolados com confeitos crocantes",
+        "price": 18.00,
+        "image": "https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?w=500&fit=crop",
+        "available": true,
+        "isCustomizable": false
+      }
+    ],
+    "orders": []
+  }
+]
