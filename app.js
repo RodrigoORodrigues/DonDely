@@ -6025,28 +6025,30 @@
                     container.style.display = 'none';
                 } else if (AuthManager.isCompanyOwner(activeCompanyId) || AuthManager.isSuperAdmin()) {
                     container.style.display = 'flex';
-                    const activeCompId = activeCompanyId || 'company-demo-don';
-                    const currentOrders = customerOrders.filter(o => 
-                        o.companyId === activeCompId || 
-                        (!o.companyId && activeCompId === 'company-demo-don')
-                    );
-                    const receivedCount = currentOrders.filter(o => (o.status || 'RECEIVED') === 'RECEIVED').length;
-                    const hasNewBadge = receivedCount > 0;
+                    const allOrders = typeof getActiveCompanyOrders === 'function' ? getActiveCompanyOrders() : customerOrders;
+                    // Filtrar apenas pedidos ativos (pedidos com status 'COMPLETED'/Entregue ou 'CANCELLED' saem da lista)
+                    const activeOrders = allOrders.filter(o => o && o.status !== 'COMPLETED' && o.status !== 'CANCELLED');
+                    const activeCount = activeOrders.length;
+                    const hasNewBadge = activeCount > 0;
                     const roleLabel = AuthManager.isSuperAdmin() ? 'SUPER ADMIN' : 'LOJA';
 
                     container.innerHTML = `
                         <div class="admin-header-pill-group">
-                            <span class="admin-logged-store-badge" title="${activeComp.name || settings.restaurantName} (${roleLabel})">
+                            <span class="admin-logged-store-badge" title="${escapeHtml(activeComp.name || settings.restaurantName)} (${roleLabel})">
                                 <span style="font-size: 0.65rem; background: ${AuthManager.isSuperAdmin() ? '#7C3AED' : '#4F46E5'}; color: white; padding: 1px 5px; border-radius: 6px; margin-right: 4px; font-weight: 800;">${roleLabel}</span>
-                                <strong>${activeComp.name || settings.restaurantName}</strong>
+                                <strong>${escapeHtml(activeComp.name || settings.restaurantName)}</strong>
                             </span>
-                            <button class="admin-header-bell-btn ${hasNewBadge ? 'has-new' : ''}" onclick="openAdminPanel(); filterAdminOrdersByStatus('RECEIVED');" title="${receivedCount} pedido(s) aguardando atendimento">
-                                ${receivedCount > 0 ? `<strong>${receivedCount}</strong>` : '🔔'}
-                            </button>
-                            <button class="btn-admin-header-panel" onclick="openAdminPanel()" title="Abrir Painel Administrativo">
+                            <div class="admin-bell-dropdown-wrapper" id="adminBellDropdownWrapper">
+                                <button type="button" class="admin-header-bell-btn ${hasNewBadge ? 'has-new' : ''}" id="adminHeaderBellBtn" onclick="toggleAdminOrdersDropdown(event)" title="${activeCount} pedido(s) em andamento">
+                                    ${activeCount > 0 ? `<strong>${activeCount}</strong>` : '🔔'}
+                                </button>
+                                <div class="admin-orders-dropdown-popover" id="adminOrdersDropdownPopover">
+                                </div>
+                            </div>
+                            <button type="button" class="btn-admin-header-panel" onclick="openAdminPanel()" title="Abrir Painel Administrativo">
                                 Painel
                             </button>
-                            <button class="btn-admin-header-logout" onclick="logoutAdmin()" title="Sair da Empresa">
+                            <button type="button" class="btn-admin-header-logout" onclick="logoutAdmin()" title="Sair da Empresa">
                                 Sair
                             </button>
                         </div>
@@ -6059,6 +6061,158 @@
             }
 
             updateMobileHeaderMenuUI();
+        }
+
+        // ========== CONTROLE DO DROPDOWN FLUTUANTE DE PEDIDOS ATIVOS ==========
+        function toggleAdminOrdersDropdown(e) {
+            if (e) {
+                e.stopPropagation();
+                e.preventDefault();
+            }
+            const popover = document.getElementById('adminOrdersDropdownPopover');
+            if (!popover) return;
+            const isOpen = popover.classList.contains('active');
+            if (isOpen) {
+                closeAdminOrdersDropdown();
+            } else {
+                renderAdminOrdersDropdown();
+                popover.classList.add('active');
+            }
+        }
+
+        function closeAdminOrdersDropdown() {
+            const popover = document.getElementById('adminOrdersDropdownPopover');
+            if (popover) {
+                popover.classList.remove('active');
+            }
+        }
+
+        function renderAdminOrdersDropdown() {
+            const popover = document.getElementById('adminOrdersDropdownPopover');
+            if (!popover) return;
+
+            const allOrders = typeof getActiveCompanyOrders === 'function' ? getActiveCompanyOrders() : customerOrders;
+            // Filtrar apenas pedidos NÃO entregues e NÃO cancelados (quando status for 'COMPLETED'/Entregue sai da lista)
+            const activeOrders = allOrders.filter(o => o && o.status !== 'COMPLETED' && o.status !== 'CANCELLED');
+
+            if (activeOrders.length === 0) {
+                popover.innerHTML = `
+                    <div class="admin-orders-dropdown-header">
+                        <h4 class="admin-orders-dropdown-title">
+                            <span>📦</span> Pedidos em Andamento
+                        </h4>
+                        <button type="button" class="admin-orders-dropdown-close-btn" onclick="closeAdminOrdersDropdown()" title="Fechar">✕</button>
+                    </div>
+                    <div class="admin-orders-dropdown-empty">
+                        <div class="admin-orders-dropdown-empty-icon">✨</div>
+                        <div class="admin-orders-dropdown-empty-title">Nenhum pedido pendente</div>
+                        <div class="admin-orders-dropdown-empty-desc">Todos os pedidos recebidos já foram entregues ou finalizados.</div>
+                    </div>
+                    <div class="admin-orders-dropdown-footer">
+                        <button type="button" class="admin-orders-dropdown-btn-all" onclick="goToAdminOrdersList()">
+                            Ver Histórico no Painel ➔
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            const itemsHtml = activeOrders.map(order => {
+                const st = (typeof adminOrderStatusMap !== 'undefined' && adminOrderStatusMap[order.status]) || { text: 'Recebido', icon: '🟡', bg: '#FEF3C7', color: '#92400E', border: '#FDE68A' };
+                const items = DefensiveUtils.safeArray(order.items);
+                const itemsSummary = items.map(i => `${i.quantity || 1}x ${i.name || 'Item'}`).join(', ') || 'Sem itens descritos';
+                const totalFormatted = DefensiveUtils.formatCurrency(order.total || 0);
+                const customerName = escapeHtml(order.customerName || 'Cliente');
+                const orderTime = order.time || (order.created_at ? new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Hoje');
+
+                return `
+                    <div class="admin-orders-dropdown-item" onclick="goToAdminOrder('${order.id}')" title="Clique para abrir e gerenciar este pedido no Painel">
+                        <div class="admin-orders-dropdown-item-top">
+                            <span class="admin-orders-dropdown-item-id">#${escapeHtml(String(order.id || ''))}</span>
+                            <span class="admin-orders-dropdown-item-time">🕒 ${escapeHtml(String(orderTime))}</span>
+                        </div>
+                        <div class="admin-orders-dropdown-item-customer">
+                            👤 ${customerName}
+                        </div>
+                        <div class="admin-orders-dropdown-item-summary">
+                            ${escapeHtml(itemsSummary)}
+                        </div>
+                        <div class="admin-orders-dropdown-item-bottom">
+                            <span class="admin-orders-dropdown-item-total">${totalFormatted}</span>
+                            <span class="admin-orders-dropdown-item-status" style="background: ${st.bg}; color: ${st.color}; border: 1px solid ${st.border};">
+                                ${st.icon} ${st.text}
+                            </span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            popover.innerHTML = `
+                <div class="admin-orders-dropdown-header">
+                    <h4 class="admin-orders-dropdown-title">
+                        <span>📦</span> Pedidos em Andamento
+                        <span class="admin-orders-dropdown-count-badge">${activeOrders.length}</span>
+                    </h4>
+                    <button type="button" class="admin-orders-dropdown-close-btn" onclick="closeAdminOrdersDropdown()" title="Fechar">✕</button>
+                </div>
+                <div class="admin-orders-dropdown-list">
+                    ${itemsHtml}
+                </div>
+                <div class="admin-orders-dropdown-footer">
+                    <button type="button" class="admin-orders-dropdown-btn-all" onclick="goToAdminOrdersList()">
+                        Ver Todos no Painel ➔
+                    </button>
+                </div>
+            `;
+        }
+
+        function goToAdminOrdersList() {
+            closeAdminOrdersDropdown();
+            openAdminPanel();
+            setTimeout(() => {
+                const ordersSection = document.getElementById('adminOrdersSection');
+                if (ordersSection) {
+                    ordersSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+                filterAdminOrdersByStatus('ALL');
+            }, 100);
+        }
+
+        function goToAdminOrder(orderId) {
+            closeAdminOrdersDropdown();
+            openAdminPanel();
+
+            // Garantir que a lista mostre o pedido (filtro ALL)
+            adminOrderFilterStatus = 'ALL';
+            const chips = ['ALL', 'RECEIVED', 'PREPARING', 'DELIVERING', 'COMPLETED', 'CANCELLED'];
+            chips.forEach(s => {
+                const chipEl = document.getElementById(`chipStatus${s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()}`);
+                if (chipEl) {
+                    if (s === 'ALL') chipEl.classList.add('active');
+                    else chipEl.classList.remove('active');
+                }
+            });
+
+            // Expandir o pedido específico
+            expandedAdminOrders.add(orderId);
+            renderAdminOrdersList();
+
+            setTimeout(() => {
+                const ordersSection = document.getElementById('adminOrdersSection');
+                if (ordersSection) {
+                    ordersSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+                setTimeout(() => {
+                    const card = document.getElementById(`adminOrderCard_${orderId}`);
+                    if (card) {
+                        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        card.classList.add('admin-order-highlight-pulse');
+                        setTimeout(() => {
+                            card.classList.remove('admin-order-highlight-pulse');
+                        }, 3000);
+                    }
+                }, 180);
+            }, 120);
         }
 
         // ========== MANIPULAÇÃO DE IMAGENS E UPLOADS ==========
@@ -9398,13 +9552,8 @@
             if (badgeEl) badgeEl.textContent = `${counts.ALL} pedido(s)`;
         }
 
-        function renderAdminOrdersList() {
-            const container = document.getElementById('adminOrdersList');
-            if (!container) return;
-
+        function getActiveCompanyOrders() {
             const activeCompId = activeCompanyId || 'company-demo-don';
-            
-            // Unificar todos os pedidos pertinentes a esta empresa de todas as fontes disponíveis
             let allCompanyOrders = [];
 
             // A. De customerOrders em memória
@@ -9465,6 +9614,16 @@
                     });
                 }
             } catch(e) {}
+
+            return allCompanyOrders;
+        }
+
+        function renderAdminOrdersList() {
+            const container = document.getElementById('adminOrdersList');
+            if (!container) return;
+
+            // Unificar todos os pedidos pertinentes a esta empresa de todas as fontes disponíveis
+            const allCompanyOrders = getActiveCompanyOrders();
 
             // Sincronizar customerOrders com a lista unificada
             customerOrders = allCompanyOrders;
@@ -9856,6 +10015,8 @@
             saveData();
             renderCustomerOrdersList();
             renderAdminOrdersList();
+            updateAdminHeaderUI();
+            renderAdminOrdersDropdown();
 
             const stInfo = adminOrderStatusMap[newStatus] || { text: newStatus };
             showNotification(`Status do pedido ${order.id} alterado para "${stInfo.text}"! ✅`, 'success');
@@ -9911,6 +10072,8 @@
             saveData();
             renderCustomerOrdersList();
             renderAdminOrdersList();
+            updateAdminHeaderUI();
+            renderAdminOrdersDropdown();
             showNotification('Pedido removido do histórico.', 'info');
 
             // Sincronizar remoção com o servidor da empresa
@@ -10881,6 +11044,14 @@
                     openAdminLogin();
                 }
             });
+
+            // Fechar dropdown de pedidos ativos ao clicar fora
+            document.addEventListener('click', (e) => {
+                const wrapper = document.getElementById('adminBellDropdownWrapper');
+                if (wrapper && !wrapper.contains(e.target)) {
+                    closeAdminOrdersDropdown();
+                }
+            });
             
             // Admin Panel FAB (se existir)
             const fab = document.getElementById('adminFab');
@@ -11762,6 +11933,12 @@
         window.openAdminOrderDetailModal = openAdminOrderDetailModal;
         window.closeAdminOrderDetailModal = closeAdminOrderDetailModal;
         window.renderAdminOrdersList = renderAdminOrdersList;
+        window.getActiveCompanyOrders = getActiveCompanyOrders;
+        window.toggleAdminOrdersDropdown = toggleAdminOrdersDropdown;
+        window.closeAdminOrdersDropdown = closeAdminOrdersDropdown;
+        window.renderAdminOrdersDropdown = renderAdminOrdersDropdown;
+        window.goToAdminOrder = goToAdminOrder;
+        window.goToAdminOrdersList = goToAdminOrdersList;
         window.openCustomerOrdersModal = openCustomerOrdersModal;
         window.closeCustomerOrdersModal = closeCustomerOrdersModal;
         window.initSupabaseRealtimeOrders = initSupabaseRealtimeOrders;
