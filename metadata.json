@@ -1,6 +1,6 @@
 {
-  "name": "Don Food",
-  "description": "Aplicativo Don Food",
+  "name": "Don Food & Cardápios",
+  "description": "Don Food - Sistema Completo de Cardápio Digital & Gestão de Pedidos",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

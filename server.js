@@ -1059,6 +1059,21 @@ app.delete('/api/dev/leads/:id', generalLimiter, authenticateToken, requireRole(
     }
 });
 
+// 22. Download seguro do schema Supabase para o Super Admin
+app.get('/api/dev/supabase-schema', generalLimiter, authenticateToken, requireRole(ROLES.SUPER_ADMIN), (req, res) => {
+    try {
+        const schemaPath = path.join(__dirname, 'supabase_schema.sql');
+        if (fs.existsSync(schemaPath)) {
+            res.setHeader('Content-Type', 'application/sql');
+            res.setHeader('Content-Disposition', 'attachment; filename="supabase_schema.sql"');
+            return res.sendFile(schemaPath);
+        }
+        res.status(404).json({ success: false, error: 'Arquivo supabase_schema.sql não encontrado.' });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'Erro ao obter schema SQL.' });
+    }
+});
+
 // ============================================================================
 // GOOGLE OAUTH & CLIENT AUTHENTICATION ENDPOINTS
 // ============================================================================
@@ -1270,6 +1285,12 @@ app.use((req, res, next) => {
         });
     }
     next();
+});
+
+// Rota expressa para o Painel do Desenvolvedor (donfood.site/dev)
+app.get(['/dev', '/dev/*'], (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // Servir arquivos estáticos do frontend com controle de cache em tempo real

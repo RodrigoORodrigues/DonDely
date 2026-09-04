@@ -1551,11 +1551,33 @@
             // Iniciar banner de consentimento LGPD
             initLgpdConsentBanner();
 
+            // Verificação de rota direta para o Painel Dev (donfood.site/dev)
+            checkDevUrlRoute();
+
             // Roteamento dinâmico via URL (permite troca sem recarregar tela inteira)
             window.addEventListener('popstate', () => {
                 loadData();
                 renderAll();
+                checkDevUrlRoute();
             });
+        }
+
+        function checkDevUrlRoute() {
+            const path = (window.location.pathname || '').toLowerCase();
+            const urlParams = new URLSearchParams(window.location.search);
+            const view = (urlParams.get('view') || urlParams.get('pagina') || '').toLowerCase();
+            const hash = (window.location.hash || '').toLowerCase();
+            const isDev = path === '/dev' || path === '/dev/' || path.startsWith('/dev/') || view === 'dev' || hash === '#dev';
+
+            if (isDev) {
+                setTimeout(() => {
+                    if (AuthManager.isSuperAdmin()) {
+                        openDevPanelModal();
+                    } else {
+                        openDevPasswordModal();
+                    }
+                }, 150);
+            }
         }
 
         // ========== APLICADOR DESSA PALETA DE CORES DINÂMICA ==========
@@ -2284,7 +2306,7 @@
 
         function getCompanyOfficialUrl(comp) {
             const slug = getCompanySlug(comp);
-            return `https://www.donfood.com/?empresa=${encodeURIComponent(slug)}`;
+            return `https://donfood.site/?empresa=${encodeURIComponent(slug)}`;
         }
 
         function getCompanyCurrentUrl(comp) {
@@ -2516,10 +2538,10 @@
                 );
             }
 
-            // Fallback por pathname se for rota direta como /demo (excluindo /login e assets)
+            // Fallback por pathname se for rota direta como /demo (excluindo /login, /dev e assets)
             if (!targetCompany && window.location.pathname && window.location.pathname !== '/' && window.location.pathname !== '/index.html') {
                 const pathSlug = window.location.pathname.replace(/^\/+/, '').split('/')[0].toLowerCase();
-                if (pathSlug && !pathSlug.endsWith('.js') && !pathSlug.endsWith('.css') && !pathSlug.endsWith('.png') && !pathSlug.endsWith('.jpg') && !pathSlug.endsWith('.svg') && !pathSlug.endsWith('.json') && !pathSlug.endsWith('.sql') && pathSlug !== 'api' && pathSlug !== 'login') {
+                if (pathSlug && !pathSlug.endsWith('.js') && !pathSlug.endsWith('.css') && !pathSlug.endsWith('.png') && !pathSlug.endsWith('.jpg') && !pathSlug.endsWith('.svg') && !pathSlug.endsWith('.json') && !pathSlug.endsWith('.sql') && pathSlug !== 'api' && pathSlug !== 'login' && pathSlug !== 'dev') {
                     targetCompany = companies.find(c => 
                         (c.slug && c.slug.toLowerCase() === pathSlug) || 
                         (c.id && c.id.toLowerCase() === pathSlug)
@@ -3503,18 +3525,51 @@
         });
 
         function openDevPasswordModal() {
-            // Desativado no HTML público
+            if (AuthManager.isSuperAdmin()) {
+                openDevPanelModal();
+                return;
+            }
+            const modal = document.getElementById('devPasswordModal');
+            if (modal) {
+                modal.classList.add('active');
+                const input = document.getElementById('devPasswordInput');
+                if (input) {
+                    input.value = '';
+                    setTimeout(() => input.focus(), 150);
+                }
+                const err = document.getElementById('devPasswordError');
+                if (err) err.style.display = 'none';
+            }
+            if (window.location.pathname !== '/dev') {
+                try {
+                    history.pushState({ view: 'dev' }, '', '/dev');
+                } catch (e) {}
+            }
         }
 
         function closeDevPasswordModal() {
             const modal = document.getElementById('devPasswordModal');
             if (modal) modal.classList.remove('active');
+            if (window.location.pathname === '/dev' || window.location.pathname === '/dev/') {
+                try {
+                    history.pushState({ view: 'store' }, '', '/');
+                } catch (e) {}
+            }
         }
 
         async function handleDevPasswordSubmit(e) {
             if (e) e.preventDefault();
-            const input = document.getElementById('devPasswordInput') ? document.getElementById('devPasswordInput').value.trim() : '';
+            const inputEl = document.getElementById('devPasswordInput');
+            const input = inputEl ? inputEl.value.trim() : '';
             const err = document.getElementById('devPasswordError');
+
+            if (!input) {
+                if (err) {
+                    err.textContent = '❌ Por favor, digite a senha mestre de desenvolvedor.';
+                    err.style.display = 'block';
+                }
+                return;
+            }
 
             try {
                 const response = await fetch('/api/auth/dev-login', {
@@ -3527,13 +3582,22 @@
                 if (res && res.success) {
                     AuthManager.loginSuperAdmin(res.token);
                     closeDevPasswordModal();
+                    openDevPanelModal();
+                    showNotification('Acesso do Desenvolvedor autenticado! 🛠️', 'success');
                     return;
                 }
             } catch (netErr) {
-                // Ignore
+                console.error('Erro na autenticação dev:', netErr);
             }
 
-            if (err) err.style.display = 'block';
+            if (err) {
+                err.textContent = '❌ Senha de Desenvolvedor incorreta! Verifique e tente novamente.';
+                err.style.display = 'block';
+            }
+            if (inputEl) {
+                inputEl.focus();
+                inputEl.select();
+            }
         }
 
         function openDevPanelModal() {
@@ -3543,6 +3607,11 @@
             }
             const modal = document.getElementById('devPanelModal');
             if (modal) modal.classList.add('active');
+            if (window.location.pathname !== '/dev') {
+                try {
+                    history.pushState({ view: 'dev' }, '', '/dev');
+                } catch (e) {}
+            }
             renderDevCompanyList();
             fetchDevLeads(); // Carregar contatos da demo em segundo plano
             switchDevTab('companies');
@@ -3551,10 +3620,37 @@
         function closeDevPanelModal() {
             const modal = document.getElementById('devPanelModal');
             if (modal) modal.classList.remove('active');
+            if (window.location.pathname === '/dev' || window.location.pathname === '/dev/') {
+                try {
+                    history.pushState({ view: 'store' }, '', '/');
+                } catch (e) {}
+            }
         }
 
         function logoutDev() {
             AuthManager.logoutSuperAdmin();
+            closeDevPanelModal();
+            closeDevPasswordModal();
+            if (window.location.pathname === '/dev' || window.location.pathname === '/dev/') {
+                try {
+                    history.pushState({ view: 'store' }, '', '/');
+                } catch (e) {}
+            }
+            showNotification('Sessão de Desenvolvedor encerrada com sucesso.', 'info');
+        }
+
+        function switchToDevView(e) {
+            if (e && e.preventDefault) e.preventDefault();
+            if (window.location.pathname !== '/dev') {
+                try {
+                    history.pushState({ view: 'dev' }, '', '/dev');
+                } catch (err) {}
+            }
+            if (AuthManager.isSuperAdmin()) {
+                openDevPanelModal();
+            } else {
+                openDevPasswordModal();
+            }
         }
 
         function switchDevTab(tab) {
@@ -4366,13 +4462,33 @@
             }
         }
 
-        function downloadSupabaseSQL() {
+        async function downloadSupabaseSQL() {
             if (!AuthManager.isSuperAdmin()) {
                 showNotification('Acesso restrito ao Super Administrador.', 'warning');
                 openDevPasswordModal();
                 return;
             }
-            window.open('/supabase_schema.sql', '_blank');
+            try {
+                const token = AuthManager.getAuthToken();
+                const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+                const response = await fetch('/api/dev/supabase-schema', { headers });
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'supabase_schema.sql';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                    showNotification('Download de supabase_schema.sql concluído! 📄', 'success');
+                    return;
+                }
+            } catch (e) {
+                console.error('Falha ao baixar schema SQL:', e);
+            }
+            showNotification('Não foi possível obter o script SQL.', 'warning');
         }
 
         function renderDevCompanyList() {
@@ -4900,25 +5016,53 @@
             const featuredProduct = products.find(p => p.name.toLowerCase().includes('barca') || p.name.toLowerCase().includes('burger') || p.name.toLowerCase().includes('duplo') || p.name.toLowerCase().includes('pizza')) || products.find(p => p.available);
             if (featuredProduct) {
                 const isCustom = featuredProduct.isCustomizable || (featuredProduct.name || '').toLowerCase().includes('açaí') || (featuredProduct.name || '').toLowerCase().includes('barca');
+                const descText = featuredProduct.description || '';
+                const hasLongDesc = descText.length > 35;
                 document.getElementById('heroCard').innerHTML = `
-                    <div style="position: absolute; top: 14px; right: 14px; background: linear-gradient(135deg, #F59E0B 0%, #EA580C 100%); color: #FFFFFF; font-weight: 900; font-size: 0.78rem; padding: 5px 14px; border-radius: 50px; box-shadow: 0 4px 12px rgba(234, 88, 12, 0.4); z-index: 2; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid rgba(255,255,255,0.4);">
-                        🔥 O Mais Pedido!
+                    <div style="position: absolute; top: 10px; right: 10px; background: linear-gradient(135deg, #F59E0B 0%, #EA580C 100%); color: #FFFFFF; font-weight: 800; font-size: 0.68rem; padding: 3px 10px; border-radius: 50px; box-shadow: 0 3px 10px rgba(234, 88, 12, 0.4); z-index: 2; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid rgba(255,255,255,0.4);">
+                        🔥 Mais Pedido!
                     </div>
                     <div class="hero-card-img-wrap">
                         <img src="${featuredProduct.image}" alt="${featuredProduct.name}" onerror="this.onerror=null; this.src='super_barca.svg';">
                     </div>
                     <h3>${featuredProduct.name}</h3>
-                    <p>${featuredProduct.description}</p>
+                    <p class="collapsed" id="heroCardDesc" onclick="toggleHeroDescription()" title="Clique para expandir ou recolher a descrição">${descText}</p>
+                    ${hasLongDesc ? `
+                    <div class="hero-desc-toggle-btn" id="heroDescToggleBtn" onclick="toggleHeroDescription()" title="Clique para expandir ou recolher a descrição">
+                        <span id="heroDescToggleText">Ver mais</span> <span id="heroDescToggleIcon">▾</span>
+                    </div>` : ''}
                     <div class="hero-card-footer">
                         <div>
-                            <span style="font-size: 0.72rem; color: #FED7AA; text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 2px;">Valor Especial</span>
+                            <span style="font-size: 0.62rem; color: #FED7AA; text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 2px;">Valor Especial</span>
                             <div class="hero-card-price">R$ ${featuredProduct.price.toFixed(2).replace('.', ',')}</div>
                         </div>
-                        <button type="button" onclick="${isCustom ? `openAcaiCustomizer(${featuredProduct.id})` : `addToCart(${featuredProduct.id})`}" class="btn-admin" style="background: linear-gradient(135deg, #F59E0B 0%, #EA580C 100%); color: #FFFFFF; font-weight: 800; font-size: 0.92rem; padding: 0.7rem 1.35rem; border-radius: 50px; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(234, 88, 12, 0.4); display: inline-flex; align-items: center; gap: 0.4rem; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)';" onmouseout="this.style.transform='scale(1)';">
+                        <button type="button" onclick="${isCustom ? `openAcaiCustomizer(${featuredProduct.id})` : `addToCart(${featuredProduct.id})`}" class="btn-admin" style="background: linear-gradient(135deg, #F59E0B 0%, #EA580C 100%); color: #FFFFFF; font-weight: 800; font-size: 0.8rem; padding: 0.52rem 1.05rem; border-radius: 50px; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(234, 88, 12, 0.4); display: inline-flex; align-items: center; gap: 0.35rem; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.04)';" onmouseout="this.style.transform='scale(1)';">
                             ${isCustom ? '⚡ Personalizar' : '🛒 Quero Esse'}
                         </button>
                     </div>
                 `;
+            }
+        }
+
+        function toggleHeroDescription() {
+            const p = document.getElementById('heroCardDesc');
+            if (!p) return;
+            const toggleText = document.getElementById('heroDescToggleText');
+            const toggleIcon = document.getElementById('heroDescToggleIcon');
+            const isCollapsed = p.classList.contains('collapsed');
+            
+            if (isCollapsed) {
+                p.classList.remove('collapsed');
+                p.classList.add('expanded');
+                p.setAttribute('title', 'Clique para recolher a descrição');
+                if (toggleText) toggleText.textContent = 'Recolher';
+                if (toggleIcon) toggleIcon.textContent = '▴';
+            } else {
+                p.classList.remove('expanded');
+                p.classList.add('collapsed');
+                p.setAttribute('title', 'Clique para ver a descrição completa');
+                if (toggleText) toggleText.textContent = 'Ver mais';
+                if (toggleIcon) toggleIcon.textContent = '▾';
             }
         }
 
@@ -4985,13 +5129,23 @@
                 const cleanDesc = DefensiveUtils.escapeHtml(product.description || '');
                 const cleanImg = DefensiveUtils.escapeHtml(product.image || 'acai_300ml.svg');
 
+                const hasDesc = cleanDesc.trim().length > 0;
+                const hasLongDesc = cleanDesc.trim().length > 25;
+                const descHtml = hasDesc ? `
+                    <p class="product-description collapsed" id="prodDesc_${product.id}" onclick="toggleProductDescription('${product.id}', event)" title="Clique para expandir ou recolher a descrição">${cleanDesc}</p>
+                    ${hasLongDesc ? `
+                    <div class="product-desc-toggle-btn" id="prodDescToggleBtn_${product.id}" onclick="toggleProductDescription('${product.id}', event)" title="Clique para expandir ou recolher a descrição">
+                        <span id="prodDescToggleText_${product.id}">Ver mais</span> <span id="prodDescToggleIcon_${product.id}">▾</span>
+                    </div>` : ''}
+                ` : '<p class="product-description empty"></p>';
+
                 return `
                 <div class="product-card">
                     <img src="${cleanImg}" alt="${cleanName}" class="product-image" onerror="this.onerror=null; this.src='acai_300ml.svg';">
                     ${badgeHtml}
                     <div class="product-info">
                         <h3 class="product-name">${cleanName}</h3>
-                        <p class="product-description" onclick="this.classList.toggle('expanded')" title="Clique para expandir/recolher a descrição">${cleanDesc}</p>
+                        ${descHtml}
                         <div class="product-footer">
                             <span class="product-price">${DefensiveUtils.formatCurrency(price)}</span>
                             <button 
@@ -5006,6 +5160,31 @@
                 </div>
             `;
             }).join('');
+        }
+
+        function toggleProductDescription(productId, event) {
+            if (event && event.stopPropagation) {
+                event.stopPropagation();
+            }
+            const p = document.getElementById(`prodDesc_${productId}`);
+            if (!p) return;
+            const toggleText = document.getElementById(`prodDescToggleText_${productId}`);
+            const toggleIcon = document.getElementById(`prodDescToggleIcon_${productId}`);
+            const isExpanded = p.classList.contains('expanded');
+            
+            if (isExpanded) {
+                p.classList.remove('expanded');
+                p.classList.add('collapsed');
+                p.setAttribute('title', 'Clique para ver a descrição completa');
+                if (toggleText) toggleText.textContent = 'Ver mais';
+                if (toggleIcon) toggleIcon.textContent = '▾';
+            } else {
+                p.classList.remove('collapsed');
+                p.classList.add('expanded');
+                p.setAttribute('title', 'Clique para recolher a descrição');
+                if (toggleText) toggleText.textContent = 'Recolher';
+                if (toggleIcon) toggleIcon.textContent = '▴';
+            }
         }
 
         function getProductFreeLimit(product) {
@@ -11239,6 +11418,8 @@
         window.closeDevEditCompanyModal = closeDevEditCompanyModal;
         window.handleDevSaveEditCompany = handleDevSaveEditCompany;
         window.switchDevTab = switchDevTab;
+        window.switchToDevView = switchToDevView;
+        window.checkDevUrlRoute = checkDevUrlRoute;
         window.openDevPanelModal = openDevPanelModal;
         window.closeDevPanelModal = closeDevPanelModal;
         window.openDevPasswordModal = openDevPasswordModal;
@@ -11251,6 +11432,8 @@
         window.syncCurrentCompanyToSupabaseUI = syncCurrentCompanyToSupabaseUI;
         window.downloadSupabaseSQL = downloadSupabaseSQL;
         window.exportHTML = exportHTML;
+        window.toggleHeroDescription = toggleHeroDescription;
+        window.toggleProductDescription = toggleProductDescription;
 
         // Funções de Autenticação e Impressão
         window.showCustomConfirm = showCustomConfirm;
