@@ -467,6 +467,13 @@
                 secondary: '#38BDF8',
                 bgAccent: '#F0F9FF'
             },
+            marmitaria: {
+                name: '🍱 Marmitaria Caseira & Sabor (Âmbar & Terracota)',
+                primary: '#D97706',
+                primaryDark: '#92400E',
+                secondary: '#F59E0B',
+                bgAccent: '#FFFBEB'
+            },
             confeitaria: {
                 name: '🌸 Confeitaria Sweet Berry',
                 primary: '#DB2777',
@@ -2244,15 +2251,18 @@
             }
 
             // Atualizar catálogo completo de produtos para o novo ramo de atuação
-            const template = PRESET_CATALOGS_BY_CATEGORY[presetKey] || PRESET_CATALOGS_BY_CATEGORY.acai;
+            const template = (typeof PRESET_CATALOGS_BY_CATEGORY !== 'undefined' && PRESET_CATALOGS_BY_CATEGORY[presetKey])
+                || (typeof MENU_PRESETS !== 'undefined' && MENU_PRESETS[presetKey])
+                || (typeof PRESET_CATALOGS_BY_CATEGORY !== 'undefined' ? PRESET_CATALOGS_BY_CATEGORY.acai : defaultProducts);
+
             products = template.map((item, idx) => ({
                 id: (Date.now() + idx),
                 name: item.name,
                 tag: item.tag || '',
-                description: item.description,
-                price: item.price,
+                description: item.description || '',
+                price: DefensiveUtils.safeNumber(item.price, 10),
                 image: item.image,
-                available: true,
+                available: item.available !== false,
                 isCustomizable: item.isCustomizable !== undefined ? item.isCustomizable : (item.isAcai !== undefined ? item.isAcai : true)
             }));
 
@@ -2260,24 +2270,37 @@
             settings.customBanner = null;
             settings.customExtras = null;
 
-            let activeComp = companies.find(c => c.id === activeCompanyId);
+            let activeComp = (typeof companies !== 'undefined' && Array.isArray(companies) && companies.find(c => c.id === activeCompanyId)) || (typeof getActiveCompany === 'function' ? getActiveCompany() : null);
             if (activeComp) {
                 activeComp.name = settings.restaurantName;
                 activeComp.subtitle = settings.subtitle;
                 activeComp.presetType = presetKey;
                 activeComp.deliveryTime = settings.deliveryTime;
                 activeComp.deliveryFee = settings.deliveryFee;
-                activeComp.themeColors = settings.themeColors;
+                activeComp.themeColors = { ...settings.themeColors };
                 activeComp.customBanner = null;
                 activeComp.customExtras = null;
                 activeComp.products = products;
             }
+
+            // Atualizar campos do formulário no Admin imediatamente
+            const nameInput = document.getElementById('restaurantName');
+            if (nameInput) nameInput.value = settings.restaurantName;
+            const subInput = document.getElementById('restaurantSubtitle');
+            if (subInput) subInput.value = settings.subtitle;
+            const timeInput = document.getElementById('deliveryTime');
+            if (timeInput) timeInput.value = settings.deliveryTime;
+            const feeInput = document.getElementById('deliveryFee');
+            if (feeInput) feeInput.value = settings.deliveryFee;
+            const catSelect = document.getElementById('companyCategorySelect');
+            if (catSelect && catSelect.value !== presetKey) catSelect.value = presetKey;
 
             applyThemeColors(settings.themeColors);
             renderAll();
             saveData();
             showNotification(`Sistema e cardápio completamente atualizados para "${profile.name}"! 🚀🎨`, 'success');
         }
+        window.updateCompanyCategory = updateCompanyCategory;
 
         // ========== FUNÇÕES UTILITÁRIAS DE SLUGS E LINKS DE ACESSO (donfood.com) ==========
         function sanitizeSlug(text) {
@@ -2297,49 +2320,69 @@
             return clean || ('loja-' + Date.now().toString(36));
         }
 
+        function isCompanyDemo(comp) {
+            if (!comp) return false;
+            if (comp.isCustomized) return false;
+            if (comp.name && comp.name !== 'Don Food' && !comp.name.includes('Demonstração')) return false;
+            if (comp.slug && comp.slug !== 'demo') return false;
+            if (comp.isDemo === false) return false;
+            return Boolean(comp.isDemo && comp.slug === 'demo' && (comp.name === 'Don Food' || !comp.name));
+        }
+
         function getCompanySlug(comp) {
             if (!comp) return 'demo';
-            if (comp.slug) return sanitizeSlug(comp.slug);
-            if (comp.isDemo || comp.id === 'company-demo-don') return 'demo';
-            return generateSlug(comp.name || comp.id);
+            if (comp.slug && comp.slug !== 'demo') return sanitizeSlug(comp.slug);
+            if (comp.name && comp.name !== 'Don Food') return generateSlug(comp.name);
+            if (isCompanyDemo(comp)) return 'demo';
+            return comp.slug ? sanitizeSlug(comp.slug) : generateSlug(comp.name || comp.id);
         }
 
         function getCompanyOfficialUrl(comp) {
             const slug = getCompanySlug(comp);
-            return `https://donfood.site/?empresa=${encodeURIComponent(slug)}`;
+            const origin = (typeof window !== 'undefined' && window.location && window.location.origin) 
+                ? window.location.origin 
+                : 'https://donfood.site';
+            return `${origin}/?empresa=${encodeURIComponent(slug)}`;
         }
 
         function getCompanyCurrentUrl(comp) {
-            const slug = getCompanySlug(comp);
-            return `${window.location.origin}/?empresa=${encodeURIComponent(slug)}`;
+            return getCompanyOfficialUrl(comp);
         }
 
         function copyActiveCompanyOfficialLink() {
-            let activeComp = companies.find(c => c.id === activeCompanyId);
+            let activeComp = (typeof getActiveCompany === 'function' ? getActiveCompany() : null) || (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
             const url = getCompanyOfficialUrl(activeComp);
-            navigator.clipboard.writeText(url).then(() => {
-                showNotification(`Link oficial copiado: ${url} 📋`, 'success');
-            }).catch(() => {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(() => {
+                    showNotification(`Link oficial copiado: ${url} 📋`, 'success');
+                }).catch(() => {
+                    prompt('Copie o link oficial do seu cardápio:', url);
+                });
+            } else {
                 prompt('Copie o link oficial do seu cardápio:', url);
-            });
+            }
         }
 
         function shareActiveCompanyWhatsApp() {
-            let activeComp = companies.find(c => c.id === activeCompanyId);
+            let activeComp = (typeof getActiveCompany === 'function' ? getActiveCompany() : null) || (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
             const url = getCompanyOfficialUrl(activeComp);
-            const name = activeComp ? activeComp.name : settings.restaurantName;
+            const name = (activeComp && activeComp.name) || settings.restaurantName || 'Don Food';
             const text = encodeURIComponent(`Olá! Confira nosso cardápio digital completo e faça seu pedido online no *${name}* através do link oficial:\n${url}`);
             window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
         }
 
         function copyCompanyLink(slugOrId) {
-            const comp = companies.find(c => c.slug === slugOrId || c.id === slugOrId || getCompanySlug(c) === slugOrId);
+            const comp = (typeof companies !== 'undefined' && companies.find(c => c.slug === slugOrId || c.id === slugOrId || getCompanySlug(c) === slugOrId)) || { slug: slugOrId };
             const url = getCompanyOfficialUrl(comp);
-            navigator.clipboard.writeText(url).then(() => {
-                showNotification(`Link oficial copiado: ${url} 📋`, 'success');
-            }).catch(() => {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(() => {
+                    showNotification(`Link oficial copiado: ${url} 📋`, 'success');
+                }).catch(() => {
+                    prompt('Copie o link oficial:', url);
+                });
+            } else {
                 prompt('Copie o link oficial:', url);
-            });
+            }
         }
 
         function handleSlugSanitize(inputEl) {
@@ -2371,16 +2414,102 @@
         }
 
         function updateAdminShareLinkDisplay() {
+            const activeComp = (typeof getActiveCompany === 'function' ? getActiveCompany() : null) 
+                || (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) 
+                || settings;
             const slugInput = document.getElementById('restaurantSlug');
-            const slugVal = (slugInput && slugInput.value.trim()) || 'sua-loja';
+            const customSlug = slugInput ? sanitizeSlug(slugInput.value) : '';
+            const slugVal = customSlug || (settings && settings.slug) || (activeComp && activeComp.slug) || getCompanySlug(activeComp) || 'sua-loja';
+            
+            const origin = (typeof window !== 'undefined' && window.location && window.location.origin) 
+                ? window.location.origin 
+                : 'https://donfood.site';
+            const host = (typeof window !== 'undefined' && window.location && window.location.host) 
+                ? window.location.host 
+                : 'donfood.site';
+            
+            const fullUrl = `${origin}/?empresa=${encodeURIComponent(slugVal)}`;
+            const displayBadge = `${host}/?empresa=${slugVal}`;
+            
             const urlText = document.getElementById('adminCompanyShareUrlText');
             const slugBadge = document.getElementById('adminCompanySlugBadge');
             const openBtn = document.getElementById('adminCompanyOpenLinkBtn');
+            const slugPrefix = document.getElementById('adminSlugPrefix');
             
-            if (urlText) urlText.textContent = `https://www.donfood.com/?empresa=${slugVal}`;
-            if (slugBadge) slugBadge.textContent = `www.donfood.com/?empresa=${slugVal}`;
-            if (openBtn) openBtn.href = `${window.location.origin}/?empresa=${slugVal}`;
+            if (urlText) urlText.textContent = fullUrl;
+            if (slugBadge) slugBadge.textContent = displayBadge;
+            if (slugPrefix) slugPrefix.textContent = `${host}/?empresa=`;
+            if (openBtn) {
+                openBtn.href = fullUrl;
+                openBtn.target = '_blank';
+            }
+
+            // Exibir a Logo no Link Oficial quando incluída
+            const logoInput = document.getElementById('logoUrl');
+            const currentLogo = (logoInput && logoInput.value && logoInput.value.trim()) 
+                || (settings && settings.logoUrl) 
+                || (activeComp && activeComp.logoUrl) 
+                || '';
+            const logoImg = document.getElementById('adminCompanyLinkLogo');
+            const logoFallback = document.getElementById('adminCompanyLinkLogoFallback');
+            const logoMini = document.getElementById('adminCompanyShareUrlLogoMini');
+            const nameInput = document.getElementById('restaurantName');
+            const currentName = (nameInput && nameInput.value.trim()) 
+                || (settings && settings.restaurantName) 
+                || (activeComp && activeComp.name) 
+                || 'Sua Loja';
+            const storeNameEl = document.getElementById('adminCompanyLinkStoreName');
+            const catBadge = document.getElementById('adminCompanyLinkCategoryBadge');
+            
+            if (storeNameEl) {
+                storeNameEl.textContent = currentName;
+            }
+
+            if (catBadge) {
+                const catType = (typeof getActiveCompanyPresetType === 'function' ? getActiveCompanyPresetType() : '') || (activeComp && activeComp.presetType) || '';
+                const catMap = {
+                    marmitaria: '🍱 Marmitaria Caseira & Refeições',
+                    burguer: '🍔 Hamburgueria & Lanches',
+                    acai: '🍧 Açaí & Sobremesas',
+                    pizzaria: '🍕 Pizzaria Artesanal',
+                    sorveteria: '🍨 Sorveteria & Gelateria',
+                    confeitaria: '🍰 Confeitaria & Doceria',
+                    pastelaria: '🥟 Pastelaria & Salgados',
+                    sushi: '🍣 Culinária Japonesa & Sushi',
+                    bebidas: '🍺 Distribuidora & Bebidas',
+                    padaria: '🥖 Padaria & Cafeteria',
+                    hortifruti: '🍎 Hortifrúti & Mercado',
+                    petshop: '🐾 Pet Shop & Ração',
+                    farmacia: '💊 Drogaria & Farmácia'
+                };
+                catBadge.textContent = catMap[catType] || 'Link direto para pedidos e cardápio online';
+            }
+
+            if (currentLogo && currentLogo.trim() !== '') {
+                if (logoImg) {
+                    logoImg.src = currentLogo;
+                    logoImg.style.display = 'block';
+                    logoImg.onerror = function() {
+                        this.style.display = 'none';
+                        if (logoFallback) logoFallback.style.display = 'block';
+                        if (logoMini) logoMini.style.display = 'none';
+                    };
+                }
+                if (logoFallback) logoFallback.style.display = 'none';
+                if (logoMini) {
+                    logoMini.src = currentLogo;
+                    logoMini.style.display = 'inline-block';
+                    logoMini.onerror = function() {
+                        this.style.display = 'none';
+                    };
+                }
+            } else {
+                if (logoImg) logoImg.style.display = 'none';
+                if (logoFallback) logoFallback.style.display = 'block';
+                if (logoMini) logoMini.style.display = 'none';
+            }
         }
+        window.updateAdminShareLinkDisplay = updateAdminShareLinkDisplay;
 
         // ========== ARQUITETURA MULTI-EMPRESA UNIVERSAL & ISOLAMENTO DE BANCO DE DADOS ==========
         const defaultDemoCompany = {
@@ -2511,13 +2640,21 @@
                      if (comp.whatsappNumber === '5521972888819') {
                          comp.whatsappNumber = '5521999999999';
                      }
-                     if (comp.id === 'company-demo-don' || comp.isDemo || comp.slug === 'demo') {
-                         if (!comp.name || comp.name.includes('Don Burguer') || comp.name === 'Don Delivery') {
-                             comp.name = 'Don Food';
+                     const isPureDemo = comp.id === 'company-demo-don' && (!comp.slug || comp.slug === 'demo') && (!comp.name || comp.name === 'Don Food') && !comp.isCustomized;
+                     if (isPureDemo) {
+                         comp.name = 'Don Food';
+                         comp.slug = 'demo';
+                         comp.isDemo = true;
+                         if (!comp.logoUrl) comp.logoUrl = 'Logo_Don.png';
+                         if (!comp.products || comp.products.length === 0) {
+                             comp.products = defaultDemoCompany.products;
                          }
-                         comp.logoUrl = 'Logo_Don.png';
-                         comp.products = defaultDemoCompany.products;
-                         comp.themeColors = defaultDemoCompany.themeColors;
+                         if (!comp.themeColors) {
+                             comp.themeColors = defaultDemoCompany.themeColors;
+                         }
+                     } else if (comp.id === 'company-demo-don' && (comp.name !== 'Don Food' || (comp.slug && comp.slug !== 'demo') || comp.isCustomized)) {
+                         comp.isDemo = false;
+                         comp.isCustomized = true;
                      }
                 });
                 localStorage.setItem('companies', JSON.stringify(companies));
@@ -2534,8 +2671,18 @@
                 targetCompany = companies.find(c => 
                     (c.slug && c.slug.toLowerCase() === cleanParam) || 
                     (c.id && c.id.toLowerCase() === cleanParam) ||
-                    (cleanParam === 'demo' && (c.isDemo || c.id === 'company-demo-don'))
+                    (c.name && sanitizeSlug(c.name).toLowerCase() === cleanParam) ||
+                    (cleanParam === 'demo' && (c.isDemo || c.slug === 'demo'))
                 );
+                // Se a loja não foi localizada pelo slug, vincular à empresa ativa existente
+                if (!targetCompany && companies.length > 0) {
+                    const savedActiveId = localStorage.getItem('activeCompanyId');
+                    const currentComp = companies.find(c => c.id === savedActiveId) || companies[0];
+                    if (currentComp) {
+                        currentComp.slug = cleanParam;
+                        targetCompany = currentComp;
+                    }
+                }
             }
 
             // Fallback por pathname se for rota direta como /demo (excluindo /login, /dev e assets)
@@ -2559,7 +2706,7 @@
                     activeCompanyId = savedActiveId;
                 } else {
                     // Padrão de apresentação no link principal: Loja Demonstração
-                    const demoComp = companies.find(c => c.isDemo || c.slug === 'demo' || c.id === 'company-demo-don');
+                    const demoComp = companies.find(c => isCompanyDemo(c));
                     activeCompanyId = demoComp ? demoComp.id : 'company-demo-don';
                     localStorage.setItem('activeCompanyId', activeCompanyId);
                 }
@@ -2572,7 +2719,7 @@
             }
 
             // 3. Atualizar Visibilidade do Banner de Demonstração e Landing Page Showcase
-            const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+            const isCurrentDemo = isCompanyDemo(activeComp);
             
             // Determinar visualização inicial (Landing Showcase vs Loja vs Tela de Login Dedicada)
             const pathLower = (window.location.pathname || '').toLowerCase();
@@ -2582,7 +2729,11 @@
 
             if (isLoginRoute) {
                 currentAppView = 'login';
+            } else if (requestedParam) {
+                // Ao acessar o link direto da loja (?empresa=...), ABRIR SEMPRE O CARDÁPIO DA EMPRESA!
+                currentAppView = 'store';
             } else if (!isCurrentDemo) {
+                // Loja cadastrada/personalizada acessada: abrir diretamente o cardápio
                 currentAppView = 'store';
             } else {
                 if (hashLower === '#loja-demo' || hashLower === '#cardapio' || hashLower === '#inicio') {
@@ -2670,6 +2821,10 @@
                 activeComp.name = settings.restaurantName;
                 activeComp.email = settings.email || activeComp.email || 'donfim@gmail.com';
                 activeComp.slug = settings.slug || activeComp.slug || getCompanySlug(activeComp);
+                if (activeComp.name !== 'Don Food' || (activeComp.slug && activeComp.slug !== 'demo') || activeComp.logoUrl) {
+                    activeComp.isDemo = false;
+                    activeComp.isCustomized = true;
+                }
                 activeComp.subtitle = settings.subtitle;
                 activeComp.whatsappNumber = settings.whatsappNumber;
                 activeComp.instagram = settings.instagram || '';
@@ -3197,7 +3352,7 @@
 
         function updateAppViewDisplay() {
             const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
-            const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+            const isCurrentDemo = isCompanyDemo(activeComp);
 
             const demoHero = document.getElementById('demoLandingHero');
             const storeWrapper = document.getElementById('storeViewWrapper');
@@ -3314,7 +3469,7 @@
 
         function refreshDedicatedLoginUI() {
             const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
-            const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+            const isCurrentDemo = isCompanyDemo(activeComp);
             
             // Se a empresa ativa não for Demo, forçar sempre tela de login da empresa cadastrada
             if (!isCurrentDemo) {
@@ -3412,7 +3567,7 @@
             }
             
             const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
-            const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+            const isCurrentDemo = isCompanyDemo(activeComp);
 
             if (!isCurrentDemo || forceRegistered) {
                 isRegisteredCompanyLoginActive = true;
@@ -3426,7 +3581,7 @@
             // Sincronizar URL para /login sem recarregar
             try {
                 const urlParams = new URLSearchParams(window.location.search);
-                if (activeComp && activeComp.slug && !activeComp.isDemo) {
+                if (activeComp && activeComp.slug && !isCurrentDemo) {
                     urlParams.set('empresa', activeComp.slug);
                 }
                 const newQuery = urlParams.toString() ? '?' + urlParams.toString() : '';
@@ -3460,9 +3615,9 @@
             // Atualizar URL de volta à loja/cardápio
             try {
                 const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
-                const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+                const isCurrentDemo = isCompanyDemo(activeComp);
                 const urlParams = new URLSearchParams(window.location.search);
-                if (activeComp && activeComp.slug && !activeComp.isDemo) {
+                if (activeComp && activeComp.slug && !isCurrentDemo) {
                     urlParams.set('empresa', activeComp.slug);
                 } else {
                     urlParams.delete('empresa');
@@ -4798,13 +4953,13 @@
                 slugInput.value = settings.slug || activeComp.slug || getCompanySlug(activeComp);
                 slugInput.dataset.manualEdit = '';
             }
-            updateAdminShareLinkDisplay();
 
             if (document.getElementById('companyEmail')) {
                 document.getElementById('companyEmail').value = settings.email || 'donfim@gmail.com';
             }
             document.getElementById('logoUrl').value = settings.logoUrl || '';
             document.getElementById('restaurantSubtitle').value = settings.subtitle || '';
+            updateAdminShareLinkDisplay();
             if (document.getElementById('restaurantInstagram')) {
                 document.getElementById('restaurantInstagram').value = settings.instagram || '';
             }
@@ -5208,7 +5363,7 @@
         // ========== INTERACTIVE PRODUCT CUSTOMIZER (POR CATEGORIA) ==========
         function openAcaiCustomizer(productId) {
             const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
-            const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+            const isCurrentDemo = isCompanyDemo(activeComp);
             if (isCurrentDemo && !DemoTrialManager.isTrialActive()) {
                 openDemoLeadModal();
                 showNotification('📱 Digite seu número para liberar o cardápio e testar a montagem por 24h!', 'info');
@@ -5579,7 +5734,7 @@
 
         function openAdminPanel() {
             const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
-            const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+            const isCurrentDemo = isCompanyDemo(activeComp);
             if (isCurrentDemo && !AuthManager.isSuperAdmin()) {
                 openDemoAdminBlockedModal();
                 return;
@@ -5595,7 +5750,7 @@
 
         function openAdminLogin() {
             const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
-            const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+            const isCurrentDemo = isCompanyDemo(activeComp);
             if (isCurrentDemo && !AuthManager.isSuperAdmin()) {
                 openDemoAdminBlockedModal();
                 return;
@@ -5640,7 +5795,7 @@
             const mobileMenu = document.getElementById('mobileHeaderMenuContainer');
 
             const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
-            const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+            const isCurrentDemo = isCompanyDemo(activeComp);
 
             if (currentAppView === 'landing' || currentAppView === 'login') {
                 if (container) {
@@ -5709,8 +5864,17 @@
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    document.getElementById('logoUrl').value = e.target.result;
-                    showNotification('Foto da logo carregada!', 'success');
+                    const logoVal = e.target.result;
+                    const logoInput = document.getElementById('logoUrl');
+                    if (logoInput) logoInput.value = logoVal;
+                    settings.logoUrl = logoVal;
+                    const activeComp = (typeof getActiveCompany === 'function' ? getActiveCompany() : null) || (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId));
+                    if (activeComp) {
+                        activeComp.logoUrl = logoVal;
+                        activeComp.isCustomized = true;
+                    }
+                    updateAdminShareLinkDisplay();
+                    showNotification('Foto da logo carregada com sucesso! 🖼️✨', 'success');
                 };
                 reader.readAsDataURL(input.files[0]);
             }
@@ -5938,6 +6102,18 @@
             if (document.getElementById('deliveryTime')) {
                 settings.deliveryTime = document.getElementById('deliveryTime').value.trim() || '30 - 45 min';
             }
+
+            const catSelectEl = document.getElementById('companyCategorySelect');
+            if (catSelectEl && catSelectEl.value) {
+                const newCat = catSelectEl.value;
+                if (newCat !== settings.presetType) {
+                    settings.presetType = newCat;
+                    const activeComp = (typeof companies !== 'undefined' && Array.isArray(companies) && companies.find(c => c.id === activeCompanyId)) || (typeof getActiveCompany === 'function' ? getActiveCompany() : null);
+                    if (activeComp) {
+                        activeComp.presetType = newCat;
+                    }
+                }
+            }
             
             // Salvar horários
             const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -6011,6 +6187,7 @@
             updateSiteSettings();
             renderDynamicPromoBanner();
             renderDynamicIngredientsSection();
+            updateAdminShareLinkDisplay();
             
             showNotification('Configurações salvas com sucesso!', 'success');
         }
@@ -7191,7 +7368,7 @@
         // ========== GERENCIAR CARRINHO ==========
         function addToCart(productId) {
             const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
-            const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+            const isCurrentDemo = isCompanyDemo(activeComp);
             if (isCurrentDemo && !DemoTrialManager.isTrialActive()) {
                 openDemoLeadModal();
                 showNotification('📱 Digite seu número para liberar o cardápio e testar por 24h!', 'info');
@@ -10755,6 +10932,13 @@
             
             document.getElementById('saveSettings').addEventListener('click', saveSettings);
             
+            const companyCategorySelectEl = document.getElementById('companyCategorySelect');
+            if (companyCategorySelectEl) {
+                companyCategorySelectEl.addEventListener('change', (e) => {
+                    updateCompanyCategory(e.target.value);
+                });
+            }
+            
             // Product Modal
             addProductBtn.addEventListener('click', addProduct);
             modalClose.addEventListener('click', () => productModal.classList.remove('active'));
@@ -10763,7 +10947,7 @@
             // Cart
             cartBtn.addEventListener('click', () => {
                 const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
-                const isCurrentDemo = activeComp.isDemo || activeComp.slug === 'demo' || activeComp.id === 'company-demo-don';
+                const isCurrentDemo = isCompanyDemo(activeComp);
                 if (isCurrentDemo && !DemoTrialManager.isTrialActive()) {
                     openDemoLeadModal();
                     showNotification('📱 Digite seu número para liberar o cardápio e testar o carrinho por 24h!', 'info');
@@ -11434,6 +11618,7 @@
         window.exportHTML = exportHTML;
         window.toggleHeroDescription = toggleHeroDescription;
         window.toggleProductDescription = toggleProductDescription;
+        window.updateCompanyCategory = updateCompanyCategory;
 
         // Funções de Autenticação e Impressão
         window.showCustomConfirm = showCustomConfirm;

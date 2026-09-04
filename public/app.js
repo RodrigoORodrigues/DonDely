@@ -467,6 +467,13 @@
                 secondary: '#38BDF8',
                 bgAccent: '#F0F9FF'
             },
+            marmitaria: {
+                name: '🍱 Marmitaria Caseira & Sabor (Âmbar & Terracota)',
+                primary: '#D97706',
+                primaryDark: '#92400E',
+                secondary: '#F59E0B',
+                bgAccent: '#FFFBEB'
+            },
             confeitaria: {
                 name: '🌸 Confeitaria Sweet Berry',
                 primary: '#DB2777',
@@ -2244,15 +2251,18 @@
             }
 
             // Atualizar catálogo completo de produtos para o novo ramo de atuação
-            const template = PRESET_CATALOGS_BY_CATEGORY[presetKey] || PRESET_CATALOGS_BY_CATEGORY.acai;
+            const template = (typeof PRESET_CATALOGS_BY_CATEGORY !== 'undefined' && PRESET_CATALOGS_BY_CATEGORY[presetKey])
+                || (typeof MENU_PRESETS !== 'undefined' && MENU_PRESETS[presetKey])
+                || (typeof PRESET_CATALOGS_BY_CATEGORY !== 'undefined' ? PRESET_CATALOGS_BY_CATEGORY.acai : defaultProducts);
+
             products = template.map((item, idx) => ({
                 id: (Date.now() + idx),
                 name: item.name,
                 tag: item.tag || '',
-                description: item.description,
-                price: item.price,
+                description: item.description || '',
+                price: DefensiveUtils.safeNumber(item.price, 10),
                 image: item.image,
-                available: true,
+                available: item.available !== false,
                 isCustomizable: item.isCustomizable !== undefined ? item.isCustomizable : (item.isAcai !== undefined ? item.isAcai : true)
             }));
 
@@ -2260,24 +2270,37 @@
             settings.customBanner = null;
             settings.customExtras = null;
 
-            let activeComp = companies.find(c => c.id === activeCompanyId);
+            let activeComp = (typeof companies !== 'undefined' && Array.isArray(companies) && companies.find(c => c.id === activeCompanyId)) || (typeof getActiveCompany === 'function' ? getActiveCompany() : null);
             if (activeComp) {
                 activeComp.name = settings.restaurantName;
                 activeComp.subtitle = settings.subtitle;
                 activeComp.presetType = presetKey;
                 activeComp.deliveryTime = settings.deliveryTime;
                 activeComp.deliveryFee = settings.deliveryFee;
-                activeComp.themeColors = settings.themeColors;
+                activeComp.themeColors = { ...settings.themeColors };
                 activeComp.customBanner = null;
                 activeComp.customExtras = null;
                 activeComp.products = products;
             }
+
+            // Atualizar campos do formulário no Admin imediatamente
+            const nameInput = document.getElementById('restaurantName');
+            if (nameInput) nameInput.value = settings.restaurantName;
+            const subInput = document.getElementById('restaurantSubtitle');
+            if (subInput) subInput.value = settings.subtitle;
+            const timeInput = document.getElementById('deliveryTime');
+            if (timeInput) timeInput.value = settings.deliveryTime;
+            const feeInput = document.getElementById('deliveryFee');
+            if (feeInput) feeInput.value = settings.deliveryFee;
+            const catSelect = document.getElementById('companyCategorySelect');
+            if (catSelect && catSelect.value !== presetKey) catSelect.value = presetKey;
 
             applyThemeColors(settings.themeColors);
             renderAll();
             saveData();
             showNotification(`Sistema e cardápio completamente atualizados para "${profile.name}"! 🚀🎨`, 'success');
         }
+        window.updateCompanyCategory = updateCompanyCategory;
 
         // ========== FUNÇÕES UTILITÁRIAS DE SLUGS E LINKS DE ACESSO (donfood.com) ==========
         function sanitizeSlug(text) {
@@ -5937,6 +5960,18 @@
             settings.deliveryFee = parseFloat(document.getElementById('deliveryFee').value) || 6.00;
             if (document.getElementById('deliveryTime')) {
                 settings.deliveryTime = document.getElementById('deliveryTime').value.trim() || '30 - 45 min';
+            }
+
+            const catSelectEl = document.getElementById('companyCategorySelect');
+            if (catSelectEl && catSelectEl.value) {
+                const newCat = catSelectEl.value;
+                if (newCat !== settings.presetType) {
+                    settings.presetType = newCat;
+                    const activeComp = (typeof companies !== 'undefined' && Array.isArray(companies) && companies.find(c => c.id === activeCompanyId)) || (typeof getActiveCompany === 'function' ? getActiveCompany() : null);
+                    if (activeComp) {
+                        activeComp.presetType = newCat;
+                    }
+                }
             }
             
             // Salvar horários
@@ -10755,6 +10790,13 @@
             
             document.getElementById('saveSettings').addEventListener('click', saveSettings);
             
+            const companyCategorySelectEl = document.getElementById('companyCategorySelect');
+            if (companyCategorySelectEl) {
+                companyCategorySelectEl.addEventListener('change', (e) => {
+                    updateCompanyCategory(e.target.value);
+                });
+            }
+            
             // Product Modal
             addProductBtn.addEventListener('click', addProduct);
             modalClose.addEventListener('click', () => productModal.classList.remove('active'));
@@ -11434,6 +11476,7 @@
         window.exportHTML = exportHTML;
         window.toggleHeroDescription = toggleHeroDescription;
         window.toggleProductDescription = toggleProductDescription;
+        window.updateCompanyCategory = updateCompanyCategory;
 
         // Funções de Autenticação e Impressão
         window.showCustomConfirm = showCustomConfirm;
