@@ -549,13 +549,15 @@
                 return ROLES.CUSTOMER;
             },
             isSuperAdmin() {
-                return this.getRole() === ROLES.SUPER_ADMIN;
+                return sessionStorage.getItem('isDevLoggedIn') === 'true';
             },
             isCompanyOwner(companyId = null) {
                 if (this.isSuperAdmin()) return true; // Super Admin tem privilégio irrestrito de gestão
-                if (this.getRole() !== ROLES.COMPANY_OWNER) return false;
+                const isOwner = sessionStorage.getItem('isAdminLoggedIn') === 'true';
+                if (!isOwner) return false;
                 if (!companyId) return true;
-                const currentLoggedComp = sessionStorage.getItem('loggedCompanyId') || activeCompanyId;
+                const currentLoggedComp = sessionStorage.getItem('loggedCompanyId');
+                if (!currentLoggedComp) return false;
                 return currentLoggedComp === companyId;
             },
             isCustomer() {
@@ -608,13 +610,17 @@
                 sessionStorage.setItem('currentRole', ROLES.SUPER_ADMIN);
                 if (token) sessionStorage.setItem('devAuthToken', token);
                 updateAdminHeaderUI();
+                updateMobileHeaderMenuUI();
             },
             logoutSuperAdmin() {
                 sessionStorage.removeItem('isDevLoggedIn');
                 sessionStorage.removeItem('devAuthToken');
                 sessionStorage.removeItem('currentRole');
+                localStorage.removeItem('isDevLoggedIn');
                 closeDevPanelModal();
                 updateAdminHeaderUI();
+                updateMobileHeaderMenuUI();
+                refreshDedicatedLoginUI();
                 showNotification('Sessão de Super Administrador encerrada.', 'info');
             },
             loginCompanyOwner(company, token = null) {
@@ -624,6 +630,7 @@
                 sessionStorage.setItem('currentRole', ROLES.COMPANY_OWNER);
                 if (token) sessionStorage.setItem('companyAuthToken', token);
                 updateAdminHeaderUI();
+                updateMobileHeaderMenuUI();
             },
             logoutCompanyOwner() {
                 isAdminLoggedIn = false;
@@ -631,10 +638,18 @@
                 sessionStorage.removeItem('loggedCompanyId');
                 sessionStorage.removeItem('companyAuthToken');
                 sessionStorage.removeItem('currentRole');
+                sessionStorage.removeItem('isDevLoggedIn');
+                sessionStorage.removeItem('devAuthToken');
+                localStorage.removeItem('isAdminLoggedIn');
+                localStorage.removeItem('isDevLoggedIn');
+                localStorage.removeItem('loggedCompanyId');
                 closeAdminPanel();
                 updateAdminHeaderUI();
                 updateMobileHeaderMenuUI();
-                showNotification('Sessão de empresa encerrada com sucesso.', 'info');
+                updateCustomerHeaderUI();
+                refreshDedicatedLoginUI();
+                renderAll();
+                showNotification('🚪 Sessão de empresa encerrada com sucesso.', 'info');
             },
             loginCustomer(customer, token = null) {
                 loggedCustomer = customer;
@@ -1541,6 +1556,75 @@
         const customerFormContainer = document.getElementById('customerFormContainer');
 
         // ========== INICIALIZAÇÃO ==========
+        async function fetchCompaniesFromServer() {
+            try {
+                const res = await fetch('/api/companies');
+                if (res.ok) {
+                    const json = await res.json();
+                    if (json && json.success && Array.isArray(json.data) && json.data.length > 0) {
+                        const serverComps = json.data;
+                        const compMap = new Map();
+                        // Garantir demo padrão
+                        compMap.set(defaultDemoCompany.id, defaultDemoCompany);
+                        // Adicionar empresas locais
+                        (companies || []).forEach(c => {
+                            if (c && c.id) compMap.set(c.id, c);
+                        });
+                        // Mesclar com empresas retornadas pelo servidor
+                        serverComps.forEach(sc => {
+                            if (sc && sc.id) {
+                                const existing = compMap.get(sc.id) || {};
+                                compMap.set(sc.id, {
+                                    ...existing,
+                                    ...sc,
+                                    adminPassword: existing.adminPassword || sc.adminPassword || 'admin123'
+                                });
+                            }
+                        });
+                        companies = Array.from(compMap.values());
+                        localStorage.setItem('companies', JSON.stringify(companies));
+
+                        // Reavaliar empresa ativa se necessário
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const requestedParam = urlParams.get('empresa') || urlParams.get('loja') || urlParams.get('c') || urlParams.get('slug') || urlParams.get('tenant');
+                        if (requestedParam) {
+                            const cleanParam = requestedParam.trim().toLowerCase();
+                            const target = companies.find(c => 
+                                (c.slug && c.slug.toLowerCase() === cleanParam) || 
+                                (c.id && c.id.toLowerCase() === cleanParam) ||
+                                (c.name && sanitizeSlug(c.name).toLowerCase() === cleanParam)
+                            );
+                            if (target && target.id !== activeCompanyId) {
+                                activeCompanyId = target.id;
+                                localStorage.setItem('activeCompanyId', activeCompanyId);
+                            }
+                        }
+                        loadData();
+                        renderAll();
+                        renderDevCompanyList();
+                    }
+                }
+            } catch (err) {
+                console.warn('[Sync] Sincronização de empresas em modo offline:', err);
+            }
+        }
+
+        async function syncCompaniesToServer() {
+            try {
+                const token = sessionStorage.getItem('devAuthToken') || sessionStorage.getItem('companyAuthToken');
+                const headers = { 'Content-Type': 'application/json' };
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+
+                await fetch('/api/companies', {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({ companies: companies })
+                });
+            } catch (err) {
+                console.warn('[Sync] Erro ao salvar empresas no servidor:', err);
+            }
+        }
+
         function init() {
             loadData();
             loadPrinterSettings();
@@ -1551,6 +1635,8 @@
             updateAdminHeaderUI();
             renderPresetCatalog();
             attachEventListeners();
+            // Buscar empresas salvas no servidor central
+            fetchCompaniesFromServer();
             // Buscar pedidos mais recentes no servidor central
             fetchOrdersFromServer(true);
             // Iniciar canal Supabase Realtime para a tabela orders
@@ -4719,7 +4805,7 @@
             }).join('');
         }
 
-        function handleDevCreateCompany(e) {
+        async function handleDevCreateCompany(e) {
             if (e) e.preventDefault();
             const name = document.getElementById('devNewCompName').value.trim();
             if (!name) return;
@@ -4767,6 +4853,7 @@
 
             companies.push(newCompany);
             saveData();
+            await syncCompaniesToServer();
             switchActiveCompany(newCompanyId);
             renderDevCompanyList();
             alert(`🎉 Empresa "${name}" cadastrada com sucesso!\n🌐 Link Oficial: https://www.donfood.com/?empresa=${slug}\n📧 E-mail de Login: ${email}\n🔑 Senha: ${password}`);
@@ -4791,6 +4878,7 @@
                     activeCompanyId = 'company-demo-don';
                 }
                 saveData();
+                await syncCompaniesToServer();
                 loadData();
                 renderAll();
                 renderDevCompanyList();
@@ -4855,7 +4943,7 @@
             if (modal) modal.classList.remove('active');
         }
 
-        function handleDevSaveEditCompany(e) {
+        async function handleDevSaveEditCompany(e) {
             if (e) e.preventDefault();
             const companyId = document.getElementById('devEditCompId').value;
             const comp = companies.find(c => c.id === companyId);
@@ -4917,6 +5005,7 @@
             }
 
             saveData();
+            await syncCompaniesToServer();
             renderDevCompanyList();
             closeDevEditCompanyModal();
             showNotification(`Cadastro da empresa "${name}" atualizado com sucesso! ✏️✨`, 'success');
@@ -6184,6 +6273,7 @@
             settings.freeAccompanimentsLimit = extrasFreeLimit;
 
             saveData();
+            syncCompaniesToServer();
             updateSiteSettings();
             renderDynamicPromoBanner();
             renderDynamicIngredientsSection();

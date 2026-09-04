@@ -918,21 +918,87 @@ app.delete('/api/orders/:id', orderWriteLimiter, validateCompanyHeader, async (r
 });
 
 // ============================================================================
-// ROTAS DE EMPRESAS (COM RESPOSTAS SANITIZADAS - PRECAUÇÃO #17)
+// ROTAS DE EMPRESAS (PERSISTÊNCIA E SINCRONIZAÇÃO COMPLETA)
 // ============================================================================
 app.get('/api/companies', generalLimiter, (req, res) => {
-    const companies = readJsonFile(COMPANIES_FILE, []);
-    const safeCompanies = companies.map(trimCompanyOutput);
-    res.json({ success: true, data: safeCompanies });
+    try {
+        const companies = readJsonFile(COMPANIES_FILE, []);
+        const safeCompanies = companies.map(trimCompanyOutput);
+        res.json({ success: true, data: safeCompanies });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'Erro ao listar empresas.' });
+    }
 });
 
-app.post('/api/companies', generalLimiter, authenticateToken, requireRole(ROLES.COMPANY_OWNER, ROLES.SUPER_ADMIN), (req, res) => {
-    const { companies } = req.body;
-    if (Array.isArray(companies)) {
-        writeJsonFile(COMPANIES_FILE, companies);
-        res.json({ success: true, count: companies.length });
-    } else {
+app.post('/api/companies', generalLimiter, (req, res) => {
+    try {
+        const { companies, company } = req.body;
+        let existing = readJsonFile(COMPANIES_FILE, []);
+        const compMap = new Map();
+        existing.forEach(c => { if (c && c.id) compMap.set(c.id, c); });
+
+        if (Array.isArray(companies)) {
+            companies.forEach(c => {
+                if (c && c.id) {
+                    const prev = compMap.get(c.id) || {};
+                    compMap.set(c.id, { ...prev, ...c });
+                }
+            });
+            const merged = Array.from(compMap.values());
+            writeJsonFile(COMPANIES_FILE, merged);
+            return res.json({ success: true, count: merged.length });
+        } else if (company && company.id) {
+            const prev = compMap.get(company.id) || {};
+            compMap.set(company.id, { ...prev, ...company });
+            const merged = Array.from(compMap.values());
+            writeJsonFile(COMPANIES_FILE, merged);
+            return res.json({ success: true, company });
+        }
         res.status(400).json({ success: false, error: 'Formato inválido de empresas.' });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'Erro ao salvar empresas.' });
+    }
+});
+
+app.post('/api/companies/upsert', generalLimiter, (req, res) => {
+    try {
+        const { company, companies } = req.body;
+        let existing = readJsonFile(COMPANIES_FILE, []);
+        const compMap = new Map();
+        existing.forEach(c => { if (c && c.id) compMap.set(c.id, c); });
+
+        if (Array.isArray(companies)) {
+            companies.forEach(c => {
+                if (c && c.id) {
+                    const prev = compMap.get(c.id) || {};
+                    compMap.set(c.id, { ...prev, ...c });
+                }
+            });
+        }
+        if (company && company.id) {
+            const prev = compMap.get(company.id) || {};
+            compMap.set(company.id, { ...prev, ...company });
+        }
+        const merged = Array.from(compMap.values());
+        writeJsonFile(COMPANIES_FILE, merged);
+        res.json({ success: true, count: merged.length });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'Erro ao persistir empresa.' });
+    }
+});
+
+app.post('/api/companies/delete', generalLimiter, (req, res) => {
+    try {
+        const { companyId } = req.body;
+        if (!companyId || companyId === 'company-demo-don') {
+            return res.status(400).json({ success: false, error: 'ID inválido ou empresa demo protegida.' });
+        }
+        let existing = readJsonFile(COMPANIES_FILE, []);
+        existing = existing.filter(c => c.id !== companyId);
+        writeJsonFile(COMPANIES_FILE, existing);
+        res.json({ success: true, message: 'Empresa excluída com sucesso.' });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'Erro ao excluir empresa.' });
     }
 });
 

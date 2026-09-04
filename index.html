@@ -84,9 +84,14 @@
     <!-- PAINEL ADMIN -->
     <div class="admin-overlay" id="adminOverlay"></div>
     <aside class="admin-panel" id="adminPanel">
-        <div class="admin-header">
-            <h2>⚙️ Painel de Administração</h2>
-            <button class="admin-close" id="adminClose">✕</button>
+        <div class="admin-header" style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+            <h2 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #1E293B;">⚙️ Painel de Administração</h2>
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+                <button type="button" class="btn-admin-logout" onclick="logoutAdmin()" style="background: #FEE2E2; color: #DC2626; border: 1.5px solid #FCA5A5; padding: 0.35rem 0.7rem; border-radius: 8px; font-weight: 700; font-size: 0.8rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem;" title="Sair do Painel / Deslogar">
+                    🚪 Sair
+                </button>
+                <button class="admin-close" id="adminClose" title="Fechar Painel">✕</button>
+            </div>
         </div>
         
         <div class="admin-content">
@@ -820,6 +825,19 @@
                             <span class="switch-label" style="font-size: 0.8rem;">Usar janela de impressão se Bluetooth não conectado</span>
                         </div>
                     </div>
+                </div>
+
+                <!-- SEÇÃO DE LOGOUT / ENCERRAR SESSÃO DA EMPRESA -->
+                <div style="margin-top: 1.5rem; margin-bottom: 1.5rem; padding: 1.25rem; border-radius: 12px; background: #FFF1F2; border: 1.5px solid #FECDD3; text-align: center;">
+                    <div style="font-size: 0.85rem; font-weight: 700; color: #9F1239; margin-bottom: 0.5rem;">
+                        Encerrar Acesso Administrativo
+                    </div>
+                    <p style="font-size: 0.78rem; color: #BE123C; margin-bottom: 0.85rem;">
+                        Ao sair, será necessário informar novamente a senha da empresa para acessar o painel.
+                    </p>
+                    <button type="button" onclick="logoutAdmin()" style="width: 100%; background: #E11D48; color: white; border: none; padding: 0.75rem 1rem; border-radius: 8px; font-weight: 800; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; box-shadow: 0 4px 12px rgba(225, 29, 72, 0.25);">
+                        🚪 Sair da Empresa (Deslogar)
+                    </button>
                 </div>
             </div>
         </div>
@@ -2547,29 +2565,19 @@
         </div>
     </section>
     <footer class="footer">
-        <div class="footer-content-wrap">
-            <span class="footer-dev-trigger" title="Don Food">
-                <span>Aplicativo</span>
-                <strong class="don-delivery-highlight">
-                    <img src="/Don_Food.png" alt="Don Food" class="footer-logo-don" onerror="if(this.src.indexOf('Don_Food.png') === -1) { this.src = '/Don_Food.png'; } else { this.src = 'Don_food.png'; }">
-                </strong>
-            </span>
-            <span class="footer-dev-by-wrap">
-                <span>| Desenvolvido por</span>
-                <a href="https://www.donfim.com.br" target="_blank" rel="noopener noreferrer" class="footer-dev-link" title="Donfim Tech - Soluções em Tecnologia (www.donfim.com.br)">
-                    <img src="/Donfimtech.png" onerror="if(this.src.indexOf('donfimtech.png') === -1) { this.src = '/donfimtech.png'; } else { this.src = 'Donfimtech.png'; }" alt="Donfim Tech Logo" class="footer-logo-donfim">
+        <div class="footer-content-wrap" id="storeFooterContentWrap" style="display: flex; align-items: center; justify-content: center; gap: 0.75rem; flex-wrap: wrap; text-align: center; font-size: 0.84rem; color: #94A3B8; line-height: 1.6;">
+            <span id="storeFooterCopyright">© 2026 Don Food. Todos os direitos reservados.</span>
+            <span class="footer-bullet" style="color: #64748B;">•</span>
+            <a href="javascript:void(0)" id="storeFooterLgpdTerms" onclick="openLgpdPolicyModal()" style="color: #CBD5E1; text-decoration: underline; text-underline-offset: 3px; transition: color 0.2s;" onmouseover="this.style.color='#38BDF8'" onmouseout="this.style.color='#CBD5E1'">Termos & Privacidade LGPD</a>
+            <span class="footer-bullet" style="color: #64748B;">•</span>
+            <span id="storeFooterDevelopedBy" style="display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap;">
+                <span>Desenvolvido com excelência por</span>
+                <a href="https://www.donfim.com.br" id="storeFooterDonfimLink" target="_blank" rel="noopener noreferrer" style="color: #F59E0B; text-decoration: none; font-weight: 700; display: inline-flex; align-items: center; gap: 0.35rem;" title="Donfim Tech - Soluções em Tecnologia (www.donfim.com.br)">
+                    <span>Donfim Tech</span>
+                    <img src="/Donfimtech.png" id="storeFooterDonfimLogo" onerror="if(this.src.indexOf('donfimtech.png') === -1) { this.src = '/donfimtech.png'; } else { this.src = 'Donfimtech.png'; }" alt="Donfim Tech Logo" class="footer-logo-donfim" style="height: 22px; width: auto; vertical-align: middle; object-fit: contain;">
                 </a>
             </span>
-            <span style="display: inline-flex; align-items: center; gap: 0.35rem; margin-left: 0.5rem; font-size: 0.78rem;">
-                <span>|</span>
-                <a href="javascript:void(0)" onclick="openLgpdPolicyModal()" style="color: #94A3B8; text-decoration: none; display: inline-flex; align-items: center; gap: 0.25rem;" onmouseover="this.style.color='#38BDF8'" onmouseout="this.style.color='#94A3B8'">
-                    🔒 <span>Privacidade & LGPD</span>
-                </a>
-                <span>|</span>
-                <a href="/dev" id="footerStoreDevLink" onclick="switchToDevView(event)" style="color: #94A3B8; text-decoration: none; display: inline-flex; align-items: center; gap: 0.25rem;" onmouseover="this.style.color='#38BDF8'" onmouseout="this.style.color='#94A3B8'" title="Painel do Desenvolvedor (donfood.site/dev)">
-                    🛠️ <span>Dev</span>
-                </a>
-            </span>
+            <a href="/dev" id="footerStoreDevLink" onclick="switchToDevView(event)" style="display: none;" title="Acesso do Desenvolvedor (donfood.site/dev)">🛠️ Dev</a>
         </div>
     </footer>
     </main>
