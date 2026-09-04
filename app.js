@@ -1568,17 +1568,43 @@
                         compMap.set(defaultDemoCompany.id, defaultDemoCompany);
                         // Adicionar empresas locais
                         (companies || []).forEach(c => {
-                            if (c && c.id) compMap.set(c.id, c);
+                            if (c && c.id) {
+                                if (c.id === defaultDemoCompany.id) {
+                                    compMap.set(c.id, { ...defaultDemoCompany, ...c, id: defaultDemoCompany.id, slug: 'demo', isDemo: true, name: 'Don Food' });
+                                } else {
+                                    compMap.set(c.id, {
+                                        ...c,
+                                        isDemo: false,
+                                        slug: c.slug ? sanitizeSlug(c.slug) : generateSlug(c.name || c.id)
+                                    });
+                                }
+                            }
                         });
                         // Mesclar com empresas retornadas pelo servidor
                         serverComps.forEach(sc => {
                             if (sc && sc.id) {
-                                const existing = compMap.get(sc.id) || {};
-                                compMap.set(sc.id, {
-                                    ...existing,
-                                    ...sc,
-                                    adminPassword: existing.adminPassword || sc.adminPassword || 'admin123'
-                                });
+                                if (sc.id === defaultDemoCompany.id) {
+                                    const existing = compMap.get(sc.id) || {};
+                                    compMap.set(sc.id, {
+                                        ...defaultDemoCompany,
+                                        ...existing,
+                                        ...sc,
+                                        id: defaultDemoCompany.id,
+                                        slug: 'demo',
+                                        isDemo: true,
+                                        name: 'Don Food',
+                                        adminPassword: existing.adminPassword || sc.adminPassword || 'admin123'
+                                    });
+                                } else {
+                                    const existing = compMap.get(sc.id) || {};
+                                    compMap.set(sc.id, {
+                                        ...existing,
+                                        ...sc,
+                                        isDemo: false,
+                                        slug: sc.slug ? sanitizeSlug(sc.slug) : (existing.slug ? sanitizeSlug(existing.slug) : generateSlug(sc.name || sc.id)),
+                                        adminPassword: existing.adminPassword || sc.adminPassword || 'admin123'
+                                    });
+                                }
                             }
                         });
                         companies = Array.from(compMap.values());
@@ -1588,22 +1614,22 @@
                         const urlParams = new URLSearchParams(window.location.search);
                         const requestedParam = urlParams.get('empresa') || urlParams.get('loja') || urlParams.get('c') || urlParams.get('slug') || urlParams.get('tenant');
                         if (requestedParam) {
-                            const cleanParam = requestedParam.trim().toLowerCase();
+                            const cleanParam = sanitizeSlug(requestedParam).toLowerCase();
                             const target = companies.find(c => 
-                                (c.slug && c.slug.toLowerCase() === cleanParam) || 
+                                (c.slug && sanitizeSlug(c.slug).toLowerCase() === cleanParam) || 
                                 (c.id && c.id.toLowerCase() === cleanParam) ||
                                 (c.name && sanitizeSlug(c.name).toLowerCase() === cleanParam) ||
-                                (cleanParam === 'demo' && (c.id === 'company-demo-don' || c.isDemo || c.slug === 'demo'))
+                                (cleanParam === 'demo' && (c.id === 'company-demo-don' || isCompanyDemo(c) || c.slug === 'demo'))
                             );
-                            if (target && target.id !== activeCompanyId) {
+                            if (target) {
                                 activeCompanyId = target.id;
                                 localStorage.setItem('activeCompanyId', activeCompanyId);
                             }
                         } else {
                             // Se não há parâmetro na URL (acesso ao link principal www.donfood.site):
                             // SEMPRE abrir a Loja Demo do Don Food!
-                            const demoComp = companies.find(c => isCompanyDemo(c)) || defaultDemoCompany;
-                            if (activeCompanyId !== demoComp.id) {
+                            const demoComp = companies.find(c => c.id === 'company-demo-don' || isCompanyDemo(c)) || defaultDemoCompany;
+                            if (activeCompanyId !== demoComp.id && !AuthManager.isCompanyOwner(activeCompanyId)) {
                                 activeCompanyId = demoComp.id;
                                 localStorage.setItem('activeCompanyId', activeCompanyId);
                             }
@@ -1683,13 +1709,40 @@
         }
 
         // ========== APLICADOR DESSA PALETA DE CORES DINÂMICA ==========
+        function hexToRgb(hex) {
+            if (!hex) return '220, 38, 38';
+            hex = hex.replace('#', '');
+            if (hex.length === 3) {
+                hex = hex.split('').map(c => c + c).join('');
+            }
+            const num = parseInt(hex, 16);
+            if (isNaN(num)) return '220, 38, 38';
+            return `${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}`;
+        }
+
         function applyThemeColors(theme) {
             if (!theme) theme = THEME_PRESETS.acai;
+            const primary = theme.primary || '#59176B';
+            const primaryDark = theme.primaryDark || '#3E0C4C';
+            const secondary = theme.secondary || '#8B26A0';
+            const bgAccent = theme.bgAccent || '#FAF5FF';
+
             const root = document.documentElement;
-            root.style.setProperty('--primary', theme.primary || '#59176B');
-            root.style.setProperty('--primary-dark', theme.primaryDark || '#3E0C4C');
-            root.style.setProperty('--secondary', theme.secondary || '#8B26A0');
-            root.style.setProperty('--bg-accent', theme.bgAccent || '#FAF5FF');
+            root.style.setProperty('--primary', primary);
+            root.style.setProperty('--primary-dark', primaryDark);
+            root.style.setProperty('--secondary', secondary);
+            root.style.setProperty('--bg-accent', bgAccent);
+            root.style.setProperty('--primary-rgb', hexToRgb(primary));
+            root.style.setProperty('--secondary-rgb', hexToRgb(secondary));
+
+            if (document.body) {
+                document.body.style.setProperty('--primary', primary);
+                document.body.style.setProperty('--primary-dark', primaryDark);
+                document.body.style.setProperty('--secondary', secondary);
+                document.body.style.setProperty('--bg-accent', bgAccent);
+                document.body.style.setProperty('--primary-rgb', hexToRgb(primary));
+                document.body.style.setProperty('--secondary-rgb', hexToRgb(secondary));
+            }
 
             // Atualizar os inputs de cor no Admin se já estiverem renderizados
             const pInput = document.getElementById('themePrimaryColor');
@@ -1697,20 +1750,20 @@
             const sInput = document.getElementById('themeSecondaryColor');
             const bgInput = document.getElementById('themeBgAccentColor');
 
-            if (pInput) pInput.value = theme.primary || '#59176B';
-            if (pdInput) pdInput.value = theme.primaryDark || '#3E0C4C';
-            if (sInput) sInput.value = theme.secondary || '#8B26A0';
-            if (bgInput) bgInput.value = theme.bgAccent || '#FAF5FF';
+            if (pInput) pInput.value = primary;
+            if (pdInput) pdInput.value = primaryDark;
+            if (sInput) sInput.value = secondary;
+            if (bgInput) bgInput.value = bgAccent;
 
             const pHex = document.getElementById('themePrimaryHex');
             const pdHex = document.getElementById('themePrimaryDarkHex');
             const sHex = document.getElementById('themeSecondaryHex');
             const bgHex = document.getElementById('themeBgAccentHex');
 
-            if (pHex) pHex.textContent = (theme.primary || '#59176B').toUpperCase();
-            if (pdHex) pdHex.textContent = (theme.primaryDark || '#3E0C4C').toUpperCase();
-            if (sHex) sHex.textContent = (theme.secondary || '#8B26A0').toUpperCase();
-            if (bgHex) bgHex.textContent = (theme.bgAccent || '#FAF5FF').toUpperCase();
+            if (pHex) pHex.textContent = primary.toUpperCase();
+            if (pdHex) pdHex.textContent = primaryDark.toUpperCase();
+            if (sHex) sHex.textContent = secondary.toUpperCase();
+            if (bgHex) bgHex.textContent = bgAccent.toUpperCase();
 
             if (typeof renderDynamicPromoBanner === 'function') renderDynamicPromoBanner();
             if (typeof renderDynamicIngredientsSection === 'function') renderDynamicIngredientsSection();
@@ -1744,6 +1797,7 @@
             }
 
             applyThemeColors(settings.themeColors);
+            renderAll();
             saveData();
             showNotification(`Tema "${preset.name || themeKey}" aplicado com sucesso! 🎨`, 'success');
         }
@@ -2397,7 +2451,7 @@
         }
         window.updateCompanyCategory = updateCompanyCategory;
 
-        // ========== FUNÇÕES UTILITÁRIAS DE SLUGS E LINKS DE ACESSO (donfood.com) ==========
+        // ========== FUNÇÕES UTILITÁRIAS DE SLUGS E LINKS DE ACESSO (donfood.com / donfood.site) ==========
         function sanitizeSlug(text) {
             if (!text) return '';
             return text
@@ -2417,10 +2471,9 @@
 
         function isCompanyDemo(comp) {
             if (!comp) return false;
-            if (comp.id === 'company-demo-don') return true;
-            if (comp.isDemo === true) return true;
-            if (comp.slug === 'demo') return true;
-            if (comp.name && (comp.name === 'Don Food' || comp.name.includes('Demonstração')) && (!comp.slug || comp.slug === 'demo')) return true;
+            if (comp.id === 'company-demo-don' && (!comp.slug || comp.slug === 'demo') && (!comp.name || comp.name === 'Don Food')) return true;
+            if (comp.slug === 'demo' && (!comp.name || comp.name === 'Don Food')) return true;
+            if (comp.isDemo === true && (!comp.slug || comp.slug === 'demo') && (!comp.name || comp.name === 'Don Food')) return true;
             return false;
         }
 
@@ -2448,8 +2501,23 @@
         }
 
         function copyActiveCompanyOfficialLink() {
-            let activeComp = (typeof getActiveCompany === 'function' ? getActiveCompany() : null) || (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
-            const url = getCompanyOfficialUrl(activeComp);
+            const activeComp = (typeof getActiveCompany === 'function' ? getActiveCompany() : null) 
+                || (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) 
+                || settings;
+            const slugInput = document.getElementById('restaurantSlug');
+            const customSlug = slugInput ? sanitizeSlug(slugInput.value) : '';
+            const nameInput = document.getElementById('restaurantName');
+            const currentName = (nameInput && nameInput.value.trim()) || (settings && settings.restaurantName) || (activeComp && activeComp.name) || 'Sua Loja';
+            const isPureDemo = isCompanyDemo(activeComp) && !customSlug && (currentName === 'Don Food' || !currentName);
+            const slugVal = isPureDemo 
+                ? 'demo' 
+                : (customSlug || (activeComp && activeComp.slug && activeComp.slug !== 'demo' ? sanitizeSlug(activeComp.slug) : '') || (settings && settings.slug && settings.slug !== 'demo' ? sanitizeSlug(settings.slug) : '') || (currentName !== 'Don Food' ? generateSlug(currentName) : 'demo'));
+            
+            const origin = (typeof window !== 'undefined' && window.location && window.location.origin) 
+                ? window.location.origin 
+                : 'https://donfood.site';
+            const url = `${origin}/?empresa=${encodeURIComponent(slugVal)}`;
+
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(url).then(() => {
                     showNotification(`Link oficial copiado: ${url} 📋`, 'success');
@@ -2462,9 +2530,23 @@
         }
 
         function shareActiveCompanyWhatsApp() {
-            let activeComp = (typeof getActiveCompany === 'function' ? getActiveCompany() : null) || (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
-            const url = getCompanyOfficialUrl(activeComp);
-            const name = (activeComp && activeComp.name) || settings.restaurantName || 'Don Food';
+            const activeComp = (typeof getActiveCompany === 'function' ? getActiveCompany() : null) 
+                || (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) 
+                || settings;
+            const slugInput = document.getElementById('restaurantSlug');
+            const customSlug = slugInput ? sanitizeSlug(slugInput.value) : '';
+            const nameInput = document.getElementById('restaurantName');
+            const currentName = (nameInput && nameInput.value.trim()) || (settings && settings.restaurantName) || (activeComp && activeComp.name) || 'Sua Loja';
+            const isPureDemo = isCompanyDemo(activeComp) && !customSlug && (currentName === 'Don Food' || !currentName);
+            const slugVal = isPureDemo 
+                ? 'demo' 
+                : (customSlug || (activeComp && activeComp.slug && activeComp.slug !== 'demo' ? sanitizeSlug(activeComp.slug) : '') || (settings && settings.slug && settings.slug !== 'demo' ? sanitizeSlug(settings.slug) : '') || (currentName !== 'Don Food' ? generateSlug(currentName) : 'demo'));
+            
+            const origin = (typeof window !== 'undefined' && window.location && window.location.origin) 
+                ? window.location.origin 
+                : 'https://donfood.site';
+            const url = `${origin}/?empresa=${encodeURIComponent(slugVal)}`;
+            const name = currentName || (activeComp && activeComp.name) || settings.restaurantName || 'Don Food';
             const text = encodeURIComponent(`Olá! Confira nosso cardápio digital completo e faça seu pedido online no *${name}* através do link oficial:\n${url}`);
             window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
         }
@@ -2517,7 +2599,16 @@
                 || settings;
             const slugInput = document.getElementById('restaurantSlug');
             const customSlug = slugInput ? sanitizeSlug(slugInput.value) : '';
-            const slugVal = customSlug || (settings && settings.slug) || (activeComp && activeComp.slug) || getCompanySlug(activeComp) || 'sua-loja';
+            const nameInput = document.getElementById('restaurantName');
+            const currentName = (nameInput && nameInput.value.trim()) 
+                || (settings && settings.restaurantName) 
+                || (activeComp && activeComp.name) 
+                || 'Sua Loja';
+
+            const isPureDemo = isCompanyDemo(activeComp) && !customSlug && (currentName === 'Don Food' || !currentName);
+            const slugVal = isPureDemo 
+                ? 'demo' 
+                : (customSlug || (activeComp && activeComp.slug && activeComp.slug !== 'demo' ? sanitizeSlug(activeComp.slug) : '') || (settings && settings.slug && settings.slug !== 'demo' ? sanitizeSlug(settings.slug) : '') || (currentName !== 'Don Food' ? generateSlug(currentName) : 'demo'));
             
             const origin = (typeof window !== 'undefined' && window.location && window.location.origin) 
                 ? window.location.origin 
@@ -2551,11 +2642,6 @@
             const logoImg = document.getElementById('adminCompanyLinkLogo');
             const logoFallback = document.getElementById('adminCompanyLinkLogoFallback');
             const logoMini = document.getElementById('adminCompanyShareUrlLogoMini');
-            const nameInput = document.getElementById('restaurantName');
-            const currentName = (nameInput && nameInput.value.trim()) 
-                || (settings && settings.restaurantName) 
-                || (activeComp && activeComp.name) 
-                || 'Sua Loja';
             const storeNameEl = document.getElementById('adminCompanyLinkStoreName');
             const catBadge = document.getElementById('adminCompanyLinkCategoryBadge');
             
@@ -2605,6 +2691,13 @@
                 if (logoImg) logoImg.style.display = 'none';
                 if (logoFallback) logoFallback.style.display = 'block';
                 if (logoMini) logoMini.style.display = 'none';
+            }
+
+            // Atualizar QR Code Oficial
+            const qrImg = document.getElementById('adminCompanyQrImg');
+            if (qrImg) {
+                const qrEndpoint = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(fullUrl)}&margin=10`;
+                qrImg.src = qrEndpoint;
             }
         }
         window.updateAdminShareLinkDisplay = updateAdminShareLinkDisplay;
@@ -2727,8 +2820,8 @@
                 companies = [defaultDemoCompany];
                 localStorage.setItem('companies', JSON.stringify(companies));
             } else {
-                // Garantir integridade dos Slugs e garantir que a empresa de demonstração exista intacta
-                let demoIndex = companies.findIndex(c => c.id === 'company-demo-don' || c.isDemo || c.slug === 'demo');
+                // Garantir que a empresa de demonstração exista isolada e protegida
+                let demoIndex = companies.findIndex(c => c.id === 'company-demo-don');
                 if (demoIndex === -1) {
                     companies.unshift(defaultDemoCompany);
                 } else {
@@ -2742,10 +2835,11 @@
                         logoUrl: companies[demoIndex].logoUrl || 'Logo_Don.png'
                     };
                 }
-                // Garantir que cada empresa tenha slug e campos válidos
+                // Garantir que cada empresa personalizada mantenha seu slug e dados exclusivos
                 companies.forEach(comp => {
                     if (comp.id !== 'company-demo-don') {
-                        comp.slug = getCompanySlug(comp);
+                        comp.isDemo = false;
+                        comp.slug = comp.slug ? sanitizeSlug(comp.slug) : generateSlug(comp.name || comp.id);
                     }
                     if (comp.whatsappNumber === '5521972888819') {
                         comp.whatsappNumber = '5521999999999';
@@ -2761,31 +2855,44 @@
             let targetCompany = null;
 
             if (requestedParam) {
-                const cleanParam = requestedParam.trim().toLowerCase();
+                const cleanParam = sanitizeSlug(requestedParam).toLowerCase();
                 targetCompany = companies.find(c => 
-                    (c.slug && c.slug.toLowerCase() === cleanParam) || 
+                    (c.slug && sanitizeSlug(c.slug).toLowerCase() === cleanParam) || 
                     (c.id && c.id.toLowerCase() === cleanParam) ||
                     (c.name && sanitizeSlug(c.name).toLowerCase() === cleanParam) ||
-                    (cleanParam === 'demo' && (c.id === 'company-demo-don' || c.isDemo || c.slug === 'demo'))
+                    (cleanParam === 'demo' && (c.id === 'company-demo-don' || isCompanyDemo(c) || c.slug === 'demo'))
                 );
             }
 
-            // Fallback por pathname se for rota direta como /burger-king (excluindo /login, /dev e assets)
+            // Fallback por pathname se for rota direta como /marmitas-fitnes (excluindo /login, /dev e assets)
             if (!targetCompany && window.location.pathname && window.location.pathname !== '/' && window.location.pathname !== '/index.html') {
-                const pathSlug = window.location.pathname.replace(/^\/+/, '').split('/')[0].toLowerCase();
-                if (pathSlug && !pathSlug.endsWith('.js') && !pathSlug.endsWith('.css') && !pathSlug.endsWith('.png') && !pathSlug.endsWith('.jpg') && !pathSlug.endsWith('.svg') && !pathSlug.endsWith('.json') && !pathSlug.endsWith('.sql') && pathSlug !== 'api' && pathSlug !== 'login' && pathSlug !== 'dev') {
+                const rawPath = window.location.pathname.replace(/^\/+/, '').split('/')[0];
+                const pathSlug = sanitizeSlug(rawPath).toLowerCase();
+                const systemPaths = ['api', 'login', 'dev', 'admin', 'pedidos', 'carrinho', 'assets', 'static'];
+                if (pathSlug && !systemPaths.includes(pathSlug) && !pathSlug.endsWith('.js') && !pathSlug.endsWith('.css') && !pathSlug.endsWith('.png') && !pathSlug.endsWith('.jpg') && !pathSlug.endsWith('.svg') && !pathSlug.endsWith('.json') && !pathSlug.endsWith('.sql')) {
                     targetCompany = companies.find(c => 
-                        (c.slug && c.slug.toLowerCase() === pathSlug) || 
+                        (c.slug && sanitizeSlug(c.slug).toLowerCase() === pathSlug) || 
                         (c.id && c.id.toLowerCase() === pathSlug) ||
-                        (pathSlug === 'demo' && (c.id === 'company-demo-don' || c.isDemo || c.slug === 'demo'))
+                        (c.name && sanitizeSlug(c.name).toLowerCase() === pathSlug) ||
+                        (pathSlug === 'demo' && (c.id === 'company-demo-don' || isCompanyDemo(c) || c.slug === 'demo'))
                     );
                 }
             }
 
             if (targetCompany) {
-                // Link direto de uma empresa específica (ex: www.donfood.site/?empresa=sua-empresa)
+                // Link direto de uma empresa específica (ex: www.donfood.site/?empresa=marmitas-fitnes)
                 activeCompanyId = targetCompany.id;
                 localStorage.setItem('activeCompanyId', activeCompanyId);
+            } else if (requestedParam && requestedParam.toLowerCase() !== 'demo') {
+                // Se o link especificou uma empresa que pode ainda não estar no storage, preservar o ID ativo anterior se não for demo
+                const prevActive = companies.find(c => c.id === activeCompanyId);
+                if (!prevActive || isCompanyDemo(prevActive)) {
+                    const firstCustom = companies.find(c => c.id !== 'company-demo-don');
+                    if (firstCustom) {
+                        activeCompanyId = firstCustom.id;
+                        localStorage.setItem('activeCompanyId', activeCompanyId);
+                    }
+                }
             } else {
                 // Acesso ao link principal do portal (ex: www.donfood.site ou /):
                 // SEMPRE abrir a Loja Demo padrão Don Food!
@@ -2841,7 +2948,7 @@
                 deliveryTime: activeComp.deliveryTime || '25 - 40 min',
                 presetType: activeComp.presetType || 'burguer',
                 schedule: activeComp.schedule || defaultSettings.schedule,
-                themeColors: activeComp.themeColors || defaultDemoCompany.themeColors,
+                themeColors: (activeComp.themeColors && activeComp.themeColors.primary) ? activeComp.themeColors : (THEME_PRESETS[activeComp.presetType] || THEME_PRESETS.burguer || defaultDemoCompany.themeColors),
                 customBanner: activeComp.customBanner || null,
                 customExtras: activeComp.customExtras || null,
                 coupons: activeComp.coupons || (defaultSettings.coupons ? JSON.parse(JSON.stringify(defaultSettings.coupons)) : defaultCoupons),
@@ -11168,8 +11275,8 @@
             if (currentQrScope === 'portal') {
                 return {
                     title: 'Don Food • Plataforma Oficial',
-                    url: 'https://www.donfood.com',
-                    qrImageUrl: `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent('https://www.donfood.com')}`,
+                    url: 'https://www.donfood.site',
+                    qrImageUrl: `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent('https://www.donfood.site')}`,
                     storeName: 'Don Food'
                 };
             } else {

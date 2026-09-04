@@ -2839,19 +2839,15 @@
             margin-top: 76px;
             background: 
                 radial-gradient(ellipse 95% 85% at 50% 50%, 
-                    #991B1B 0%, 
-                    #B91C1C 22%, 
-                    #C2410C 42%, 
-                    #EA580C 60%, 
-                    #F97316 74%, 
-                    #F59E0B 84%, 
-                    #FDE047 93%, 
-                    #FEF08A 100%
+                    var(--primary-dark, #991B1B) 0%, 
+                    var(--primary, #DC2626) 45%, 
+                    var(--secondary, #EA580C) 85%, 
+                    var(--primary-dark, #991B1B) 100%
                 );
             padding: 4.5rem 2rem 5rem;
             position: relative;
             overflow: hidden;
-            border-bottom: 3px solid #F59E0B;
+            border-bottom: 3px solid var(--secondary, #F59E0B);
         }
 
         .hero.has-demo-landing {
@@ -2877,7 +2873,7 @@
             bottom: 0;
             background-image: 
                 radial-gradient(rgba(255, 255, 255, 0.12) 1.5px, transparent 1.5px),
-                radial-gradient(rgba(245, 158, 11, 0.1) 1.5px, transparent 1.5px);
+                radial-gradient(rgba(255, 255, 255, 0.08) 1.5px, transparent 1.5px);
             background-size: 32px 32px, 64px 64px;
             background-position: 0 0, 16px 16px;
             opacity: 0.45;
@@ -2892,7 +2888,7 @@
             width: 600px;
             height: 600px;
             border-radius: 50%;
-            background: radial-gradient(circle, rgba(251, 146, 60, 0.25) 0%, transparent 70%);
+            background: radial-gradient(circle, var(--secondary, rgba(251, 146, 60, 0.25)) 0%, transparent 70%);
             filter: blur(40px);
             pointer-events: none;
             animation: pulseGlow 6s ease-in-out infinite alternate;
@@ -2930,8 +2926,8 @@
             object-fit: contain;
             object-position: center;
             margin-bottom: 1.15rem;
-            box-shadow: 0 18px 42px rgba(0, 0, 0, 0.45), 0 0 35px rgba(245, 158, 11, 0.4);
-            border: 3.5px solid rgba(254, 215, 170, 0.85);
+            box-shadow: 0 18px 42px rgba(0, 0, 0, 0.45), 0 0 35px var(--primary, rgba(245, 158, 11, 0.4));
+            border: 3.5px solid var(--secondary, rgba(254, 215, 170, 0.85));
             display: none; /* Manipulado pelo JS */
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.08));
             padding: 14px;
@@ -2960,7 +2956,7 @@
             color: #FFFFFF;
             margin-bottom: 0.75rem;
             line-height: 1.15;
-            text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5), 0 0 20px rgba(245, 158, 11, 0.3);
+            text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5), 0 0 20px var(--secondary, rgba(245, 158, 11, 0.3));
             letter-spacing: -0.5px;
             animation: fadeInUp 0.8s;
         }
@@ -3000,7 +2996,7 @@
             line-height: 1;
             margin: 0;
             box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
-            border: 1.5px solid rgba(254, 215, 170, 0.8);
+            border: 1.5px solid var(--secondary, rgba(254, 215, 170, 0.8));
             box-sizing: border-box;
             vertical-align: middle;
             white-space: nowrap;
@@ -3032,7 +3028,7 @@
         }
 
         .delivery-time-badge .del-time-val {
-            color: #EA580C;
+            color: var(--primary, #EA580C);
             font-weight: 900;
         }
 
@@ -3059,16 +3055,16 @@
 
         .btn-primary {
             background: #FFFFFF;
-            color: #DC2626;
+            color: var(--primary, #DC2626);
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25), 0 0 15px rgba(255, 255, 255, 0.4);
             border: 2px solid #FFFFFF;
         }
 
         .btn-primary:hover {
             transform: translateY(-3px) scale(1.02);
-            background: #FFFBEB;
-            color: #B91C1C;
-            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35), 0 0 25px rgba(254, 240, 138, 0.6);
+            background: var(--bg-accent, #FFFBEB);
+            color: var(--primary-dark, #B91C1C);
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35), 0 0 25px rgba(255, 255, 255, 0.6);
         }
 
         .btn-whatsapp {
@@ -3089,7 +3085,7 @@
             background: linear-gradient(145deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.07) 100%);
             backdrop-filter: blur(24px);
             -webkit-backdrop-filter: blur(24px);
-            border: 1.5px solid rgba(254, 215, 170, 0.45);
+            border: 1.5px solid var(--secondary, rgba(254, 215, 170, 0.45));
             border-radius: 20px;
             padding: 1.15rem;
             max-width: 370px;
@@ -3097,7 +3093,7 @@
             margin: 0 auto;
             box-shadow: 
                 0 18px 40px -8px rgba(0, 0, 0, 0.5),
-                0 0 30px rgba(245, 158, 11, 0.2),
+                0 0 30px var(--secondary, rgba(245, 158, 11, 0.2)),
                 inset 0 1px 2px rgba(255, 255, 255, 0.6);
             animation: float 4s ease-in-out infinite;
             color: #FFFFFF;
@@ -5205,21 +5201,16 @@
         .promo-banner {
             background: 
                 radial-gradient(ellipse 95% 85% at 50% 50%, 
-                    #FDE047 0%, 
-                    #F59E0B 18%, 
-                    #F97316 35%, 
-                    #EA580C 52%, 
-                    #DC2626 70%, 
-                    #B91C1C 84%, 
-                    #7F1D1D 96%, 
-                    #450A0A 100%
+                    var(--secondary, #F59E0B) 0%, 
+                    var(--primary, #DC2626) 60%, 
+                    var(--primary-dark, #7F1D1D) 100%
                 );
             color: #FFFFFF;
             padding: 2.5rem 1.5rem;
             margin: 2rem 0;
             border-radius: 24px;
-            box-shadow: 0 16px 40px rgba(127, 29, 29, 0.4), 0 0 30px rgba(245, 158, 11, 0.25);
-            border: 2.5px solid #F59E0B;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25), 0 0 30px rgba(0, 0, 0, 0.15);
+            border: 2.5px solid var(--secondary, #F59E0B);
             position: relative;
             overflow: hidden;
             transition: all 0.3s ease;
@@ -5249,8 +5240,8 @@
 
         .promo-badge {
             display: inline-block;
-            background: #111827;
-            color: #FEF08A;
+            background: var(--primary-dark, #111827);
+            color: var(--white, #FEF08A);
             font-weight: 800;
             font-size: 0.85rem;
             padding: 0.45rem 1.3rem;
@@ -5259,7 +5250,7 @@
             letter-spacing: 1px;
             margin-bottom: 0.75rem;
             box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-            border: 1.5px solid #F59E0B;
+            border: 1.5px solid var(--secondary, #F59E0B);
         }
 
         .promo-title-box {
@@ -5267,7 +5258,7 @@
             background: rgba(255, 255, 255, 0.92);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
-            border: 2px solid #F59E0B;
+            border: 2px solid var(--secondary, #F59E0B);
             padding: 1rem 1.75rem;
             border-radius: 18px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), inset 0 1px 2px rgba(255, 255, 255, 0.8);
@@ -5286,7 +5277,7 @@
         }
 
         .promo-title span {
-            color: #DC2626;
+            color: var(--primary, #DC2626);
             display: inline-block;
             font-weight: 900;
             text-shadow: none;
@@ -5342,9 +5333,9 @@
         .promo-option-card.highlight {
             opacity: 1;
             transform: scale(1.04);
-            border-color: #F59E0B;
+            border-color: var(--secondary, #F59E0B);
             background: #FFFFFF;
-            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18), 0 0 20px rgba(245, 158, 11, 0.35);
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18), 0 0 20px var(--secondary, rgba(245, 158, 11, 0.35));
         }
 
         .promo-carousel-dots {
@@ -5790,7 +5781,7 @@
         }
 
         .btn-add-preset {
-            background: #59176B;
+            background: var(--primary);
             color: white;
             border: none;
             padding: 0.4rem 0.75rem;
@@ -5802,7 +5793,7 @@
         }
 
         .btn-add-preset:hover {
-            background: #3E0C4C;
+            background: var(--primary-dark);
             transform: scale(1.02);
         }
 
@@ -5811,9 +5802,9 @@
         }
 
         .chip-preset-img {
-            background: #FAF5FF;
-            border: 1px solid #E9D5FF;
-            color: #59176B;
+            background: var(--bg-accent, #FAF5FF);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            color: var(--primary);
             border-radius: 20px;
             padding: 0.25rem 0.6rem;
             font-size: 0.75rem;
@@ -5823,7 +5814,7 @@
         }
 
         .chip-preset-img:hover {
-            background: #59176B;
+            background: var(--primary);
             color: white;
         }
 
@@ -6020,9 +6011,9 @@
         }
 
         .customer-header-btn {
-            background: #FAF5FF;
-            border: 1px solid #E9D5FF;
-            color: #59176B;
+            background: var(--bg-accent, #FAF5FF);
+            border: 1px solid rgba(0, 0, 0, 0.12);
+            color: var(--primary);
             font-weight: 700;
             font-size: 0.85rem;
             padding: 0.45rem 0.9rem;
@@ -6035,29 +6026,29 @@
         }
 
         .customer-header-btn.unified-auth-header-btn {
-            background: linear-gradient(135deg, var(--primary, #59176B), var(--primary-dark, #3E0C4C));
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
             color: white;
             border: none;
             padding: 0.48rem 1.1rem;
-            box-shadow: 0 2px 8px rgba(89, 23, 107, 0.2);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
         }
 
         .customer-header-btn.unified-auth-header-btn:hover {
-            background: linear-gradient(135deg, var(--primary-dark, #3E0C4C), #280731);
+            background: linear-gradient(135deg, var(--primary-dark), #111827);
             color: white;
-            box-shadow: 0 4px 14px rgba(89, 23, 107, 0.35);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
             transform: translateY(-1px);
         }
 
         .customer-header-btn:hover {
-            background: #59176B;
+            background: var(--primary);
             color: white;
             transform: translateY(-1px);
         }
 
         .customer-profile-card {
-            background: #FAF5FF;
-            border: 1px solid #E9D5FF;
+            background: var(--bg-accent, #FAF5FF);
+            border: 1px solid rgba(0, 0, 0, 0.08);
             border-radius: 12px;
             padding: 1rem;
             margin-bottom: 1.25rem;
@@ -6072,7 +6063,7 @@
 
         .customer-profile-name {
             font-weight: 800;
-            color: #59176B;
+            color: var(--primary-dark);
             font-size: 1.05rem;
         }
 
@@ -6555,7 +6546,7 @@
         }
 
         .btn-print-order {
-            background: #59176B;
+            background: var(--primary);
             color: white;
             border: none;
             padding: 0.4rem 0.75rem;
@@ -6570,7 +6561,7 @@
         }
 
         .btn-print-order:hover {
-            background: #3B0B47;
+            background: var(--primary-dark);
             transform: translateY(-1px);
         }
 
@@ -7051,7 +7042,7 @@
 
         .btn-dedicated-login-submit {
             width: 100%;
-            background: linear-gradient(135deg, #DC2626 0%, #EA580C 50%, #F59E0B 100%);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--primary-dark) 100%);
             color: #FFFFFF;
             font-weight: 800;
             font-size: 1.05rem;
@@ -7059,7 +7050,7 @@
             border-radius: 50px;
             border: none;
             cursor: pointer;
-            box-shadow: 0 6px 20px rgba(234, 88, 12, 0.4);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
             transition: all 0.2s ease;
             display: flex;
             align-items: center;
@@ -7070,7 +7061,7 @@
 
         .btn-dedicated-login-submit:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(234, 88, 12, 0.5);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35);
         }
 
         .btn-dedicated-login-submit:active {
