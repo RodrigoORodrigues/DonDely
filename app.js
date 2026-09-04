@@ -1555,93 +1555,135 @@
         const btnClear = document.getElementById('btnClear');
         const customerFormContainer = document.getElementById('customerFormContainer');
 
-        // ========== INICIALIZAÇÃO ==========
-        async function fetchCompaniesFromServer() {
-            try {
-                const res = await fetch('/api/companies');
-                if (res.ok) {
-                    const json = await res.json();
-                    if (json && json.success && Array.isArray(json.data) && json.data.length > 0) {
-                        const serverComps = json.data;
-                        const compMap = new Map();
-                        // Garantir demo padrão intacta
-                        compMap.set(defaultDemoCompany.id, defaultDemoCompany);
-                        // Adicionar empresas locais
-                        (companies || []).forEach(c => {
-                            if (c && c.id) {
-                                if (c.id === defaultDemoCompany.id) {
-                                    compMap.set(c.id, { ...defaultDemoCompany, ...c, id: defaultDemoCompany.id, slug: 'demo', isDemo: true, name: 'Don Food' });
-                                } else {
-                                    compMap.set(c.id, {
-                                        ...c,
-                                        isDemo: false,
-                                        slug: c.slug ? sanitizeSlug(c.slug) : generateSlug(c.name || c.id)
-                                    });
-                                }
-                            }
-                        });
-                        // Mesclar com empresas retornadas pelo servidor
-                        serverComps.forEach(sc => {
-                            if (sc && sc.id) {
-                                if (sc.id === defaultDemoCompany.id) {
-                                    const existing = compMap.get(sc.id) || {};
-                                    compMap.set(sc.id, {
-                                        ...defaultDemoCompany,
-                                        ...existing,
-                                        ...sc,
-                                        id: defaultDemoCompany.id,
-                                        slug: 'demo',
-                                        isDemo: true,
-                                        name: 'Don Food',
-                                        adminPassword: existing.adminPassword || sc.adminPassword || 'admin123'
-                                    });
-                                } else {
-                                    const existing = compMap.get(sc.id) || {};
-                                    compMap.set(sc.id, {
-                                        ...existing,
-                                        ...sc,
-                                        isDemo: false,
-                                        slug: sc.slug ? sanitizeSlug(sc.slug) : (existing.slug ? sanitizeSlug(existing.slug) : generateSlug(sc.name || sc.id)),
-                                        adminPassword: existing.adminPassword || sc.adminPassword || 'admin123'
-                                    });
-                                }
-                            }
-                        });
-                        companies = Array.from(compMap.values());
-                        localStorage.setItem('companies', JSON.stringify(companies));
+        // ========== FUNÇÕES UTILITÁRIAS DE SLUGS, URLS E ROTEAMENTO MULTI-EMPRESA ==========
+        function sanitizeSlug(text) {
+            if (!text) return '';
+            return text
+                .toString()
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '')
+                .substring(0, 50);
+        }
 
-                        // Reavaliar empresa ativa se necessário a partir da URL
-                        const urlParams = new URLSearchParams(window.location.search);
-                        const requestedParam = urlParams.get('empresa') || urlParams.get('loja') || urlParams.get('c') || urlParams.get('slug') || urlParams.get('tenant');
-                        if (requestedParam) {
-                            const cleanParam = sanitizeSlug(requestedParam).toLowerCase();
-                            const target = companies.find(c => 
-                                (c.slug && sanitizeSlug(c.slug).toLowerCase() === cleanParam) || 
-                                (c.id && c.id.toLowerCase() === cleanParam) ||
-                                (c.name && sanitizeSlug(c.name).toLowerCase() === cleanParam) ||
-                                (cleanParam === 'demo' && (c.id === 'company-demo-don' || isCompanyDemo(c) || c.slug === 'demo'))
-                            );
-                            if (target) {
-                                activeCompanyId = target.id;
-                                localStorage.setItem('activeCompanyId', activeCompanyId);
-                            }
-                        } else {
-                            // Se não há parâmetro na URL (acesso ao link principal www.donfood.site):
-                            // SEMPRE abrir a Loja Demo do Don Food!
-                            const demoComp = companies.find(c => c.id === 'company-demo-don' || isCompanyDemo(c)) || defaultDemoCompany;
-                            if (activeCompanyId !== demoComp.id && !AuthManager.isCompanyOwner(activeCompanyId)) {
-                                activeCompanyId = demoComp.id;
-                                localStorage.setItem('activeCompanyId', activeCompanyId);
-                            }
-                        }
-                        loadData();
-                        renderAll();
-                        renderDevCompanyList();
+        function generateSlug(text) {
+            const clean = sanitizeSlug(text);
+            return clean || ('loja-' + Date.now().toString(36));
+        }
+
+        function isCompanyDemo(comp) {
+            if (!comp) return false;
+            if (comp.id === 'company-demo-don' && (!comp.slug || comp.slug === 'demo') && (!comp.name || comp.name === 'Don Food')) return true;
+            if (comp.slug === 'demo' && (!comp.name || comp.name === 'Don Food')) return true;
+            if (comp.isDemo === true && (!comp.slug || comp.slug === 'demo') && (!comp.name || comp.name === 'Don Food')) return true;
+            return false;
+        }
+
+        function getCompanySlug(comp) {
+            if (!comp) return 'demo';
+            if (isCompanyDemo(comp)) return 'demo';
+            if (comp.slug && comp.slug !== 'demo') return sanitizeSlug(comp.slug);
+            if (comp.name && comp.name !== 'Don Food') return generateSlug(comp.name);
+            return comp.slug ? sanitizeSlug(comp.slug) : generateSlug(comp.name || comp.id);
+        }
+
+        function getCompanyOfficialUrl(comp) {
+            const slug = getCompanySlug(comp);
+            const origin = (typeof window !== 'undefined' && window.location && window.location.origin) 
+                ? window.location.origin 
+                : 'https://donfood.site';
+            if (isCompanyDemo(comp) || slug === 'demo') {
+                return `${origin}/?empresa=demo`;
+            }
+            return `${origin}/?empresa=${encodeURIComponent(slug)}`;
+        }
+
+        function getCompanyCurrentUrl(comp) {
+            return getCompanyOfficialUrl(comp);
+        }
+
+        function extractRequestedCompanyIdentifier() {
+            try {
+                if (typeof window === 'undefined' || !window.location) return null;
+                
+                // 1. Query Params (?empresa=... / ?loja=... / ?c=... / ?slug=... / ?tenant=... / ?store=...)
+                const urlParams = new URLSearchParams(window.location.search);
+                let param = urlParams.get('empresa') || 
+                            urlParams.get('loja') || 
+                            urlParams.get('c') || 
+                            urlParams.get('slug') || 
+                            urlParams.get('tenant') || 
+                            urlParams.get('store');
+                
+                if (param && param.trim()) return param.trim();
+
+                // 2. Hash (#marmitas-fitnes / #/marmitas-fitnes / #empresa=marmitas-fitnes / #loja=marmitas-fitnes)
+                const hash = window.location.hash || '';
+                if (hash) {
+                    const cleanHash = hash.replace(/^#\/?/, '').trim();
+                    if (cleanHash.startsWith('empresa=')) {
+                        return cleanHash.split('empresa=')[1].split('&')[0].trim();
+                    } else if (cleanHash.startsWith('loja=')) {
+                        return cleanHash.split('loja=')[1].split('&')[0].trim();
+                    } else if (cleanHash && !['cardapio', 'inicio', 'loja-demo', 'login', 'carrinho', 'pedidos', 'admin', 'dev'].includes(cleanHash.toLowerCase())) {
+                        return cleanHash;
                     }
                 }
-            } catch (err) {
-                console.warn('[Sync] Sincronização de empresas em modo offline:', err);
+
+                // 3. Pathname (/marmitas-fitnes ou /loja/marmitas-fitnes ou /cardapio/marmitas-fitnes)
+                const pathname = window.location.pathname || '';
+                if (pathname && pathname !== '/' && pathname !== '/index.html') {
+                    const parts = pathname.replace(/^\/+|\/+$/g, '').split('/');
+                    let candidate = parts[0];
+                    if (candidate === 'loja' || candidate === 'store' || candidate === 'empresa' || candidate === 'cardapio') {
+                        candidate = parts[1] || '';
+                    }
+                    const systemPaths = ['api', 'login', 'dev', 'admin', 'pedidos', 'carrinho', 'assets', 'static', 'favicon.ico', 'styles.css', 'app.js', 'robots.txt', 'sitemap.xml'];
+                    if (candidate && !systemPaths.includes(candidate.toLowerCase()) && !candidate.includes('.')) {
+                        return candidate.trim();
+                    }
+                }
+            } catch (e) {}
+            return null;
+        }
+
+        function findCompanyInList(compList, identifier) {
+            if (!identifier || !Array.isArray(compList) || compList.length === 0) return null;
+            const clean = sanitizeSlug(identifier).toLowerCase();
+            const rawLower = String(identifier).toLowerCase().trim();
+
+            if (clean === 'demo' || rawLower === 'demo') {
+                return compList.find(c => c && (c.id === 'company-demo-don' || isCompanyDemo(c) || c.slug === 'demo')) || null;
             }
+
+            // 1. Por slug exato ou slug sanitizado
+            let found = compList.find(c => c && c.slug && (c.slug.toLowerCase() === rawLower || sanitizeSlug(c.slug).toLowerCase() === clean));
+            if (found) return found;
+
+            // 2. Por ID da empresa
+            found = compList.find(c => c && c.id && (c.id.toLowerCase() === rawLower || c.id.toLowerCase() === clean));
+            if (found) return found;
+
+            // 3. Por Nome da empresa (slug do nome ou nome direto)
+            found = compList.find(c => c && c.name && (sanitizeSlug(c.name).toLowerCase() === clean || c.name.toLowerCase().trim() === rawLower));
+            if (found) return found;
+
+            // 4. Por e-mail da empresa
+            found = compList.find(c => c && c.email && c.email.toLowerCase().trim() === rawLower);
+            if (found) return found;
+
+            return null;
+        }
+
+        // ========== SINCRONIZAÇÃO E PERSISTÊNCIA CENTRALIZADA ==========
+        let _syncCompaniesTimer = null;
+        function debouncedSyncCompaniesToServer() {
+            if (_syncCompaniesTimer) clearTimeout(_syncCompaniesTimer);
+            _syncCompaniesTimer = setTimeout(() => {
+                syncCompaniesToServer();
+            }, 500);
         }
 
         async function syncCompaniesToServer() {
@@ -1656,11 +1698,120 @@
                     body: JSON.stringify({ companies: companies })
                 });
             } catch (err) {
-                console.warn('[Sync] Erro ao salvar empresas no servidor:', err);
+                console.warn('[Sync] Sincronização de empresas em modo offline:', err);
             }
         }
 
-        function init() {
+        // ========== INICIALIZAÇÃO & BUSCA DE EMPRESAS ==========
+        async function fetchCompaniesFromServer() {
+            try {
+                const requestedIdent = extractRequestedCompanyIdentifier();
+                const res = await fetch('/api/companies');
+                if (res.ok) {
+                    const json = await res.json();
+                    if (json && json.success && Array.isArray(json.data)) {
+                        if (json.data.length > 0) {
+                            const serverComps = json.data;
+                            const compMap = new Map();
+                            // Garantir demo padrão intacta
+                            compMap.set(defaultDemoCompany.id, defaultDemoCompany);
+                            // Adicionar empresas locais
+                            (companies || []).forEach(c => {
+                                if (c && c.id) {
+                                    if (c.id === defaultDemoCompany.id) {
+                                        compMap.set(c.id, { ...defaultDemoCompany, ...c, id: defaultDemoCompany.id, slug: 'demo', isDemo: true, name: 'Don Food' });
+                                    } else {
+                                        compMap.set(c.id, {
+                                            ...c,
+                                            isDemo: false,
+                                            slug: c.slug ? sanitizeSlug(c.slug) : generateSlug(c.name || c.id)
+                                        });
+                                    }
+                                }
+                            });
+                            // Mesclar com empresas retornadas pelo servidor
+                            serverComps.forEach(sc => {
+                                if (sc && sc.id) {
+                                    if (sc.id === defaultDemoCompany.id) {
+                                        const existing = compMap.get(sc.id) || {};
+                                        compMap.set(sc.id, {
+                                            ...defaultDemoCompany,
+                                            ...existing,
+                                            ...sc,
+                                            id: defaultDemoCompany.id,
+                                            slug: 'demo',
+                                            isDemo: true,
+                                            name: 'Don Food',
+                                            adminPassword: existing.adminPassword || sc.adminPassword || 'admin123'
+                                        });
+                                    } else {
+                                        const existing = compMap.get(sc.id) || {};
+                                        compMap.set(sc.id, {
+                                            ...existing,
+                                            ...sc,
+                                            isDemo: false,
+                                            slug: sc.slug ? sanitizeSlug(sc.slug) : (existing.slug ? sanitizeSlug(existing.slug) : generateSlug(sc.name || sc.id)),
+                                            adminPassword: existing.adminPassword || sc.adminPassword || 'admin123'
+                                        });
+                                    }
+                                }
+                            });
+                            companies = Array.from(compMap.values());
+                            localStorage.setItem('companies', JSON.stringify(companies));
+                        } else if (companies && companies.length > 0) {
+                            // Servidor vazio mas temos empresas locais - sincronizar
+                            syncCompaniesToServer();
+                        }
+                    }
+                }
+
+                // Se havia uma empresa solicitada na URL e ainda não foi encontrada, buscar diretamente no endpoint de lookup
+                if (requestedIdent) {
+                    let target = findCompanyInList(companies, requestedIdent);
+                    if (!target) {
+                        try {
+                            const lookupRes = await fetch(`/api/companies/lookup?q=${encodeURIComponent(requestedIdent)}`);
+                            if (lookupRes.ok) {
+                                const lookupJson = await lookupRes.json();
+                                if (lookupJson && lookupJson.success && lookupJson.data) {
+                                    const sc = lookupJson.data;
+                                    target = sc;
+                                    const idx = companies.findIndex(c => c.id === sc.id);
+                                    if (idx >= 0) {
+                                        companies[idx] = { ...companies[idx], ...sc };
+                                    } else {
+                                        companies.push(sc);
+                                    }
+                                    localStorage.setItem('companies', JSON.stringify(companies));
+                                }
+                            }
+                        } catch (e) {}
+                    }
+
+                    if (target) {
+                        activeCompanyId = target.id;
+                        localStorage.setItem('activeCompanyId', activeCompanyId);
+                        currentAppView = 'store';
+                    }
+                } else {
+                    // Se não há parâmetro na URL (acesso à home www.donfood.site):
+                    // Abrir Loja Demo padrão Don Food
+                    const demoComp = companies.find(c => c.id === 'company-demo-don' || isCompanyDemo(c)) || defaultDemoCompany;
+                    if (activeCompanyId !== demoComp.id && !AuthManager.isCompanyOwner(activeCompanyId)) {
+                        activeCompanyId = demoComp.id;
+                        localStorage.setItem('activeCompanyId', activeCompanyId);
+                    }
+                }
+
+                loadData();
+                renderAll();
+                renderDevCompanyList();
+            } catch (err) {
+                console.warn('[Sync] Sincronização de empresas em modo offline:', err);
+            }
+        }
+
+        async function init() {
             loadData();
             loadPrinterSettings();
             if (sessionStorage.getItem('isAdminLoggedIn') === 'true') {
@@ -1670,8 +1821,10 @@
             updateAdminHeaderUI();
             renderPresetCatalog();
             attachEventListeners();
-            // Buscar empresas salvas no servidor central
-            fetchCompaniesFromServer();
+            
+            // Buscar empresas salvas no servidor central (garante que links compartilhados abram a loja certa em qualquer aparelho)
+            await fetchCompaniesFromServer();
+            
             // Buscar pedidos mais recentes no servidor central
             fetchOrdersFromServer(true);
             // Iniciar canal Supabase Realtime para a tabela orders
@@ -2451,55 +2604,6 @@
         }
         window.updateCompanyCategory = updateCompanyCategory;
 
-        // ========== FUNÇÕES UTILITÁRIAS DE SLUGS E LINKS DE ACESSO (donfood.com / donfood.site) ==========
-        function sanitizeSlug(text) {
-            if (!text) return '';
-            return text
-                .toString()
-                .toLowerCase()
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/^-+|-+$/g, '')
-                .substring(0, 40);
-        }
-
-        function generateSlug(text) {
-            const clean = sanitizeSlug(text);
-            return clean || ('loja-' + Date.now().toString(36));
-        }
-
-        function isCompanyDemo(comp) {
-            if (!comp) return false;
-            if (comp.id === 'company-demo-don' && (!comp.slug || comp.slug === 'demo') && (!comp.name || comp.name === 'Don Food')) return true;
-            if (comp.slug === 'demo' && (!comp.name || comp.name === 'Don Food')) return true;
-            if (comp.isDemo === true && (!comp.slug || comp.slug === 'demo') && (!comp.name || comp.name === 'Don Food')) return true;
-            return false;
-        }
-
-        function getCompanySlug(comp) {
-            if (!comp) return 'demo';
-            if (isCompanyDemo(comp)) return 'demo';
-            if (comp.slug && comp.slug !== 'demo') return sanitizeSlug(comp.slug);
-            if (comp.name && comp.name !== 'Don Food') return generateSlug(comp.name);
-            return comp.slug ? sanitizeSlug(comp.slug) : generateSlug(comp.name || comp.id);
-        }
-
-        function getCompanyOfficialUrl(comp) {
-            const slug = getCompanySlug(comp);
-            const origin = (typeof window !== 'undefined' && window.location && window.location.origin) 
-                ? window.location.origin 
-                : 'https://donfood.site';
-            if (isCompanyDemo(comp) || slug === 'demo') {
-                return `${origin}/?empresa=demo`;
-            }
-            return `${origin}/?empresa=${encodeURIComponent(slug)}`;
-        }
-
-        function getCompanyCurrentUrl(comp) {
-            return getCompanyOfficialUrl(comp);
-        }
-
         function copyActiveCompanyOfficialLink() {
             const activeComp = (typeof getActiveCompany === 'function' ? getActiveCompany() : null) 
                 || (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) 
@@ -2848,35 +2952,12 @@
                 localStorage.setItem('companies', JSON.stringify(companies));
             }
 
-            // 2. Determinar Empresa Ativa a partir da URL (Roteamento Dinâmico por Link: ?empresa=slug ou /slug)
-            const urlParams = new URLSearchParams(window.location.search);
-            const requestedParam = urlParams.get('empresa') || urlParams.get('loja') || urlParams.get('c') || urlParams.get('slug') || urlParams.get('tenant');
-            
+            // 2. Determinar Empresa Ativa a partir da URL (Roteamento Dinâmico por Link Oficial: ?empresa=slug, /slug, #slug)
+            const requestedParam = extractRequestedCompanyIdentifier();
             let targetCompany = null;
 
             if (requestedParam) {
-                const cleanParam = sanitizeSlug(requestedParam).toLowerCase();
-                targetCompany = companies.find(c => 
-                    (c.slug && sanitizeSlug(c.slug).toLowerCase() === cleanParam) || 
-                    (c.id && c.id.toLowerCase() === cleanParam) ||
-                    (c.name && sanitizeSlug(c.name).toLowerCase() === cleanParam) ||
-                    (cleanParam === 'demo' && (c.id === 'company-demo-don' || isCompanyDemo(c) || c.slug === 'demo'))
-                );
-            }
-
-            // Fallback por pathname se for rota direta como /marmitas-fitnes (excluindo /login, /dev e assets)
-            if (!targetCompany && window.location.pathname && window.location.pathname !== '/' && window.location.pathname !== '/index.html') {
-                const rawPath = window.location.pathname.replace(/^\/+/, '').split('/')[0];
-                const pathSlug = sanitizeSlug(rawPath).toLowerCase();
-                const systemPaths = ['api', 'login', 'dev', 'admin', 'pedidos', 'carrinho', 'assets', 'static'];
-                if (pathSlug && !systemPaths.includes(pathSlug) && !pathSlug.endsWith('.js') && !pathSlug.endsWith('.css') && !pathSlug.endsWith('.png') && !pathSlug.endsWith('.jpg') && !pathSlug.endsWith('.svg') && !pathSlug.endsWith('.json') && !pathSlug.endsWith('.sql')) {
-                    targetCompany = companies.find(c => 
-                        (c.slug && sanitizeSlug(c.slug).toLowerCase() === pathSlug) || 
-                        (c.id && c.id.toLowerCase() === pathSlug) ||
-                        (c.name && sanitizeSlug(c.name).toLowerCase() === pathSlug) ||
-                        (pathSlug === 'demo' && (c.id === 'company-demo-don' || isCompanyDemo(c) || c.slug === 'demo'))
-                    );
-                }
+                targetCompany = findCompanyInList(companies, requestedParam);
             }
 
             if (targetCompany) {
@@ -2884,7 +2965,7 @@
                 activeCompanyId = targetCompany.id;
                 localStorage.setItem('activeCompanyId', activeCompanyId);
             } else if (requestedParam && requestedParam.toLowerCase() !== 'demo') {
-                // Se o link especificou uma empresa que pode ainda não estar no storage, preservar o ID ativo anterior se não for demo
+                // Se o link especificou uma empresa que ainda não está no localStorage, preservar ou aguardar sync
                 const prevActive = companies.find(c => c.id === activeCompanyId);
                 if (!prevActive || isCompanyDemo(prevActive)) {
                     const firstCustom = companies.find(c => c.id !== 'company-demo-don');
@@ -2911,6 +2992,7 @@
             const isCurrentDemo = isCompanyDemo(activeComp);
             
             // Determinar visualização inicial (Landing Showcase vs Loja vs Tela de Login Dedicada)
+            const urlParams = new URLSearchParams(window.location.search);
             const pathLower = (window.location.pathname || '').toLowerCase();
             const viewParam = (urlParams.get('view') || urlParams.get('pagina') || '').toLowerCase();
             const hashLower = (window.location.hash || '').toLowerCase();
@@ -3053,6 +3135,8 @@
             if (customerData) {
                 localStorage.setItem('customerData', JSON.stringify(customerData));
             }
+
+            debouncedSyncCompaniesToServer();
         }
 
         function switchActiveCompany(companyId) {

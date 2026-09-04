@@ -930,6 +930,38 @@ app.get('/api/companies', generalLimiter, (req, res) => {
     }
 });
 
+// Endpoint de busca rápida de empresa por slug, ID ou nome (para compartilhamento de links)
+app.get(['/api/companies/lookup', '/api/company/lookup', '/api/company/:identifier', '/api/companies/:identifier'], generalLimiter, (req, res) => {
+    try {
+        const query = req.query.q || req.query.empresa || req.query.loja || req.query.slug || req.params.identifier || '';
+        const cleanQuery = sanitizeSlug(query).toLowerCase();
+        const rawLower = String(query).toLowerCase().trim();
+        const companies = readJsonFile(COMPANIES_FILE, []);
+
+        if (!cleanQuery || cleanQuery === 'demo' || rawLower === 'demo') {
+            const demo = companies.find(c => c && (c.id === 'company-demo-don' || c.slug === 'demo'));
+            return res.json({ success: true, data: demo ? trimCompanyOutput(demo) : null });
+        }
+
+        const found = companies.find(c => {
+            if (!c) return false;
+            const cSlug = sanitizeSlug(c.slug || '').toLowerCase();
+            const cId = (c.id || '').toLowerCase();
+            const cNameSlug = sanitizeSlug(c.name || '').toLowerCase();
+            const cNameRaw = (c.name || '').toLowerCase().trim();
+            return cSlug === cleanQuery || cId === rawLower || cNameSlug === cleanQuery || cNameRaw === rawLower;
+        });
+
+        if (found) {
+            return res.json({ success: true, data: trimCompanyOutput(found) });
+        }
+
+        res.status(404).json({ success: false, error: 'Empresa não encontrada.' });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'Erro ao buscar dados da empresa.' });
+    }
+});
+
 app.post('/api/companies', generalLimiter, (req, res) => {
     try {
         const { companies, company } = req.body;
