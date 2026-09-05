@@ -363,7 +363,8 @@ function writeJsonFile(filePath, data) {
 // ============================================================================
 // PRECAUÇÃO #1 & #3: CLIENTE SUPABASE SEGURO (API KEYS PROTEGIDAS NO BACKEND)
 // ============================================================================
-const supabaseUrl = process.env.SUPABASE_URL || '';
+const rawSupabaseUrl = process.env.SUPABASE_URL || '';
+const supabaseUrl = typeof rawSupabaseUrl === 'string' ? rawSupabaseUrl.replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '') : '';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '';
 
 let supabase = null;
@@ -372,9 +373,156 @@ if (supabaseUrl && supabaseKey) {
         supabase = createClient(supabaseUrl, supabaseKey, {
             auth: { persistSession: false, autoRefreshToken: false }
         });
-        console.log('✅ [Segurança] Supabase configurado com chaves protegidas no servidor.');
+        console.log('✅ [Segurança] Supabase configurado com chaves protegidas no servidor:', supabaseUrl);
     } catch (err) {
         console.error('❌ [Segurança] Falha ao inicializar Supabase:', err.message);
+    }
+}
+
+// ============================================================================
+// HELPERS DE PERSISTÊNCIA DIRETA NO SUPABASE
+// ============================================================================
+async function saveCompanyToSupabase(company) {
+    if (!supabase || !company || !company.id) return;
+    try {
+        const compPayload = {
+            id: String(company.id),
+            name: company.name || 'Empresa Sem Nome',
+            slug: company.slug ? sanitizeSlug(company.slug) : sanitizeSlug(company.name || company.id),
+            email: company.email || 'contato@donfood.com',
+            phone: company.whatsappNumber || company.phone || '',
+            whatsapp_number: company.whatsappNumber || '',
+            logo_url: company.logoUrl || '',
+            category: company.presetType || company.category || 'delivery',
+            active: company.active !== false,
+            updated_at: new Date().toISOString()
+        };
+        const { error: cErr } = await supabase.from('companies').upsert([compPayload]);
+        if (cErr) {
+            console.warn('[Supabase] Erro ao sincronizar company:', cErr.message);
+        }
+
+        const settingsPayload = {
+            company_id: String(company.id),
+            restaurant_name: company.name || 'Don Food',
+            subtitle: company.subtitle || '',
+            whatsapp_number: company.whatsappNumber || '',
+            delivery_fee: Number(company.deliveryFee || 0),
+            delivery_time: company.deliveryTime || '30 - 45 min',
+            is_open: company.schedule ? company.schedule.isOpen !== false : true,
+            opening_hours: company.schedule ? `${company.schedule.openTime || '10:00'} - ${company.schedule.closeTime || '23:00'}` : '10:00 - 23:00',
+            address: company.address || '',
+            primary_color: company.themeColors?.primary || '#DC2626',
+            secondary_color: company.themeColors?.secondary || '#EA580C',
+            updated_at: new Date().toISOString()
+        };
+        const { error: sErr } = await supabase.from('company_settings').upsert([settingsPayload]);
+        if (sErr) {
+            console.warn('[Supabase] Erro ao sincronizar company_settings:', sErr.message);
+        }
+
+        if (Array.isArray(company.products) && company.products.length > 0) {
+            const prodPayloads = company.products.map(p => ({
+                id: String(p.id),
+                company_id: String(company.id),
+                name: p.name || 'Produto',
+                description: p.description || '',
+                price: Number(p.price || 0),
+                promo_price: p.promoPrice ? Number(p.promoPrice) : null,
+                image_url: p.image || p.imageUrl || '',
+                tag: p.tag || '',
+                is_customizable: !!p.isCustomizable,
+                available: p.available !== false,
+                updated_at: new Date().toISOString()
+            }));
+            const { error: pErr } = await supabase.from('products').upsert(prodPayloads);
+            if (pErr) {
+                console.warn('[Supabase] Erro ao sincronizar products:', pErr.message);
+            }
+        }
+    } catch (err) {
+        console.warn('[Supabase] Erro geral ao salvar empresa:', err.message);
+    }
+}
+
+async function deleteCompanyFromSupabase(companyId) {
+    if (!supabase || !companyId || companyId === 'company-demo-don') return;
+    try {
+        await supabase.from('orders').delete().eq('company_id', companyId);
+        await supabase.from('products').delete().eq('company_id', companyId);
+        await supabase.from('company_settings').delete().eq('company_id', companyId);
+        await supabase.from('customers').delete().eq('company_id', companyId);
+        await supabase.from('companies').delete().eq('id', companyId);
+    } catch (err) {
+        console.warn('[Supabase] Erro ao excluir empresa:', err.message);
+    }
+}
+
+function mapOrderToSupabase(order, companyId) {
+    if (!order) return null;
+    const targetCompId = companyId || order.companyId || order.company_id || 'company-demo-don';
+    const numId = parseInt(String(order.id || '').replace(/\D/g, ''), 10) || null;
+    return {
+        id: String(order.id || ''),
+        company_id: targetCompId,
+        order_number: numId,
+        customer_name: order.customerName || order.customer_name || 'Cliente',
+        customer_phone: order.customerPhone || order.customer_phone || '',
+        customer_address: order.customerAddress || order.customer_address || '',
+        customer_neighborhood: order.customerNeighborhood || order.customer_neighborhood || '',
+        customer_complement: order.customerComplement || order.customer_complement || '',
+        delivery_type: order.deliveryType || order.delivery_type || (order.isPickup ? 'pickup' : 'delivery'),
+        payment_method: order.paymentMethod || order.payment_method || 'PIX',
+        payment_change_for: Number(order.cashChangeFor || order.payment_change_for || 0) || null,
+        items: Array.isArray(order.items) ? order.items : [],
+        subtotal: Number(order.subtotal || 0),
+        delivery_fee: Number(order.deliveryFee || order.delivery_fee || 0),
+        discount: Number(order.discount || order.discountValue || 0),
+        total: Number(order.total || 0),
+        status: order.status || 'RECEIVED',
+        notes: order.observations || order.notes || '',
+        created_at: order.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString()
+    };
+}
+
+async function saveOrderToSupabase(order, companyId) {
+    if (!supabase || !order) return;
+    try {
+        const payload = mapOrderToSupabase(order, companyId);
+        if (payload && payload.id) {
+            // Garantir que a empresa exista antes de inserir chave estrangeira
+            const { error: oErr } = await supabase.from('orders').upsert([payload]);
+            if (oErr) {
+                console.warn('[Supabase] Erro ao persistir pedido:', oErr.message);
+            }
+        }
+    } catch (err) {
+        console.warn('[Supabase] Erro ao salvar pedido:', err.message);
+    }
+}
+
+async function saveCustomerToSupabase(customer, companyId) {
+    if (!supabase || !customer) return;
+    try {
+        const custPayload = {
+            id: String(customer.id || 'cust_' + Date.now()),
+            company_id: companyId || customer.companyId || 'company-demo-don',
+            phone: String(customer.phone || ''),
+            name: customer.name || 'Cliente',
+            address: customer.address || '',
+            neighborhood: customer.neighborhood || '',
+            complement: customer.reference || customer.complement || '',
+            total_orders: 1,
+            created_at: customer.created_at || new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        const { error } = await supabase.from('customers').upsert([custPayload]);
+        if (error) {
+            console.warn('[Supabase] Erro ao persistir cliente:', error.message);
+        }
+    } catch (err) {
+        console.warn('[Supabase] Erro ao salvar cliente:', err.message);
     }
 }
 
@@ -576,6 +724,7 @@ app.post('/api/auth/register', authLimiter, (req, res) => {
 
         customers.push(newCustomer);
         writeJsonFile(CUSTOMERS_FILE, customers);
+        saveCustomerToSupabase(newCustomer).catch(e => console.warn('[Supabase Customer Catch]:', e.message));
 
         const token = generateSessionToken({
             role: ROLES.CUSTOMER,
@@ -630,6 +779,71 @@ app.post('/api/auth/login', authLimiter, (req, res) => {
         });
     } catch (err) {
         res.status(500).json({ success: false, error: 'Erro ao processar login.' });
+    }
+});
+
+// Login / Cadastro Rápido com Google (Papel: CUSTOMER)
+app.post('/api/auth/google-login', authLimiter, async (req, res) => {
+    try {
+        const { email, name, picture, googleId, phone, address, neighborhood, reference } = req.body;
+        const cleanEmail = sanitizeString(email, 120).toLowerCase().trim();
+        const cleanName = sanitizeString(name, 100).trim() || (cleanEmail.includes('@') ? cleanEmail.split('@')[0] : 'Usuário Google');
+        const cleanGoogleId = sanitizeString(googleId || `google_${cleanEmail}`, 100);
+
+        if (!cleanEmail || !cleanEmail.includes('@')) {
+            return res.status(400).json({ success: false, error: 'E-mail do Google inválido.' });
+        }
+
+        const customers = readJsonFile(CUSTOMERS_FILE, []);
+        let customer = customers.find(c => 
+            (c.email && c.email.toLowerCase() === cleanEmail) || 
+            (c.googleId && c.googleId === cleanGoogleId)
+        );
+
+        if (!customer) {
+            customer = {
+                id: `cust_google_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`,
+                name: cleanName,
+                email: cleanEmail,
+                googleId: cleanGoogleId,
+                picture: sanitizeString(picture, 500) || '',
+                phone: sanitizeString(phone, 30) || cleanEmail,
+                address: sanitizeString(address, 200) || '',
+                neighborhood: sanitizeString(neighborhood, 100) || '',
+                reference: sanitizeString(reference, 150) || '',
+                provider: 'google',
+                created_at: new Date().toISOString()
+            };
+            customers.push(customer);
+        } else {
+            customer.name = cleanName || customer.name;
+            customer.email = cleanEmail;
+            customer.picture = sanitizeString(picture, 500) || customer.picture || '';
+            if (address) customer.address = sanitizeString(address, 200);
+            if (neighborhood) customer.neighborhood = sanitizeString(neighborhood, 100);
+            if (reference) customer.reference = sanitizeString(reference, 150);
+            if (phone) customer.phone = sanitizeString(phone, 30);
+            customer.updated_at = new Date().toISOString();
+        }
+
+        writeJsonFile(CUSTOMERS_FILE, customers);
+        saveCustomerToSupabase(customer).catch(e => console.warn('[Supabase Google Customer Catch]:', e.message));
+
+        const token = generateSessionToken({
+            role: ROLES.CUSTOMER,
+            customerId: customer.id,
+            email: customer.email,
+            name: customer.name
+        });
+
+        res.json({
+            success: true,
+            role: ROLES.CUSTOMER,
+            token,
+            customer: trimCustomerOutput(customer)
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'Erro ao processar autenticação com Google.' });
     }
 });
 
@@ -825,14 +1039,7 @@ app.post('/api/orders', orderWriteLimiter, validateCompanyHeader, async (req, re
 
         console.log(`📦 [NOVO PEDIDO RECEBIDO] ID: ${sanitizedOrder.id} | Loja: ${sanitizedOrder.companyName || sanitizedOrder.companyId} | Total: R$ ${sanitizedOrder.total}`);
 
-        if (supabase) {
-            try {
-                const supaPayload = { ...sanitizedOrder, company_id: sanitizedOrder.companyId };
-                await supabase.from('orders').upsert([supaPayload]);
-            } catch (supaErr) {
-                console.warn('[Segurança] Falha ao salvar no Supabase:', supaErr.message);
-            }
-        }
+        saveOrderToSupabase(sanitizedOrder, sanitizedOrder.companyId).catch(e => console.warn('[Supabase Order Catch]:', e.message));
 
         // Transmissão Realtime imediata para todos os painéis e clientes conectados
         broadcastRealtimeOrder('INSERT', sanitizedOrder);
@@ -1030,6 +1237,7 @@ app.post('/api/companies', generalLimiter, (req, res) => {
                 if (c && c.id) {
                     const prev = compMap.get(c.id) || {};
                     compMap.set(c.id, { ...prev, ...c });
+                    saveCompanyToSupabase(c).catch(e => console.warn('[Supabase Sync Catch]:', e.message));
                 }
             });
             const merged = Array.from(compMap.values());
@@ -1040,6 +1248,7 @@ app.post('/api/companies', generalLimiter, (req, res) => {
             compMap.set(company.id, { ...prev, ...company });
             const merged = Array.from(compMap.values());
             writeJsonFile(COMPANIES_FILE, merged);
+            saveCompanyToSupabase(company).catch(e => console.warn('[Supabase Sync Catch]:', e.message));
             return res.json({ success: true, company });
         }
         res.status(400).json({ success: false, error: 'Formato inválido de empresas.' });
@@ -1060,12 +1269,14 @@ app.post('/api/companies/upsert', generalLimiter, (req, res) => {
                 if (c && c.id) {
                     const prev = compMap.get(c.id) || {};
                     compMap.set(c.id, { ...prev, ...c });
+                    saveCompanyToSupabase(c).catch(e => console.warn('[Supabase Sync Catch]:', e.message));
                 }
             });
         }
         if (company && company.id) {
             const prev = compMap.get(company.id) || {};
             compMap.set(company.id, { ...prev, ...company });
+            saveCompanyToSupabase(company).catch(e => console.warn('[Supabase Sync Catch]:', e.message));
         }
         const merged = Array.from(compMap.values());
         writeJsonFile(COMPANIES_FILE, merged);
@@ -1084,6 +1295,7 @@ app.post('/api/companies/delete', generalLimiter, (req, res) => {
         let existing = readJsonFile(COMPANIES_FILE, []);
         existing = existing.filter(c => c.id !== companyId);
         writeJsonFile(COMPANIES_FILE, existing);
+        deleteCompanyFromSupabase(companyId).catch(e => console.warn('[Supabase Delete Catch]:', e.message));
         res.json({ success: true, message: 'Empresa excluída com sucesso.' });
     } catch (err) {
         res.status(500).json({ success: false, error: 'Erro ao excluir empresa.' });

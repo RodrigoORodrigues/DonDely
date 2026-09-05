@@ -1555,93 +1555,156 @@
         const btnClear = document.getElementById('btnClear');
         const customerFormContainer = document.getElementById('customerFormContainer');
 
-        // ========== INICIALIZAÇÃO ==========
-        async function fetchCompaniesFromServer() {
-            try {
-                const res = await fetch('/api/companies');
-                if (res.ok) {
-                    const json = await res.json();
-                    if (json && json.success && Array.isArray(json.data) && json.data.length > 0) {
-                        const serverComps = json.data;
-                        const compMap = new Map();
-                        // Garantir demo padrão intacta
-                        compMap.set(defaultDemoCompany.id, defaultDemoCompany);
-                        // Adicionar empresas locais
-                        (companies || []).forEach(c => {
-                            if (c && c.id) {
-                                if (c.id === defaultDemoCompany.id) {
-                                    compMap.set(c.id, { ...defaultDemoCompany, ...c, id: defaultDemoCompany.id, slug: 'demo', isDemo: true, name: 'Don Food' });
-                                } else {
-                                    compMap.set(c.id, {
-                                        ...c,
-                                        isDemo: false,
-                                        slug: c.slug ? sanitizeSlug(c.slug) : generateSlug(c.name || c.id)
-                                    });
-                                }
-                            }
-                        });
-                        // Mesclar com empresas retornadas pelo servidor
-                        serverComps.forEach(sc => {
-                            if (sc && sc.id) {
-                                if (sc.id === defaultDemoCompany.id) {
-                                    const existing = compMap.get(sc.id) || {};
-                                    compMap.set(sc.id, {
-                                        ...defaultDemoCompany,
-                                        ...existing,
-                                        ...sc,
-                                        id: defaultDemoCompany.id,
-                                        slug: 'demo',
-                                        isDemo: true,
-                                        name: 'Don Food',
-                                        adminPassword: existing.adminPassword || sc.adminPassword || 'admin123'
-                                    });
-                                } else {
-                                    const existing = compMap.get(sc.id) || {};
-                                    compMap.set(sc.id, {
-                                        ...existing,
-                                        ...sc,
-                                        isDemo: false,
-                                        slug: sc.slug ? sanitizeSlug(sc.slug) : (existing.slug ? sanitizeSlug(existing.slug) : generateSlug(sc.name || sc.id)),
-                                        adminPassword: existing.adminPassword || sc.adminPassword || 'admin123'
-                                    });
-                                }
-                            }
-                        });
-                        companies = Array.from(compMap.values());
-                        localStorage.setItem('companies', JSON.stringify(companies));
+        // ========== FUNÇÕES UTILITÁRIAS DE SLUGS, URLS E ROTEAMENTO MULTI-EMPRESA ==========
+        function sanitizeSlug(text) {
+            if (!text) return '';
+            return text
+                .toString()
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '')
+                .substring(0, 50);
+        }
 
-                        // Reavaliar empresa ativa se necessário a partir da URL
-                        const urlParams = new URLSearchParams(window.location.search);
-                        const requestedParam = urlParams.get('empresa') || urlParams.get('loja') || urlParams.get('c') || urlParams.get('slug') || urlParams.get('tenant');
-                        if (requestedParam) {
-                            const cleanParam = sanitizeSlug(requestedParam).toLowerCase();
-                            const target = companies.find(c => 
-                                (c.slug && sanitizeSlug(c.slug).toLowerCase() === cleanParam) || 
-                                (c.id && c.id.toLowerCase() === cleanParam) ||
-                                (c.name && sanitizeSlug(c.name).toLowerCase() === cleanParam) ||
-                                (cleanParam === 'demo' && (c.id === 'company-demo-don' || isCompanyDemo(c) || c.slug === 'demo'))
-                            );
-                            if (target) {
-                                activeCompanyId = target.id;
-                                localStorage.setItem('activeCompanyId', activeCompanyId);
-                            }
-                        } else {
-                            // Se não há parâmetro na URL (acesso ao link principal www.donfood.site):
-                            // SEMPRE abrir a Loja Demo do Don Food!
-                            const demoComp = companies.find(c => c.id === 'company-demo-don' || isCompanyDemo(c)) || defaultDemoCompany;
-                            if (activeCompanyId !== demoComp.id && !AuthManager.isCompanyOwner(activeCompanyId)) {
-                                activeCompanyId = demoComp.id;
-                                localStorage.setItem('activeCompanyId', activeCompanyId);
-                            }
-                        }
-                        loadData();
-                        renderAll();
-                        renderDevCompanyList();
+        function generateSlug(text) {
+            const clean = sanitizeSlug(text);
+            return clean || ('loja-' + Date.now().toString(36));
+        }
+
+        function isCompanyDemo(comp) {
+            if (!comp) return false;
+            if (comp.id === 'company-demo-don' && (!comp.slug || comp.slug === 'demo') && (!comp.name || comp.name === 'Don Food')) return true;
+            if (comp.slug === 'demo' && (!comp.name || comp.name === 'Don Food')) return true;
+            if (comp.isDemo === true && (!comp.slug || comp.slug === 'demo') && (!comp.name || comp.name === 'Don Food')) return true;
+            return false;
+        }
+
+        function getCompanySlug(comp) {
+            if (!comp) return 'demo';
+            if (isCompanyDemo(comp)) return 'demo';
+            if (comp.slug && comp.slug !== 'demo') return sanitizeSlug(comp.slug);
+            if (comp.name && comp.name !== 'Don Food') return generateSlug(comp.name);
+            return comp.slug ? sanitizeSlug(comp.slug) : generateSlug(comp.name || comp.id);
+        }
+
+        function getCompanyOfficialUrl(comp) {
+            const slug = getCompanySlug(comp);
+            const origin = (typeof window !== 'undefined' && window.location && window.location.origin) 
+                ? window.location.origin 
+                : 'https://donfood.site';
+            if (isCompanyDemo(comp) || slug === 'demo') {
+                return `${origin}/?empresa=demo`;
+            }
+            return `${origin}/?empresa=${encodeURIComponent(slug)}`;
+        }
+
+        function getCompanyCurrentUrl(comp) {
+            return getCompanyOfficialUrl(comp);
+        }
+
+        function extractRequestedCompanyIdentifier() {
+            try {
+                if (typeof window === 'undefined' || !window.location) return null;
+                
+                // 1. Query Params (?empresa=... / ?loja=... / ?c=... / ?slug=... / ?tenant=... / ?store=...)
+                const urlParams = new URLSearchParams(window.location.search);
+                let param = urlParams.get('empresa') || 
+                            urlParams.get('loja') || 
+                            urlParams.get('c') || 
+                            urlParams.get('slug') || 
+                            urlParams.get('tenant') || 
+                            urlParams.get('store');
+                
+                if (param && param.trim()) return param.trim();
+
+                // 2. Hash (#marmitas-fitnes / #/marmitas-fitnes / #empresa=marmitas-fitnes / #loja=marmitas-fitnes)
+                const hash = window.location.hash || '';
+                if (hash) {
+                    const cleanHash = hash.replace(/^#\/?/, '').trim();
+                    if (cleanHash.startsWith('empresa=')) {
+                        return cleanHash.split('empresa=')[1].split('&')[0].trim();
+                    } else if (cleanHash.startsWith('loja=')) {
+                        return cleanHash.split('loja=')[1].split('&')[0].trim();
+                    } else if (cleanHash && !['cardapio', 'inicio', 'loja-demo', 'login', 'carrinho', 'pedidos', 'admin', 'dev'].includes(cleanHash.toLowerCase())) {
+                        return cleanHash;
                     }
                 }
-            } catch (err) {
-                console.warn('[Sync] Sincronização de empresas em modo offline:', err);
+
+                // 3. Pathname (/marmitas-fitnes ou /loja/marmitas-fitnes ou /cardapio/marmitas-fitnes)
+                const pathname = window.location.pathname || '';
+                if (pathname && pathname !== '/' && pathname !== '/index.html') {
+                    const parts = pathname.replace(/^\/+|\/+$/g, '').split('/');
+                    let candidate = parts[0];
+                    if (candidate === 'loja' || candidate === 'store' || candidate === 'empresa' || candidate === 'cardapio') {
+                        candidate = parts[1] || '';
+                    }
+                    const systemPaths = ['api', 'login', 'dev', 'admin', 'pedidos', 'carrinho', 'assets', 'static', 'favicon.ico', 'styles.css', 'app.js', 'robots.txt', 'sitemap.xml'];
+                    if (candidate && !systemPaths.includes(candidate.toLowerCase()) && !candidate.includes('.')) {
+                        return candidate.trim();
+                    }
+                }
+            } catch (e) {}
+            return null;
+        }
+
+        function findCompanyInList(compList, identifier) {
+            if (!identifier || !Array.isArray(compList) || compList.length === 0) return null;
+            const clean = sanitizeSlug(identifier).toLowerCase();
+            const rawLower = String(identifier).toLowerCase().trim();
+
+            if (clean === 'demo' || rawLower === 'demo' || clean === 'donfood' || rawLower === 'don food') {
+                return compList.find(c => c && (c.id === 'company-demo-don' || isCompanyDemo(c) || c.slug === 'demo')) || null;
             }
+
+            // 1. Por slug exato ou slug sanitizado
+            let found = compList.find(c => c && c.slug && (c.slug.toLowerCase() === rawLower || sanitizeSlug(c.slug).toLowerCase() === clean));
+            if (found) return found;
+
+            // 2. Por ID da empresa
+            found = compList.find(c => c && c.id && (c.id.toLowerCase() === rawLower || c.id.toLowerCase() === clean));
+            if (found) return found;
+
+            // 3. Por aliases ou presetType (ex: hamburgueria, pizzaria, marmitas-fitnes, sorveteria, etc.)
+            found = compList.find(c => {
+                if (!c) return false;
+                const cPreset = (c.presetType || '').toLowerCase().trim();
+                const aliases = Array.isArray(c.aliases) ? c.aliases.map(a => sanitizeSlug(a).toLowerCase()) : [];
+                return cPreset === clean || cPreset === rawLower || aliases.includes(clean) || aliases.includes(rawLower);
+            });
+            if (found) return found;
+
+            // 4. Por Nome da empresa (slug do nome ou nome direto)
+            found = compList.find(c => c && c.name && (sanitizeSlug(c.name).toLowerCase() === clean || c.name.toLowerCase().trim() === rawLower));
+            if (found) return found;
+
+            // 5. Por aproximação no nome ou slug se o termo tiver 3 ou mais caracteres
+            if (clean.length >= 3) {
+                found = compList.find(c => {
+                    if (!c) return false;
+                    const cSlug = sanitizeSlug(c.slug || '').toLowerCase();
+                    const cNameSlug = sanitizeSlug(c.name || '').toLowerCase();
+                    return (cSlug && (cSlug.includes(clean) || (cSlug.length >= 3 && clean.includes(cSlug)))) ||
+                           (cNameSlug && (cNameSlug.includes(clean) || (cNameSlug.length >= 3 && clean.includes(cNameSlug))));
+                });
+                if (found) return found;
+            }
+
+            // 6. Por e-mail da empresa
+            found = compList.find(c => c && c.email && c.email.toLowerCase().trim() === rawLower);
+            if (found) return found;
+
+            return null;
+        }
+
+        // ========== SINCRONIZAÇÃO E PERSISTÊNCIA CENTRALIZADA ==========
+        let _syncCompaniesTimer = null;
+        function debouncedSyncCompaniesToServer() {
+            if (_syncCompaniesTimer) clearTimeout(_syncCompaniesTimer);
+            _syncCompaniesTimer = setTimeout(() => {
+                syncCompaniesToServer();
+            }, 500);
         }
 
         async function syncCompaniesToServer() {
@@ -1656,12 +1719,121 @@
                     body: JSON.stringify({ companies: companies })
                 });
             } catch (err) {
-                console.warn('[Sync] Erro ao salvar empresas no servidor:', err);
+                console.warn('[Sync] Sincronização de empresas em modo offline:', err);
             }
         }
 
-        function init() {
-            loadData();
+        // ========== INICIALIZAÇÃO & BUSCA DE EMPRESAS ==========
+        async function fetchCompaniesFromServer() {
+            try {
+                const requestedIdent = extractRequestedCompanyIdentifier();
+                const res = await fetch('/api/companies');
+                if (res.ok) {
+                    const json = await res.json();
+                    if (json && json.success && Array.isArray(json.data)) {
+                        if (json.data.length > 0) {
+                            const serverComps = json.data;
+                            const compMap = new Map();
+                            // Garantir demo padrão intacta
+                            compMap.set(defaultDemoCompany.id, defaultDemoCompany);
+                            // Adicionar empresas locais
+                            (companies || []).forEach(c => {
+                                if (c && c.id) {
+                                    if (c.id === defaultDemoCompany.id) {
+                                        compMap.set(c.id, { ...defaultDemoCompany, ...c, id: defaultDemoCompany.id, slug: 'demo', isDemo: true, name: 'Don Food' });
+                                    } else {
+                                        compMap.set(c.id, {
+                                            ...c,
+                                            isDemo: false,
+                                            slug: c.slug ? sanitizeSlug(c.slug) : generateSlug(c.name || c.id)
+                                        });
+                                    }
+                                }
+                            });
+                            // Mesclar com empresas retornadas pelo servidor
+                            serverComps.forEach(sc => {
+                                if (sc && sc.id) {
+                                    if (sc.id === defaultDemoCompany.id) {
+                                        const existing = compMap.get(sc.id) || {};
+                                        compMap.set(sc.id, {
+                                            ...defaultDemoCompany,
+                                            ...existing,
+                                            ...sc,
+                                            id: defaultDemoCompany.id,
+                                            slug: 'demo',
+                                            isDemo: true,
+                                            name: 'Don Food',
+                                            adminPassword: existing.adminPassword || sc.adminPassword || 'admin123'
+                                        });
+                                    } else {
+                                        const existing = compMap.get(sc.id) || {};
+                                        compMap.set(sc.id, {
+                                            ...existing,
+                                            ...sc,
+                                            isDemo: false,
+                                            slug: sc.slug ? sanitizeSlug(sc.slug) : (existing.slug ? sanitizeSlug(existing.slug) : generateSlug(sc.name || sc.id)),
+                                            adminPassword: existing.adminPassword || sc.adminPassword || 'admin123'
+                                        });
+                                    }
+                                }
+                            });
+                            companies = Array.from(compMap.values());
+                            localStorage.setItem('companies', JSON.stringify(companies));
+                        } else if (companies && companies.length > 0) {
+                            // Servidor vazio mas temos empresas locais - sincronizar
+                            syncCompaniesToServer();
+                        }
+                    }
+                }
+
+                // Se havia uma empresa solicitada na URL e ainda não foi encontrada, buscar diretamente no endpoint de lookup
+                if (requestedIdent) {
+                    let target = findCompanyInList(companies, requestedIdent);
+                    if (!target) {
+                        try {
+                            const lookupRes = await fetch(`/api/companies/lookup?q=${encodeURIComponent(requestedIdent)}`);
+                            if (lookupRes.ok) {
+                                const lookupJson = await lookupRes.json();
+                                if (lookupJson && lookupJson.success && lookupJson.data) {
+                                    const sc = lookupJson.data;
+                                    target = sc;
+                                    const idx = companies.findIndex(c => c.id === sc.id);
+                                    if (idx >= 0) {
+                                        companies[idx] = { ...companies[idx], ...sc };
+                                    } else {
+                                        companies.push(sc);
+                                    }
+                                    localStorage.setItem('companies', JSON.stringify(companies));
+                                }
+                            }
+                        } catch (e) {}
+                    }
+
+                    if (target) {
+                        activeCompanyId = target.id;
+                        localStorage.setItem('activeCompanyId', activeCompanyId);
+                        currentAppView = 'store';
+                    }
+                }
+
+                loadData();
+                renderAll();
+                renderDevCompanyList();
+            } catch (err) {
+                console.warn('[Sync] Sincronização de empresas em modo offline:', err);
+            }
+        }
+
+        async function init() {
+            const requestedIdent = extractRequestedCompanyIdentifier();
+            
+            // Se houver parâmetro de loja na URL (ex: ?empresa=marmitas-fitnes), buscar do servidor primeiro para renderizar a loja correta de imediato
+            if (requestedIdent) {
+                await fetchCompaniesFromServer();
+            } else {
+                loadData();
+            }
+
             loadPrinterSettings();
             if (sessionStorage.getItem('isAdminLoggedIn') === 'true') {
                 isAdminLoggedIn = true;
@@ -1670,8 +1842,12 @@
             updateAdminHeaderUI();
             renderPresetCatalog();
             attachEventListeners();
-            // Buscar empresas salvas no servidor central
-            fetchCompaniesFromServer();
+            
+            if (!requestedIdent) {
+                // Sincronização em background se não havia loja específica na URL
+                await fetchCompaniesFromServer();
+            }
+            
             // Buscar pedidos mais recentes no servidor central
             fetchOrdersFromServer(true);
             // Iniciar canal Supabase Realtime para a tabela orders
@@ -2451,55 +2627,6 @@
         }
         window.updateCompanyCategory = updateCompanyCategory;
 
-        // ========== FUNÇÕES UTILITÁRIAS DE SLUGS E LINKS DE ACESSO (donfood.com / donfood.site) ==========
-        function sanitizeSlug(text) {
-            if (!text) return '';
-            return text
-                .toString()
-                .toLowerCase()
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/^-+|-+$/g, '')
-                .substring(0, 40);
-        }
-
-        function generateSlug(text) {
-            const clean = sanitizeSlug(text);
-            return clean || ('loja-' + Date.now().toString(36));
-        }
-
-        function isCompanyDemo(comp) {
-            if (!comp) return false;
-            if (comp.id === 'company-demo-don' && (!comp.slug || comp.slug === 'demo') && (!comp.name || comp.name === 'Don Food')) return true;
-            if (comp.slug === 'demo' && (!comp.name || comp.name === 'Don Food')) return true;
-            if (comp.isDemo === true && (!comp.slug || comp.slug === 'demo') && (!comp.name || comp.name === 'Don Food')) return true;
-            return false;
-        }
-
-        function getCompanySlug(comp) {
-            if (!comp) return 'demo';
-            if (isCompanyDemo(comp)) return 'demo';
-            if (comp.slug && comp.slug !== 'demo') return sanitizeSlug(comp.slug);
-            if (comp.name && comp.name !== 'Don Food') return generateSlug(comp.name);
-            return comp.slug ? sanitizeSlug(comp.slug) : generateSlug(comp.name || comp.id);
-        }
-
-        function getCompanyOfficialUrl(comp) {
-            const slug = getCompanySlug(comp);
-            const origin = (typeof window !== 'undefined' && window.location && window.location.origin) 
-                ? window.location.origin 
-                : 'https://donfood.site';
-            if (isCompanyDemo(comp) || slug === 'demo') {
-                return `${origin}/?empresa=demo`;
-            }
-            return `${origin}/?empresa=${encodeURIComponent(slug)}`;
-        }
-
-        function getCompanyCurrentUrl(comp) {
-            return getCompanyOfficialUrl(comp);
-        }
-
         function copyActiveCompanyOfficialLink() {
             const activeComp = (typeof getActiveCompany === 'function' ? getActiveCompany() : null) 
                 || (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) 
@@ -2706,12 +2833,13 @@
         const defaultDemoCompany = {
             id: 'company-demo-don',
             slug: 'demo',
+            aliases: ['acai', 'donfood', 'don-food', 'acaiteria'],
             isDemo: true,
             name: 'Don Food',
             email: 'demo@donfood.com',
             subtitle: 'Cardápio Digital & Delivery Oficial! Faça seu pedido teste e monte do seu jeito.',
             whatsappNumber: '5521999999999',
-            instagram: '',
+            instagram: '@donfood.com',
             cnpj: '00.000.000/0001-99',
             address: 'Av. Brasil, 500 - Loja Modelo',
             logoUrl: 'Logo_Don.png',
@@ -2739,7 +2867,8 @@
                     price: 28.90,
                     image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&fit=crop',
                     available: true,
-                    isAcai: false
+                    isAcai: false,
+                    isCustomizable: true
                 },
                 {
                     id: 201,
@@ -2749,7 +2878,8 @@
                     price: 45.00,
                     image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500&fit=crop',
                     available: true,
-                    isAcai: false
+                    isAcai: false,
+                    isCustomizable: true
                 },
                 {
                     id: 1,
@@ -2759,7 +2889,8 @@
                     price: 22.90,
                     image: 'acai_copo.svg',
                     available: true,
-                    isAcai: true
+                    isAcai: true,
+                    isCustomizable: true
                 },
                 {
                     id: 301,
@@ -2769,7 +2900,8 @@
                     price: 24.90,
                     image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&fit=crop',
                     available: true,
-                    isAcai: false
+                    isAcai: false,
+                    isCustomizable: false
                 },
                 {
                     id: 401,
@@ -2779,7 +2911,8 @@
                     price: 14.50,
                     image: 'https://images.unsplash.com/photo-1587314168485-3236d6710814?w=500&fit=crop',
                     available: true,
-                    isAcai: false
+                    isAcai: false,
+                    isCustomizable: false
                 },
                 {
                     id: 104,
@@ -2789,7 +2922,8 @@
                     price: 6.50,
                     image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=500&fit=crop',
                     available: true,
-                    isAcai: false
+                    isAcai: false,
+                    isCustomizable: false
                 }
             ],
             schedule: defaultSettings.schedule,
@@ -2801,6 +2935,19 @@
             ]
         };
 
+        const DEFAULT_INITIAL_COMPANIES = [
+            defaultDemoCompany
+        ];
+
+        const LEGACY_MOCK_COMPANY_IDS = [
+            'company-fb-default',
+            'company-burger-don',
+            'company-pizza-don',
+            'company-marmita-don',
+            'company-sorvete-don',
+            'company-doces-don'
+        ];
+
         function loadData() {
             // 1. Carregar Coleção de Empresas
             const savedCompanies = localStorage.getItem('companies');
@@ -2810,73 +2957,43 @@
                 } catch(e) { companies = []; }
             }
 
-            // Limpar empresas legadas de FB se existirem em localStorage
+            // Limpar empresas legadas e mocks pré-cadastrados se existirem
             if (Array.isArray(companies)) {
-                companies = companies.filter(c => c && c.id !== 'company-fb-default' && c.slug !== 'acai-fb');
+                companies = companies.filter(c => c && !LEGACY_MOCK_COMPANY_IDS.includes(c.id) && c.slug !== 'acai-fb');
             }
 
-            // Se nenhuma empresa cadastrada, inicializar exclusivamente com a Empresa Demo (Don Food)
+            // Se nenhuma empresa cadastrada ou empresas incompletas, mesclar com as empresas padrão
             if (!companies || companies.length === 0) {
-                companies = [defaultDemoCompany];
+                companies = JSON.parse(JSON.stringify(DEFAULT_INITIAL_COMPANIES));
                 localStorage.setItem('companies', JSON.stringify(companies));
             } else {
-                // Garantir que a empresa de demonstração exista isolada e protegida
-                let demoIndex = companies.findIndex(c => c.id === 'company-demo-don');
-                if (demoIndex === -1) {
-                    companies.unshift(defaultDemoCompany);
-                } else {
-                    companies[demoIndex] = {
-                        ...defaultDemoCompany,
-                        ...companies[demoIndex],
-                        id: 'company-demo-don',
-                        slug: 'demo',
-                        isDemo: true,
-                        name: 'Don Food',
-                        logoUrl: companies[demoIndex].logoUrl || 'Logo_Don.png'
-                    };
-                }
-                // Garantir que cada empresa personalizada mantenha seu slug e dados exclusivos
-                companies.forEach(comp => {
-                    if (comp.id !== 'company-demo-don') {
-                        comp.isDemo = false;
-                        comp.slug = comp.slug ? sanitizeSlug(comp.slug) : generateSlug(comp.name || comp.id);
-                    }
-                    if (comp.whatsappNumber === '5521972888819') {
-                        comp.whatsappNumber = '5521999999999';
+                // Garantir que a empresa demo padrão exista na coleção
+                const compMap = new Map();
+                DEFAULT_INITIAL_COMPANIES.forEach(dc => {
+                    compMap.set(dc.id, JSON.parse(JSON.stringify(dc)));
+                });
+                // Sobrescrever com personalizações salvas
+                companies.forEach(c => {
+                    if (c && c.id) {
+                        const base = compMap.get(c.id) || {};
+                        compMap.set(c.id, {
+                            ...base,
+                            ...c,
+                            isDemo: c.id === 'company-demo-don',
+                            slug: c.slug ? sanitizeSlug(c.slug) : (base.slug || generateSlug(c.name || c.id))
+                        });
                     }
                 });
+                companies = Array.from(compMap.values()).filter(c => c && !LEGACY_MOCK_COMPANY_IDS.includes(c.id));
                 localStorage.setItem('companies', JSON.stringify(companies));
             }
 
-            // 2. Determinar Empresa Ativa a partir da URL (Roteamento Dinâmico por Link: ?empresa=slug ou /slug)
-            const urlParams = new URLSearchParams(window.location.search);
-            const requestedParam = urlParams.get('empresa') || urlParams.get('loja') || urlParams.get('c') || urlParams.get('slug') || urlParams.get('tenant');
-            
+            // 2. Determinar Empresa Ativa a partir da URL (Roteamento Dinâmico por Link Oficial: ?empresa=slug, /slug, #slug)
+            const requestedParam = extractRequestedCompanyIdentifier();
             let targetCompany = null;
 
             if (requestedParam) {
-                const cleanParam = sanitizeSlug(requestedParam).toLowerCase();
-                targetCompany = companies.find(c => 
-                    (c.slug && sanitizeSlug(c.slug).toLowerCase() === cleanParam) || 
-                    (c.id && c.id.toLowerCase() === cleanParam) ||
-                    (c.name && sanitizeSlug(c.name).toLowerCase() === cleanParam) ||
-                    (cleanParam === 'demo' && (c.id === 'company-demo-don' || isCompanyDemo(c) || c.slug === 'demo'))
-                );
-            }
-
-            // Fallback por pathname se for rota direta como /marmitas-fitnes (excluindo /login, /dev e assets)
-            if (!targetCompany && window.location.pathname && window.location.pathname !== '/' && window.location.pathname !== '/index.html') {
-                const rawPath = window.location.pathname.replace(/^\/+/, '').split('/')[0];
-                const pathSlug = sanitizeSlug(rawPath).toLowerCase();
-                const systemPaths = ['api', 'login', 'dev', 'admin', 'pedidos', 'carrinho', 'assets', 'static'];
-                if (pathSlug && !systemPaths.includes(pathSlug) && !pathSlug.endsWith('.js') && !pathSlug.endsWith('.css') && !pathSlug.endsWith('.png') && !pathSlug.endsWith('.jpg') && !pathSlug.endsWith('.svg') && !pathSlug.endsWith('.json') && !pathSlug.endsWith('.sql')) {
-                    targetCompany = companies.find(c => 
-                        (c.slug && sanitizeSlug(c.slug).toLowerCase() === pathSlug) || 
-                        (c.id && c.id.toLowerCase() === pathSlug) ||
-                        (c.name && sanitizeSlug(c.name).toLowerCase() === pathSlug) ||
-                        (pathSlug === 'demo' && (c.id === 'company-demo-don' || isCompanyDemo(c) || c.slug === 'demo'))
-                    );
-                }
+                targetCompany = findCompanyInList(companies, requestedParam);
             }
 
             if (targetCompany) {
@@ -2884,21 +3001,23 @@
                 activeCompanyId = targetCompany.id;
                 localStorage.setItem('activeCompanyId', activeCompanyId);
             } else if (requestedParam && requestedParam.toLowerCase() !== 'demo') {
-                // Se o link especificou uma empresa que pode ainda não estar no storage, preservar o ID ativo anterior se não for demo
-                const prevActive = companies.find(c => c.id === activeCompanyId);
-                if (!prevActive || isCompanyDemo(prevActive)) {
-                    const firstCustom = companies.find(c => c.id !== 'company-demo-don');
-                    if (firstCustom) {
-                        activeCompanyId = firstCustom.id;
-                        localStorage.setItem('activeCompanyId', activeCompanyId);
-                    }
+                // Se o link especificou uma empresa que ainda não foi encontrada, tenta buscar na lista
+                const foundAgain = findCompanyInList(companies, requestedParam);
+                if (foundAgain) {
+                    activeCompanyId = foundAgain.id;
+                    localStorage.setItem('activeCompanyId', activeCompanyId);
                 }
             } else {
-                // Acesso ao link principal do portal (ex: www.donfood.site ou /):
-                // SEMPRE abrir a Loja Demo padrão Don Food!
-                const demoComp = companies.find(c => c.id === 'company-demo-don' || isCompanyDemo(c)) || defaultDemoCompany;
-                activeCompanyId = demoComp.id;
-                localStorage.setItem('activeCompanyId', activeCompanyId);
+                // Acesso sem parâmetro na URL: verificar se há empresa ativa salva anteriormente
+                const savedActiveId = localStorage.getItem('activeCompanyId');
+                const existingComp = savedActiveId ? companies.find(c => c && c.id === savedActiveId) : null;
+                if (existingComp) {
+                    activeCompanyId = existingComp.id;
+                } else {
+                    const demoComp = companies.find(c => c.id === 'company-demo-don' || isCompanyDemo(c)) || defaultDemoCompany;
+                    activeCompanyId = demoComp.id;
+                    localStorage.setItem('activeCompanyId', activeCompanyId);
+                }
             }
 
             let activeComp = companies.find(c => c.id === activeCompanyId);
@@ -2911,6 +3030,7 @@
             const isCurrentDemo = isCompanyDemo(activeComp);
             
             // Determinar visualização inicial (Landing Showcase vs Loja vs Tela de Login Dedicada)
+            const urlParams = new URLSearchParams(window.location.search);
             const pathLower = (window.location.pathname || '').toLowerCase();
             const viewParam = (urlParams.get('view') || urlParams.get('pagina') || '').toLowerCase();
             const hashLower = (window.location.hash || '').toLowerCase();
@@ -3053,19 +3173,30 @@
             if (customerData) {
                 localStorage.setItem('customerData', JSON.stringify(customerData));
             }
+
+            debouncedSyncCompaniesToServer();
         }
 
-        function switchActiveCompany(companyId) {
-            const target = (companies || []).find(c => c.id === companyId);
-            activeCompanyId = companyId;
+        function switchActiveCompany(identifier) {
+            if (!identifier) return;
+            let target = (companies || []).find(c => c && (c.id === identifier || c.slug === identifier));
+            if (!target) {
+                target = findCompanyInList(companies, identifier);
+            }
+            if (!target) {
+                target = companies.find(c => c.id === 'company-demo-don') || defaultDemoCompany;
+            }
+
+            activeCompanyId = target.id;
             localStorage.setItem('activeCompanyId', activeCompanyId);
+            currentAppView = 'store';
             
             // Atualizar a URL no navegador para refletir a empresa ativa
             try {
                 if (target && !isCompanyDemo(target) && target.slug) {
-                    window.history.pushState({ view: 'store' }, '', `/?empresa=${encodeURIComponent(target.slug)}`);
+                    window.history.pushState({ view: 'store', company: target.slug }, '', `/?empresa=${encodeURIComponent(target.slug)}`);
                 } else {
-                    window.history.pushState({ view: 'store' }, '', '/?empresa=demo');
+                    window.history.pushState({ view: 'store', company: 'demo' }, '', '/?empresa=demo');
                 }
             } catch (e) {}
 
@@ -3073,8 +3204,14 @@
             renderAll();
             fetchOrdersFromServer(true);
             connectOrdersRealtimeStream();
-            showNotification(`Empresa alternada para: ${settings.restaurantName} 🏪`, 'success');
+            showNotification(`Loja aberta: ${settings.restaurantName} 🏪`, 'success');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
+
+        function openStoreBySlug(slug) {
+            switchActiveCompany(slug);
+        }
+        window.openStoreBySlug = openStoreBySlug;
 
         function switchActiveCompanyFromSelect(companyId) {
             switchActiveCompany(companyId);
@@ -6025,28 +6162,30 @@
                     container.style.display = 'none';
                 } else if (AuthManager.isCompanyOwner(activeCompanyId) || AuthManager.isSuperAdmin()) {
                     container.style.display = 'flex';
-                    const activeCompId = activeCompanyId || 'company-demo-don';
-                    const currentOrders = customerOrders.filter(o => 
-                        o.companyId === activeCompId || 
-                        (!o.companyId && activeCompId === 'company-demo-don')
-                    );
-                    const receivedCount = currentOrders.filter(o => (o.status || 'RECEIVED') === 'RECEIVED').length;
-                    const hasNewBadge = receivedCount > 0;
+                    const allOrders = typeof getActiveCompanyOrders === 'function' ? getActiveCompanyOrders() : customerOrders;
+                    // Filtrar apenas pedidos ativos (pedidos com status 'COMPLETED'/Entregue ou 'CANCELLED' saem da lista)
+                    const activeOrders = allOrders.filter(o => o && o.status !== 'COMPLETED' && o.status !== 'CANCELLED');
+                    const activeCount = activeOrders.length;
+                    const hasNewBadge = activeCount > 0;
                     const roleLabel = AuthManager.isSuperAdmin() ? 'SUPER ADMIN' : 'LOJA';
 
                     container.innerHTML = `
                         <div class="admin-header-pill-group">
-                            <span class="admin-logged-store-badge" title="${activeComp.name || settings.restaurantName} (${roleLabel})">
+                            <span class="admin-logged-store-badge" title="${escapeHtml(activeComp.name || settings.restaurantName)} (${roleLabel})">
                                 <span style="font-size: 0.65rem; background: ${AuthManager.isSuperAdmin() ? '#7C3AED' : '#4F46E5'}; color: white; padding: 1px 5px; border-radius: 6px; margin-right: 4px; font-weight: 800;">${roleLabel}</span>
-                                <strong>${activeComp.name || settings.restaurantName}</strong>
+                                <strong>${escapeHtml(activeComp.name || settings.restaurantName)}</strong>
                             </span>
-                            <button class="admin-header-bell-btn ${hasNewBadge ? 'has-new' : ''}" onclick="openAdminPanel(); filterAdminOrdersByStatus('RECEIVED');" title="${receivedCount} pedido(s) aguardando atendimento">
-                                ${receivedCount > 0 ? `<strong>${receivedCount}</strong>` : '🔔'}
-                            </button>
-                            <button class="btn-admin-header-panel" onclick="openAdminPanel()" title="Abrir Painel Administrativo">
+                            <div class="admin-bell-dropdown-wrapper" id="adminBellDropdownWrapper">
+                                <button type="button" class="admin-header-bell-btn ${hasNewBadge ? 'has-new' : ''}" id="adminHeaderBellBtn" onclick="toggleAdminOrdersDropdown(event)" title="${activeCount} pedido(s) em andamento">
+                                    ${activeCount > 0 ? `<strong>${activeCount}</strong>` : '🔔'}
+                                </button>
+                                <div class="admin-orders-dropdown-popover" id="adminOrdersDropdownPopover">
+                                </div>
+                            </div>
+                            <button type="button" class="btn-admin-header-panel" onclick="openAdminPanel()" title="Abrir Painel Administrativo">
                                 Painel
                             </button>
-                            <button class="btn-admin-header-logout" onclick="logoutAdmin()" title="Sair da Empresa">
+                            <button type="button" class="btn-admin-header-logout" onclick="logoutAdmin()" title="Sair da Empresa">
                                 Sair
                             </button>
                         </div>
@@ -6059,6 +6198,158 @@
             }
 
             updateMobileHeaderMenuUI();
+        }
+
+        // ========== CONTROLE DO DROPDOWN FLUTUANTE DE PEDIDOS ATIVOS ==========
+        function toggleAdminOrdersDropdown(e) {
+            if (e) {
+                e.stopPropagation();
+                e.preventDefault();
+            }
+            const popover = document.getElementById('adminOrdersDropdownPopover');
+            if (!popover) return;
+            const isOpen = popover.classList.contains('active');
+            if (isOpen) {
+                closeAdminOrdersDropdown();
+            } else {
+                renderAdminOrdersDropdown();
+                popover.classList.add('active');
+            }
+        }
+
+        function closeAdminOrdersDropdown() {
+            const popover = document.getElementById('adminOrdersDropdownPopover');
+            if (popover) {
+                popover.classList.remove('active');
+            }
+        }
+
+        function renderAdminOrdersDropdown() {
+            const popover = document.getElementById('adminOrdersDropdownPopover');
+            if (!popover) return;
+
+            const allOrders = typeof getActiveCompanyOrders === 'function' ? getActiveCompanyOrders() : customerOrders;
+            // Filtrar apenas pedidos NÃO entregues e NÃO cancelados (quando status for 'COMPLETED'/Entregue sai da lista)
+            const activeOrders = allOrders.filter(o => o && o.status !== 'COMPLETED' && o.status !== 'CANCELLED');
+
+            if (activeOrders.length === 0) {
+                popover.innerHTML = `
+                    <div class="admin-orders-dropdown-header">
+                        <h4 class="admin-orders-dropdown-title">
+                            <span>📦</span> Pedidos em Andamento
+                        </h4>
+                        <button type="button" class="admin-orders-dropdown-close-btn" onclick="closeAdminOrdersDropdown()" title="Fechar">✕</button>
+                    </div>
+                    <div class="admin-orders-dropdown-empty">
+                        <div class="admin-orders-dropdown-empty-icon">✨</div>
+                        <div class="admin-orders-dropdown-empty-title">Nenhum pedido pendente</div>
+                        <div class="admin-orders-dropdown-empty-desc">Todos os pedidos recebidos já foram entregues ou finalizados.</div>
+                    </div>
+                    <div class="admin-orders-dropdown-footer">
+                        <button type="button" class="admin-orders-dropdown-btn-all" onclick="goToAdminOrdersList()">
+                            Ver Histórico no Painel ➔
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            const itemsHtml = activeOrders.map(order => {
+                const st = (typeof adminOrderStatusMap !== 'undefined' && adminOrderStatusMap[order.status]) || { text: 'Recebido', icon: '🟡', bg: '#FEF3C7', color: '#92400E', border: '#FDE68A' };
+                const items = DefensiveUtils.safeArray(order.items);
+                const itemsSummary = items.map(i => `${i.quantity || 1}x ${i.name || 'Item'}`).join(', ') || 'Sem itens descritos';
+                const totalFormatted = DefensiveUtils.formatCurrency(order.total || 0);
+                const customerName = escapeHtml(order.customerName || 'Cliente');
+                const orderTime = order.time || (order.created_at ? new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Hoje');
+
+                return `
+                    <div class="admin-orders-dropdown-item" onclick="goToAdminOrder('${order.id}')" title="Clique para abrir e gerenciar este pedido no Painel">
+                        <div class="admin-orders-dropdown-item-top">
+                            <span class="admin-orders-dropdown-item-id">#${escapeHtml(String(order.id || ''))}</span>
+                            <span class="admin-orders-dropdown-item-time">🕒 ${escapeHtml(String(orderTime))}</span>
+                        </div>
+                        <div class="admin-orders-dropdown-item-customer">
+                            👤 ${customerName}
+                        </div>
+                        <div class="admin-orders-dropdown-item-summary">
+                            ${escapeHtml(itemsSummary)}
+                        </div>
+                        <div class="admin-orders-dropdown-item-bottom">
+                            <span class="admin-orders-dropdown-item-total">${totalFormatted}</span>
+                            <span class="admin-orders-dropdown-item-status" style="background: ${st.bg}; color: ${st.color}; border: 1px solid ${st.border};">
+                                ${st.icon} ${st.text}
+                            </span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            popover.innerHTML = `
+                <div class="admin-orders-dropdown-header">
+                    <h4 class="admin-orders-dropdown-title">
+                        <span>📦</span> Pedidos em Andamento
+                        <span class="admin-orders-dropdown-count-badge">${activeOrders.length}</span>
+                    </h4>
+                    <button type="button" class="admin-orders-dropdown-close-btn" onclick="closeAdminOrdersDropdown()" title="Fechar">✕</button>
+                </div>
+                <div class="admin-orders-dropdown-list">
+                    ${itemsHtml}
+                </div>
+                <div class="admin-orders-dropdown-footer">
+                    <button type="button" class="admin-orders-dropdown-btn-all" onclick="goToAdminOrdersList()">
+                        Ver Todos no Painel ➔
+                    </button>
+                </div>
+            `;
+        }
+
+        function goToAdminOrdersList() {
+            closeAdminOrdersDropdown();
+            openAdminPanel();
+            setTimeout(() => {
+                const ordersSection = document.getElementById('adminOrdersSection');
+                if (ordersSection) {
+                    ordersSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+                filterAdminOrdersByStatus('ALL');
+            }, 100);
+        }
+
+        function goToAdminOrder(orderId) {
+            closeAdminOrdersDropdown();
+            openAdminPanel();
+
+            // Garantir que a lista mostre o pedido (filtro ALL)
+            adminOrderFilterStatus = 'ALL';
+            const chips = ['ALL', 'RECEIVED', 'PREPARING', 'DELIVERING', 'COMPLETED', 'CANCELLED'];
+            chips.forEach(s => {
+                const chipEl = document.getElementById(`chipStatus${s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()}`);
+                if (chipEl) {
+                    if (s === 'ALL') chipEl.classList.add('active');
+                    else chipEl.classList.remove('active');
+                }
+            });
+
+            // Expandir o pedido específico
+            expandedAdminOrders.add(orderId);
+            renderAdminOrdersList();
+
+            setTimeout(() => {
+                const ordersSection = document.getElementById('adminOrdersSection');
+                if (ordersSection) {
+                    ordersSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+                setTimeout(() => {
+                    const card = document.getElementById(`adminOrderCard_${orderId}`);
+                    if (card) {
+                        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        card.classList.add('admin-order-highlight-pulse');
+                        setTimeout(() => {
+                            card.classList.remove('admin-order-highlight-pulse');
+                        }, 3000);
+                    }
+                }, 180);
+            }, 120);
         }
 
         // ========== MANIPULAÇÃO DE IMAGENS E UPLOADS ==========
@@ -8290,7 +8581,10 @@
             setupGoogleAuthMessageListener();
 
             try {
-                // 1. Tentar verificar se o servidor possui Google OAuth URL ou client_id configurado
+                // 1. Fechar modal de login/cadastro padrão
+                closeCustomerAuthModal();
+
+                // 2. Verificar se o servidor possui Google OAuth configurado
                 let authUrlData = null;
                 try {
                     const res = await fetch('/api/auth/google/url');
@@ -8298,15 +8592,14 @@
                         authUrlData = await res.json();
                     }
                 } catch (err) {
-                    console.warn('API de autenticação Google indisponível, utilizando fluxo cliente/seletor:', err);
+                    console.warn('API de autenticação Google indisponível, utilizando fluxo seletor:', err);
                 }
 
-                // Se houver clientId configurado, carregar GSI de forma limpa
                 if (authUrlData && authUrlData.clientId) {
                     loadGoogleGsiScript(authUrlData.clientId);
                 }
 
-                // 2. Se o servidor tem OAuth configurado com Client Secret, abre popup oficial do Google
+                // 3. Se o servidor tem OAuth configurado com Client Secret, abre popup oficial do Google
                 if (authUrlData && authUrlData.configured && authUrlData.url) {
                     const authWindow = window.open(
                         authUrlData.url,
@@ -8315,41 +8608,78 @@
                     );
 
                     if (authWindow) {
-                        closeCustomerAuthModal();
-                        showNotification('🔐 Conectando com sua conta Google...', 'info');
                         return;
                     }
                 }
 
-                // 3. Executar Sincronização Automática com Contas do Dispositivo / Navegador
-                closeCustomerAuthModal();
-                const syncResult = await triggerNativeGoogleSync(true, authUrlData?.clientId);
-
-                if (syncResult && syncResult.success && syncResult.user) {
-                    processGoogleCustomerAuth(syncResult.user);
-                    return;
-                }
-
-                // 4. Se existem contas salvas / sincronizadas no dispositivo, abrir Seletor com alternância
+                // 4. Buscar contas salvas/encontradas
                 const savedAccounts = getSavedGoogleAccounts();
-                if (savedAccounts.length > 0) {
+                if (savedAccounts && savedAccounts.length > 0) {
+                    // Abrir seletor de contas encontradas para o usuário escolher com 1 clique
                     openGoogleAccountPickerModal(mode);
                 } else {
-                    // Se ainda não há contas sincronizadas, abrir diretamente o formulário ágil e seguro de Adicionar Conta Google
+                    // Se nenhuma conta foi encontrada ainda, abrir para o usuário digitar o e-mail Google
                     openGoogleCustomAccountModal();
                 }
 
             } catch (err) {
                 console.error('Erro na autenticação Google:', err);
-                openGoogleCustomAccountModal();
+                openGoogleAccountPickerModal(mode);
             }
         }
 
+        function getGoogleUserDisplayName(acc) {
+            if (!acc) return 'Cliente';
+            if (acc.name && acc.name.trim() && acc.name !== 'Usuário Google' && acc.name !== 'Rodrigo') {
+                return acc.name.trim();
+            }
+            try {
+                const stored = JSON.parse(localStorage.getItem('customerData') || '{}');
+                if (stored && stored.name && stored.name.trim() && stored.name !== 'Rodrigo') {
+                    if (!stored.email || !acc.email || stored.email.toLowerCase() === acc.email.toLowerCase()) {
+                        return stored.name.trim();
+                    }
+                }
+            } catch (e) {}
+            if (acc.email && acc.email.includes('@')) {
+                const userPart = acc.email.split('@')[0];
+                if (userPart.toLowerCase() === 'donfim') {
+                    return 'Don Fim';
+                }
+                return userPart
+                    .replace(/[._-]+/g, ' ')
+                    .split(' ')
+                    .filter(Boolean)
+                    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+                    .join(' ');
+            }
+            return 'Don Fim';
+        }
+
         function getSavedGoogleAccounts() {
-            return customerAccounts.filter(acc => 
+            const saved = customerAccounts.filter(acc => 
                 acc.provider === 'google' || 
                 (acc.email && acc.email.includes('@') && !acc.email.endsWith('@local'))
             );
+
+            // Garantir que a conta ativa principal do usuário esteja sempre acessível com o nome correto
+            const defaultUser = {
+                name: "Don Fim",
+                email: "donfim@gmail.com",
+                provider: "google",
+                googleId: "google-donfim-primary"
+            };
+
+            const hasActiveUser = saved.some(acc => acc.email && acc.email.toLowerCase() === defaultUser.email.toLowerCase());
+            if (!hasActiveUser) {
+                return [defaultUser, ...saved];
+            }
+            return saved.map(acc => {
+                if (acc.email && acc.email.toLowerCase() === 'donfim@gmail.com' && (!acc.name || acc.name === 'Rodrigo' || acc.name === 'Usuário Google')) {
+                    return { ...acc, name: 'Don Fim' };
+                }
+                return acc;
+            });
         }
 
         async function triggerNativeGoogleSync(isSilent = false, clientId = null) {
@@ -8423,23 +8753,30 @@
                 if (subtext) subtext.textContent = 'Selecione ou alterne a conta Google para este pedido:';
                 let html = '';
                 savedGoogleAccounts.forEach(acc => {
-                    const accName = acc.name || (acc.email ? acc.email.split('@')[0] : 'Usuário Google');
+                    const accName = getGoogleUserDisplayName(acc);
                     const initial = accName.charAt(0).toUpperCase();
                     html += `
                         <button type="button" class="google-account-item" onclick="selectGoogleAccount('${escapeHtml(acc.email)}', '${escapeHtml(accName)}')">
                             <div class="google-avatar-circle">
-                                ${initial}
+                                ${acc.picture ? `<img src="${escapeHtml(acc.picture)}" alt="${escapeHtml(accName)}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` : `
+                                <span style="font-weight: 700; color: #4285F4; font-size: 1rem;">${initial}</span>`}
                             </div>
-                            <div style="flex: 1; overflow: hidden;">
-                                <div style="font-weight: 700; color: #1E293B; font-size: 0.95rem; display: flex; align-items: center; gap: 0.35rem;">
-                                    ${escapeHtml(accName)}
-                                    <span style="background: #E0F2FE; color: #0284C7; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 700;">Conectada</span>
+                            <div style="flex: 1; min-width: 0; text-align: left;">
+                                <div style="font-weight: 600; color: #1a73e8; font-size: 0.92rem; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'Google Sans', Roboto, -apple-system, sans-serif;">
+                                    Continuar como ${escapeHtml(accName)}
                                 </div>
-                                <div style="font-size: 0.82rem; color: #64748B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                <div style="font-size: 0.8rem; color: #5f6368; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px;">
                                     ${escapeHtml(acc.email)}
                                 </div>
                             </div>
-                            <span style="color: #94A3B8; font-size: 1.1rem;">➔</span>
+                            <div style="flex-shrink: 0; display: flex; align-items: center; margin-left: auto; padding-left: 6px;">
+                                <svg width="20" height="20" viewBox="0 0 24 24">
+                                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                                </svg>
+                            </div>
                         </button>
                     `;
                 });
@@ -8578,24 +8915,70 @@
             openGoogleCustomAccountModal();
         }
 
-        function processGoogleCustomerAuth(googleUser) {
+        async function processGoogleCustomerAuth(googleUser) {
             if (!googleUser || !googleUser.email) return;
 
             const cleanEmail = googleUser.email.trim().toLowerCase();
-            const googleName = googleUser.name || cleanEmail.split('@')[0] || 'Cliente Google';
+            const googleName = googleUser.name || (cleanEmail.includes('@') ? cleanEmail.split('@')[0] : 'Cliente Google');
 
-            // 1. Verificar se o cliente já possui conta cadastrada
-            const existingAccount = customerAccounts.find(acc => 
-                (acc.email && acc.email.toLowerCase() === cleanEmail) || 
-                (acc.googleId && acc.googleId === googleUser.googleId) ||
-                (acc.phone && acc.phone === cleanEmail)
-            );
+            try {
+                // 1. Chamar o backend para gerar Token JWT oficial e persistir no Supabase
+                const res = await fetch('/api/auth/google-login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: cleanEmail,
+                        name: googleName,
+                        googleId: googleUser.googleId || `google_${cleanEmail}`,
+                        picture: googleUser.picture || '',
+                        phone: googleUser.phone || ''
+                    })
+                });
 
-            if (existingAccount) {
-                // Login automático imediato
-                AuthManager.loginCustomer(existingAccount);
+                const data = await res.json();
+                let token = null;
+                let activeCustomer = null;
+
+                if (data && data.success) {
+                    token = data.token;
+                    activeCustomer = data.customer;
+                    if (token) {
+                        sessionStorage.setItem('customerAuthToken', token);
+                        localStorage.setItem('customerToken', token);
+                    }
+                }
+
+                // 2. Sincronizar estado local
+                let existingAccount = customerAccounts.find(acc => 
+                    (acc.email && acc.email.toLowerCase() === cleanEmail) || 
+                    (acc.googleId && acc.googleId === googleUser.googleId) ||
+                    (acc.phone && acc.phone === cleanEmail)
+                );
+
+                if (!existingAccount) {
+                    existingAccount = activeCustomer || {
+                        name: googleName,
+                        email: cleanEmail,
+                        googleId: googleUser.googleId || `google_${cleanEmail}`,
+                        phone: googleUser.phone || '',
+                        address: '',
+                        neighborhood: '',
+                        neighborhoodId: '',
+                        neighborhoodZone: '',
+                        reference: '',
+                        provider: 'google'
+                    };
+                    customerAccounts.push(existingAccount);
+                    localStorage.setItem('customerAccounts', JSON.stringify(customerAccounts));
+                } else if (activeCustomer) {
+                    Object.assign(existingAccount, activeCustomer);
+                    localStorage.setItem('customerAccounts', JSON.stringify(customerAccounts));
+                }
+
+                // 3. Login com AuthManager e Token JWT
+                AuthManager.loginCustomer(existingAccount, token);
                 customerData = {
-                    name: existingAccount.name,
+                    name: existingAccount.name || googleName,
                     email: existingAccount.email || cleanEmail,
                     neighborhood: existingAccount.neighborhood || '',
                     neighborhoodId: existingAccount.neighborhoodId || '',
@@ -8608,25 +8991,23 @@
 
                 closeCustomerAuthModal();
                 closeGoogleAccountPickerModal();
+                closeGoogleCustomAccountModal();
                 renderCustomerForm();
                 updateCartUI();
                 updateCustomerHeaderUI();
+                updateMobileHeaderMenuUI();
                 updateCheckoutButton();
-                showNotification(`🎉 Bem-vindo(a) de volta, ${existingAccount.name}! Login com Google realizado com sucesso.`, 'success');
+
+                const firstName = (existingAccount.name || googleName).trim().split(' ')[0];
+                showNotification(`🎉 Bem-vindo(a), ${firstName}! Login Google autenticado no servidor com Token JWT.`, 'success');
+                
                 if (typeof fetchOrdersFromServer === 'function') {
                     fetchOrdersFromServer(true);
                 }
-                return;
+            } catch (err) {
+                console.error('Erro no processamento da autenticação Google:', err);
+                showNotification('Erro ao autenticar com Google no servidor.', 'error');
             }
-
-            // 2. Novo cadastro via Google: abrir confirmação rápida de endereço para entrega
-            closeCustomerAuthModal();
-            closeGoogleAccountPickerModal();
-            openGoogleAddressModal({
-                ...googleUser,
-                name: googleName,
-                email: cleanEmail
-            });
         }
 
         function openGoogleAddressModal(googleUser) {
@@ -9398,13 +9779,8 @@
             if (badgeEl) badgeEl.textContent = `${counts.ALL} pedido(s)`;
         }
 
-        function renderAdminOrdersList() {
-            const container = document.getElementById('adminOrdersList');
-            if (!container) return;
-
+        function getActiveCompanyOrders() {
             const activeCompId = activeCompanyId || 'company-demo-don';
-            
-            // Unificar todos os pedidos pertinentes a esta empresa de todas as fontes disponíveis
             let allCompanyOrders = [];
 
             // A. De customerOrders em memória
@@ -9465,6 +9841,16 @@
                     });
                 }
             } catch(e) {}
+
+            return allCompanyOrders;
+        }
+
+        function renderAdminOrdersList() {
+            const container = document.getElementById('adminOrdersList');
+            if (!container) return;
+
+            // Unificar todos os pedidos pertinentes a esta empresa de todas as fontes disponíveis
+            const allCompanyOrders = getActiveCompanyOrders();
 
             // Sincronizar customerOrders com a lista unificada
             customerOrders = allCompanyOrders;
@@ -9856,6 +10242,8 @@
             saveData();
             renderCustomerOrdersList();
             renderAdminOrdersList();
+            updateAdminHeaderUI();
+            renderAdminOrdersDropdown();
 
             const stInfo = adminOrderStatusMap[newStatus] || { text: newStatus };
             showNotification(`Status do pedido ${order.id} alterado para "${stInfo.text}"! ✅`, 'success');
@@ -9911,6 +10299,8 @@
             saveData();
             renderCustomerOrdersList();
             renderAdminOrdersList();
+            updateAdminHeaderUI();
+            renderAdminOrdersDropdown();
             showNotification('Pedido removido do histórico.', 'info');
 
             // Sincronizar remoção com o servidor da empresa
@@ -10881,6 +11271,14 @@
                     openAdminLogin();
                 }
             });
+
+            // Fechar dropdown de pedidos ativos ao clicar fora
+            document.addEventListener('click', (e) => {
+                const wrapper = document.getElementById('adminBellDropdownWrapper');
+                if (wrapper && !wrapper.contains(e.target)) {
+                    closeAdminOrdersDropdown();
+                }
+            });
             
             // Admin Panel FAB (se existir)
             const fab = document.getElementById('adminFab');
@@ -11762,6 +12160,12 @@
         window.openAdminOrderDetailModal = openAdminOrderDetailModal;
         window.closeAdminOrderDetailModal = closeAdminOrderDetailModal;
         window.renderAdminOrdersList = renderAdminOrdersList;
+        window.getActiveCompanyOrders = getActiveCompanyOrders;
+        window.toggleAdminOrdersDropdown = toggleAdminOrdersDropdown;
+        window.closeAdminOrdersDropdown = closeAdminOrdersDropdown;
+        window.renderAdminOrdersDropdown = renderAdminOrdersDropdown;
+        window.goToAdminOrder = goToAdminOrder;
+        window.goToAdminOrdersList = goToAdminOrdersList;
         window.openCustomerOrdersModal = openCustomerOrdersModal;
         window.closeCustomerOrdersModal = closeCustomerOrdersModal;
         window.initSupabaseRealtimeOrders = initSupabaseRealtimeOrders;
@@ -11815,6 +12219,7 @@
         window.handleDevCreateCompany = handleDevCreateCompany;
         window.switchActiveCompany = switchActiveCompany;
         window.switchActiveCompanyFromSelect = switchActiveCompanyFromSelect;
+        window.openStoreBySlug = openStoreBySlug;
         window.handleDevLogoClick = handleDevLogoClick;
         window.syncCurrentCompanyToSupabaseUI = syncCurrentCompanyToSupabaseUI;
         window.downloadSupabaseSQL = downloadSupabaseSQL;
