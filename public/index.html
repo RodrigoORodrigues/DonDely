@@ -1115,7 +1115,7 @@
         </div>
     </div>
 
-    <!-- MODAL ADICIONAR OU ENTRAR COM OUTRA CONTA GOOGLE (FORMULÁRIO SEGURO NATIVO) -->
+    <!-- MODAL ADICIONAR OU ENTRAR COM CONTA GOOGLE (PARA QUALQUER USUÁRIO / NOVO CLIENTE) -->
     <div class="modal" id="googleCustomAccountModal">
         <div class="modal-content" style="max-width: 440px; border-radius: 16px;">
             <div class="modal-header" style="border-bottom: none; padding-bottom: 0;">
@@ -1126,12 +1126,12 @@
                         <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
                         <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
                     </svg>
-                    <h3 class="modal-title" style="font-size: 1.1rem;">Conectar Conta Google</h3>
+                    <h3 class="modal-title" style="font-size: 1.1rem;">Entrar com o Google</h3>
                 </div>
                 <button class="modal-close" onclick="closeGoogleCustomAccountModal()">✕</button>
             </div>
             <p style="font-size: 0.85rem; color: #64748B; margin: 0.5rem 0 1rem 0;">
-                Informe seu e-mail do Google para entrar ou sincronizar com segurança:
+                Conecte sua conta Google para acompanhar seus pedidos e agilizar suas compras:
             </p>
 
             <!-- CARD VISUAL DE PREVIEW DA CONTA GOOGLE -->
@@ -1151,12 +1151,17 @@
             </div>
 
             <form id="googleCustomAccountForm" onsubmit="handleGoogleCustomAccountSubmit(event)">
-                <div class="form-group">
-                    <label class="form-label">📧 E-mail do Google *</label>
-                    <input type="email" class="form-input" id="googleCustomEmailInput" placeholder="ex: seu.email@gmail.com" required oninput="updateGoogleAccountPreview()">
+                <div class="form-group" style="margin-bottom: 0.85rem;">
+                    <label class="form-label">📧 Seu E-mail do Google *</label>
+                    <input type="email" class="form-input" id="googleCustomEmailInput" placeholder="ex: seu.nome@gmail.com" required oninput="updateGoogleAccountPreview()" autocomplete="email">
                     <div style="display: flex; gap: 0.4rem; margin-top: 0.4rem;">
                         <button type="button" class="btn-admin" onclick="appendEmailDomain('@gmail.com')" style="background: #F1F5F9; color: #334155; border: 1px solid #E2E8F0; padding: 2px 8px; font-size: 0.75rem; border-radius: 6px; font-weight: 600;">+ @gmail.com</button>
                     </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0.85rem;">
+                    <label class="form-label">👤 Seu Nome Completo (Opcional)</label>
+                    <input type="text" class="form-input" id="googleCustomNameInput" placeholder="Como deseja ser chamado(a)?" oninput="updateGoogleAccountPreview()" autocomplete="name">
                 </div>
 
                 <div style="display: flex; gap: 0.5rem; margin-top: 1.25rem;">
@@ -1389,7 +1394,7 @@
                             <a id="demoHintWhatsappLink" href="https://api.whatsapp.com/send?phone=5521973987378&text=Ol%C3%A1%21+Gostaria+de+testar+os+recursos+administrativos+do+Don+Food." target="_blank" rel="noopener noreferrer" class="demo-contact-chip" title="Conversar no WhatsApp: (21) 97398-7378" aria-label="WhatsApp" onclick="try { window.open(this.href, '_blank'); return false; } catch(e){ return true; }">
                                 <svg fill="currentColor" viewBox="0 0 24 24"><path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
                             </a>
-                            <a id="demoHintEmailLink" href="mailto:donfim@gmail.com?subject=Teste%20dos%20Recursos%20Administrativos%20Don%20Food" target="_blank" rel="noopener noreferrer" class="demo-contact-chip" title="Enviar um E-mail: donfim@gmail.com" aria-label="E-mail" onclick="try { window.location.href = this.href; } catch(e){}">
+                            <a id="demoHintEmailLink" href="mailto:contato@donfood.app?subject=Teste%20dos%20Recursos%20Administrativos%20Don%20Food" target="_blank" rel="noopener noreferrer" class="demo-contact-chip" title="Enviar um E-mail" aria-label="E-mail" onclick="try { window.location.href = this.href; } catch(e){}">
                                 <svg fill="currentColor" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
                             </a>
                         </div>
@@ -2473,13 +2478,12 @@
                     <span>© 2026 Don Food. Todos os direitos reservados.</span>
                     <span>•</span>
                     <a href="javascript:void(0)" onclick="openLgpdPolicyModal()" style="color: #9CA3AF; text-decoration: underline;">Termos & Privacidade LGPD</a>
-                    <span>•</span>
-                    <a href="javascript:void(0)" onclick="openLgpdRightsModal()" style="color: #9CA3AF; text-decoration: underline;">Gerenciar Meus Dados</a>
-                    <span>•</span>
-                    <a href="/dev" id="footerDevPanelLink" onclick="switchToDevView(event)" style="color: #9CA3AF; text-decoration: none;" title="Acesso do Desenvolvedor (donfood.site/dev)">🛠️ Dev</a>
                 </div>
-                <div>
-                    Desenvolvido com excelência por <a href="https://www.donfim.com.br" target="_blank" style="color: #F59E0B; text-decoration: none; font-weight: 700;">Donfim Tech</a>
+                <div style="display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; flex-wrap: wrap;">
+                    <span>Desenvolvido com excelência por</span>
+                    <a href="https://www.donfim.com.br" id="demoFooterDonfimLink" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; text-decoration: none; transition: transform 0.2s, opacity 0.2s;" title="Donfim Tech - Soluções em Tecnologia (www.donfim.com.br)" onmouseover="this.style.opacity='0.85'; this.style.transform='scale(1.05)';" onmouseout="this.style.opacity='1'; this.style.transform='scale(1)';">
+                        <img src="/Donfimtech.png" id="demoFooterDonfimLogo" onerror="if(this.src.indexOf('donfimtech.png') === -1) { this.src = '/donfimtech.png'; } else { this.src = 'Donfimtech.png'; }" alt="Donfim Tech" class="footer-logo-donfim" style="height: 22px; width: auto; vertical-align: middle; object-fit: contain;">
+                    </a>
                 </div>
             </div>
         </footer>
@@ -2564,19 +2568,18 @@
             </div>
         </div>
     </section>
-    <footer class="footer">
+    <footer class="footer" id="storeFooterSection">
         <div class="footer-content-wrap" id="storeFooterContentWrap" style="display: flex; align-items: center; justify-content: center; gap: 0.75rem; flex-wrap: wrap; text-align: center; font-size: 0.84rem; color: #94A3B8; line-height: 1.6;">
             <span id="storeFooterCopyright">© 2026 Don Food. Todos os direitos reservados.</span>
             <span class="footer-bullet" style="color: #64748B;">•</span>
             <a href="javascript:void(0)" id="storeFooterLgpdTerms" onclick="openLgpdPolicyModal()" style="color: #CBD5E1; text-decoration: underline; text-underline-offset: 3px; transition: color 0.2s;" onmouseover="this.style.color='#38BDF8'" onmouseout="this.style.color='#CBD5E1'">Termos & Privacidade LGPD</a>
             <span class="footer-bullet" style="color: #64748B;">•</span>
             <span id="storeFooterDevelopedBy" style="display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap;">
-                <span>Desenvolvido por</span>
+                <span>Desenvolvido com excelência por</span>
                 <a href="https://www.donfim.com.br" id="storeFooterDonfimLink" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; text-decoration: none; transition: transform 0.2s, opacity 0.2s;" title="Donfim Tech - Soluções em Tecnologia (www.donfim.com.br)" onmouseover="this.style.opacity='0.85'; this.style.transform='scale(1.05)';" onmouseout="this.style.opacity='1'; this.style.transform='scale(1)';">
                     <img src="/Donfimtech.png" id="storeFooterDonfimLogo" onerror="if(this.src.indexOf('donfimtech.png') === -1) { this.src = '/donfimtech.png'; } else { this.src = 'Donfimtech.png'; }" alt="Donfim Tech" class="footer-logo-donfim" style="height: 22px; width: auto; vertical-align: middle; object-fit: contain;">
                 </a>
             </span>
-            <a href="/dev" id="footerStoreDevLink" onclick="switchToDevView(event)" style="display: none;" title="Acesso do Desenvolvedor (donfood.site/dev)">🛠️ Dev</a>
         </div>
     </footer>
     </main>

@@ -3101,6 +3101,11 @@
 
             const savedAccounts = localStorage.getItem('customerAccounts');
             customerAccounts = savedAccounts ? JSON.parse(savedAccounts) : [];
+            if (Array.isArray(customerAccounts)) {
+                customerAccounts = customerAccounts.filter(acc => 
+                    acc && (!acc.email || acc.email.toLowerCase() !== 'donfim@gmail.com') && acc.phone !== 'donfim@gmail.com'
+                );
+            }
 
             const savedOrders = localStorage.getItem(`customerOrders_${activeCompanyId}`);
             customerOrders = savedOrders ? JSON.parse(savedOrders) : (activeComp.orders || []);
@@ -3127,7 +3132,7 @@
             let activeComp = companies.find(c => c.id === activeCompanyId);
             if (activeComp) {
                 activeComp.name = settings.restaurantName;
-                activeComp.email = settings.email || activeComp.email || 'donfim@gmail.com';
+                activeComp.email = settings.email || activeComp.email || '';
                 activeComp.slug = settings.slug || activeComp.slug || getCompanySlug(activeComp);
                 if (activeComp.name !== 'Don Food' || (activeComp.slug && activeComp.slug !== 'demo') || activeComp.logoUrl) {
                     activeComp.isDemo = false;
@@ -5156,7 +5161,7 @@
 
             if (idInput) idInput.value = comp.id;
             if (nameInput) nameInput.value = comp.name || '';
-            if (emailInput) emailInput.value = comp.email || 'donfim@gmail.com';
+            if (emailInput) emailInput.value = comp.email || '';
             if (slugInput) slugInput.value = comp.slug || getCompanySlug(comp);
             if (passwordInput) passwordInput.value = comp.adminPassword || 'admin123';
             if (whatsappInput) whatsappInput.value = comp.whatsappNumber || '';
@@ -5294,7 +5299,7 @@
             }
 
             if (document.getElementById('companyEmail')) {
-                document.getElementById('companyEmail').value = settings.email || 'donfim@gmail.com';
+                document.getElementById('companyEmail').value = settings.email || '';
             }
             document.getElementById('logoUrl').value = settings.logoUrl || '';
             document.getElementById('restaurantSubtitle').value = settings.subtitle || '';
@@ -5485,6 +5490,10 @@
             const whatsappUrl = `https://wa.me/${settings.whatsappNumber}`;
             document.getElementById('whatsappBtn').href = whatsappUrl;
             document.getElementById('whatsappFab').href = whatsappUrl;
+
+            // Atualizar Rodapé da Loja Dinamicamente
+            const storeFooterCopy = document.getElementById('storeFooterCopyright');
+            if (storeFooterCopy) storeFooterCopy.textContent = `© 2026 ${settings.restaurantName || 'Don Food'}. Todos os direitos reservados.`;
 
             // Atualizar Instagram Dinamicamente
             const instagramFabEl = document.getElementById('instagramFab');
@@ -8630,12 +8639,12 @@
 
         function getGoogleUserDisplayName(acc) {
             if (!acc) return 'Cliente';
-            if (acc.name && acc.name.trim() && acc.name !== 'Usuário Google' && acc.name !== 'Rodrigo') {
+            if (acc.name && acc.name.trim() && acc.name !== 'Usuário Google') {
                 return acc.name.trim();
             }
             try {
                 const stored = JSON.parse(localStorage.getItem('customerData') || '{}');
-                if (stored && stored.name && stored.name.trim() && stored.name !== 'Rodrigo') {
+                if (stored && stored.name && stored.name.trim()) {
                     if (!stored.email || !acc.email || stored.email.toLowerCase() === acc.email.toLowerCase()) {
                         return stored.name.trim();
                     }
@@ -8643,9 +8652,6 @@
             } catch (e) {}
             if (acc.email && acc.email.includes('@')) {
                 const userPart = acc.email.split('@')[0];
-                if (userPart.toLowerCase() === 'donfim') {
-                    return 'Don Fim';
-                }
                 return userPart
                     .replace(/[._-]+/g, ' ')
                     .split(' ')
@@ -8653,33 +8659,23 @@
                     .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
                     .join(' ');
             }
-            return 'Don Fim';
+            return 'Cliente';
         }
 
         function getSavedGoogleAccounts() {
+            // Limpa automaticamente qualquer resíduo anterior de teste
+            if (Array.isArray(customerAccounts)) {
+                customerAccounts = customerAccounts.filter(acc => 
+                    acc && (!acc.email || acc.email.toLowerCase() !== 'donfim@gmail.com') && acc.phone !== 'donfim@gmail.com'
+                );
+            }
+            
+            // Retorna apenas contas Google legítimas salvas neste navegador/dispositivo
             const saved = customerAccounts.filter(acc => 
                 acc.provider === 'google' || 
                 (acc.email && acc.email.includes('@') && !acc.email.endsWith('@local'))
             );
-
-            // Garantir que a conta ativa principal do usuário esteja sempre acessível com o nome correto
-            const defaultUser = {
-                name: "Don Fim",
-                email: "donfim@gmail.com",
-                provider: "google",
-                googleId: "google-donfim-primary"
-            };
-
-            const hasActiveUser = saved.some(acc => acc.email && acc.email.toLowerCase() === defaultUser.email.toLowerCase());
-            if (!hasActiveUser) {
-                return [defaultUser, ...saved];
-            }
-            return saved.map(acc => {
-                if (acc.email && acc.email.toLowerCase() === 'donfim@gmail.com' && (!acc.name || acc.name === 'Rodrigo' || acc.name === 'Usuário Google')) {
-                    return { ...acc, name: 'Don Fim' };
-                }
-                return acc;
-            });
+            return saved;
         }
 
         async function triggerNativeGoogleSync(isSilent = false, clientId = null) {
@@ -8813,8 +8809,10 @@
 
             const modal = document.getElementById('googleCustomAccountModal');
             const emailInput = document.getElementById('googleCustomEmailInput');
+            const nameInput = document.getElementById('googleCustomNameInput');
 
             if (emailInput) emailInput.value = initialEmail;
+            if (nameInput) nameInput.value = '';
 
             updateGoogleAccountPreview();
 
@@ -8854,20 +8852,22 @@
 
         function updateGoogleAccountPreview() {
             const emailInput = document.getElementById('googleCustomEmailInput');
+            const nameInput = document.getElementById('googleCustomNameInput');
             const previewAvatar = document.getElementById('googleCardPreviewAvatar');
             const previewName = document.getElementById('googleCardPreviewName');
             const previewEmail = document.getElementById('googleCardPreviewEmail');
 
             const emailVal = (emailInput ? emailInput.value : '').trim();
+            const nameVal = (nameInput ? nameInput.value : '').trim();
 
-            let displayName = '';
-            if (emailVal && emailVal.includes('@')) {
+            let displayName = nameVal;
+            if (!displayName && emailVal && emailVal.includes('@')) {
                 const part = emailVal.split('@')[0].replace(/[._-]/g, ' ');
-                displayName = part.split(' ').map(w => w ? w.charAt(0).toUpperCase() + w.slice(1) : '').join(' ').trim();
+                displayName = part.split(' ').map(w => w ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : '').join(' ').trim();
             }
             if (!displayName) displayName = 'Sua Conta Google';
 
-            const displayEmail = emailVal || 'seu.email@gmail.com';
+            const displayEmail = emailVal || 'seunome@gmail.com';
             const initial = displayName !== 'Sua Conta Google' ? displayName.charAt(0).toUpperCase() : 'G';
 
             if (previewAvatar) previewAvatar.textContent = initial;
@@ -8879,7 +8879,9 @@
             if (event) event.preventDefault();
 
             const emailInput = document.getElementById('googleCustomEmailInput');
+            const nameInput = document.getElementById('googleCustomNameInput');
             const emailVal = (emailInput ? emailInput.value : '').trim().toLowerCase();
+            let nameVal = (nameInput ? nameInput.value : '').trim();
 
             if (!emailVal || !emailVal.includes('@') || !emailVal.includes('.')) {
                 showNotification('Por favor, informe um endereço de e-mail do Google válido.', 'warning');
@@ -8887,11 +8889,13 @@
                 return;
             }
 
-            const rawName = emailVal.split('@')[0].replace(/[._-]/g, ' ');
-            const formattedName = rawName.split(' ').map(w => w ? w.charAt(0).toUpperCase() + w.slice(1) : '').join(' ').trim() || 'Usuário Google';
+            if (!nameVal) {
+                const rawName = emailVal.split('@')[0].replace(/[._-]/g, ' ');
+                nameVal = rawName.split(' ').map(w => w ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : '').join(' ').trim() || 'Cliente Google';
+            }
 
             closeGoogleCustomAccountModal();
-            selectGoogleAccount(emailVal, formattedName);
+            selectGoogleAccount(emailVal, nameVal);
         }
 
         function selectGoogleAccount(email, name) {
