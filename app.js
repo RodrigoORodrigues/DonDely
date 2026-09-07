@@ -1923,14 +1923,8 @@
         }
 
         async function init() {
-            const requestedIdent = extractRequestedCompanyIdentifier();
-            
-            // Se houver parâmetro de loja na URL (ex: ?empresa=marmitas-fitnes), buscar do servidor primeiro para renderizar a loja correta de imediato
-            if (requestedIdent) {
-                await fetchCompaniesFromServer();
-            } else {
-                loadData();
-            }
+            // Sempre buscar as empresas do Supabase/Servidor Central antes de renderizar para garantir dados atualizados remotamente
+            await fetchCompaniesFromServer();
 
             loadPrinterSettings();
             if (sessionStorage.getItem('isAdminLoggedIn') === 'true') {
@@ -1941,12 +1935,7 @@
             renderPresetCatalog();
             attachEventListeners();
             
-            if (!requestedIdent) {
-                // Sincronização em background se não havia loja específica na URL
-                await fetchCompaniesFromServer();
-            }
-            
-            // Buscar pedidos mais recentes no servidor central
+            // Buscar pedidos mais recentes no servidor central e Supabase
             fetchOrdersFromServer(true);
             // Iniciar canal Supabase Realtime para a tabela orders
             initSupabaseRealtimeOrders();
@@ -1955,6 +1944,18 @@
 
             // Verificação de rota direta para o Painel Dev (donfood.site/dev)
             checkDevUrlRoute();
+
+            // Sincronização periódica remota em segundo plano (a cada 30 segundos)
+            setInterval(() => {
+                fetchCompaniesFromServer(true);
+                fetchOrdersFromServer(true);
+            }, 30000);
+
+            // Sincronização ao retornar o foco para a aba do navegador
+            window.addEventListener('focus', () => {
+                fetchCompaniesFromServer(true);
+                fetchOrdersFromServer(true);
+            });
 
             // Roteamento dinâmico via URL (permite troca sem recarregar tela inteira)
             window.addEventListener('popstate', () => {

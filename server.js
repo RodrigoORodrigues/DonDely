@@ -380,7 +380,7 @@ if (supabaseUrl && supabaseKey) {
 }
 
 // ============================================================================
-// HELPERS DE PERSISTÊNCIA DIRETA NO SUPABASE
+// HELPERS DE PERSISTÊNCIA DIRETA NO SUPABASE (BANCO DE DADOS REMOTO CENTRAL)
 // ============================================================================
 async function saveCompanyToSupabase(company) {
     if (!supabase || !company || !company.id) return;
@@ -391,9 +391,10 @@ async function saveCompanyToSupabase(company) {
             slug: company.slug ? sanitizeSlug(company.slug) : sanitizeSlug(company.name || company.id),
             email: company.email || 'contato@donfood.com',
             phone: company.whatsappNumber || company.phone || '',
-            whatsapp_number: company.whatsappNumber || '',
+            whatsapp: company.whatsappNumber || company.phone || '',
             logo_url: company.logoUrl || '',
             category: company.presetType || company.category || 'delivery',
+            is_demo: !!company.isDemo,
             active: company.active !== false,
             updated_at: new Date().toISOString()
         };
@@ -407,13 +408,17 @@ async function saveCompanyToSupabase(company) {
             restaurant_name: company.name || 'Don Food',
             subtitle: company.subtitle || '',
             whatsapp_number: company.whatsappNumber || '',
+            instagram: company.instagram || '',
+            cnpj: company.cnpj || '',
+            address: company.address || '',
+            logo_url: company.logoUrl || '',
             delivery_fee: Number(company.deliveryFee || 0),
             delivery_time: company.deliveryTime || '30 - 45 min',
-            is_open: company.schedule ? company.schedule.isOpen !== false : true,
-            opening_hours: company.schedule ? `${company.schedule.openTime || '10:00'} - ${company.schedule.closeTime || '23:00'}` : '10:00 - 23:00',
-            address: company.address || '',
-            primary_color: company.themeColors?.primary || '#DC2626',
-            secondary_color: company.themeColors?.secondary || '#EA580C',
+            preset_type: company.presetType || 'burguer',
+            theme_colors: company.themeColors || {},
+            schedule: company.schedule || {},
+            coupons: Array.isArray(company.coupons) ? company.coupons : [],
+            neighborhoods: Array.isArray(company.deliveryNeighborhoods) ? company.deliveryNeighborhoods : [],
             updated_at: new Date().toISOString()
         };
         const { error: sErr } = await supabase.from('company_settings').upsert([settingsPayload]);
@@ -430,8 +435,11 @@ async function saveCompanyToSupabase(company) {
                 price: Number(p.price || 0),
                 promo_price: p.promoPrice ? Number(p.promoPrice) : null,
                 image_url: p.image || p.imageUrl || '',
-                tag: p.tag || '',
+                image: p.image || p.imageUrl || '',
+                category: p.tag || p.category || '',
+                tag: p.tag || p.category || '',
                 is_customizable: !!p.isCustomizable,
+                is_acai: !!p.isAcai,
                 available: p.available !== false,
                 updated_at: new Date().toISOString()
             }));
@@ -442,6 +450,80 @@ async function saveCompanyToSupabase(company) {
         }
     } catch (err) {
         console.warn('[Supabase] Erro geral ao salvar empresa:', err.message);
+    }
+}
+
+async function fetchCompaniesFromSupabase() {
+    if (!supabase) return null;
+    try {
+        const { data: supaCompanies, error: compErr } = await supabase
+            .from('companies')
+            .select('*');
+        if (compErr || !Array.isArray(supaCompanies) || supaCompanies.length === 0) return null;
+
+        const { data: supaSettings } = await supabase
+            .from('company_settings')
+            .select('*');
+
+        const { data: supaProducts } = await supabase
+            .from('products')
+            .select('*');
+
+        const settingsMap = new Map();
+        if (Array.isArray(supaSettings)) {
+            supaSettings.forEach(s => { if (s && s.company_id) settingsMap.set(s.company_id, s); });
+        }
+
+        const productsMap = new Map();
+        if (Array.isArray(supaProducts)) {
+            supaProducts.forEach(p => {
+                if (p && p.company_id) {
+                    if (!productsMap.has(p.company_id)) productsMap.set(p.company_id, []);
+                    productsMap.get(p.company_id).push({
+                        id: isNaN(Number(p.id)) ? p.id : Number(p.id),
+                        name: p.name,
+                        tag: p.tag || p.category || '',
+                        description: p.description || '',
+                        price: Number(p.price || 0),
+                        promoPrice: p.promo_price ? Number(p.promo_price) : null,
+                        image: p.image || p.image_url || '',
+                        available: p.available !== false,
+                        isAcai: !!p.is_acai,
+                        isCustomizable: !!p.is_customizable
+                    });
+                }
+            });
+        }
+
+        return supaCompanies.map(sc => {
+            const st = settingsMap.get(sc.id) || {};
+            const prods = productsMap.get(sc.id) || [];
+            return {
+                id: sc.id,
+                slug: sc.slug,
+                name: sc.name || st.restaurant_name,
+                email: sc.email || 'contato@donfood.com',
+                subtitle: st.subtitle || '',
+                whatsappNumber: sc.whatsapp || sc.phone || st.whatsapp_number || '',
+                instagram: st.instagram || '',
+                cnpj: sc.cnpj || st.cnpj || '',
+                address: sc.address || st.address || '',
+                logoUrl: sc.logo_url || st.logo_url || '',
+                deliveryFee: Number(st.delivery_fee || 5),
+                deliveryTime: st.delivery_time || '30 - 45 min',
+                presetType: sc.category || st.preset_type || 'burguer',
+                themeColors: st.theme_colors || null,
+                schedule: st.schedule || null,
+                coupons: st.coupons || [],
+                deliveryNeighborhoods: st.neighborhoods || [],
+                products: prods,
+                isDemo: !!sc.is_demo,
+                active: sc.active !== false
+            };
+        });
+    } catch (err) {
+        console.warn('[Supabase] Falha ao ler empresas do Supabase:', err.message);
+        return null;
     }
 }
 
@@ -1181,25 +1263,67 @@ app.delete('/api/orders/:id', orderWriteLimiter, validateCompanyHeader, async (r
 });
 
 // ============================================================================
-// ROTAS DE EMPRESAS (PERSISTÊNCIA E SINCRONIZAÇÃO COMPLETA)
+// ROTAS DE EMPRESAS (PERSISTÊNCIA E SINCRONIZAÇÃO COMPLETA NO SUPABASE)
 // ============================================================================
-app.get('/api/companies', generalLimiter, (req, res) => {
+app.get('/api/companies', generalLimiter, async (req, res) => {
     try {
-        const companies = readJsonFile(COMPANIES_FILE, []);
+        let companies = readJsonFile(COMPANIES_FILE, []);
+        
+        // Se o Supabase estiver configurado, carregar dados atualizados do banco de dados remoto
+        if (supabase) {
+            try {
+                const remoteCompanies = await fetchCompaniesFromSupabase();
+                if (Array.isArray(remoteCompanies) && remoteCompanies.length > 0) {
+                    const compMap = new Map();
+                    // Adicionar locais
+                    companies.forEach(c => { if (c && c.id) compMap.set(c.id, c); });
+                    // Sobrescrever com banco remoto Supabase
+                    remoteCompanies.forEach(rc => {
+                        if (rc && rc.id) {
+                            const prev = compMap.get(rc.id) || {};
+                            compMap.set(rc.id, { ...prev, ...rc });
+                        }
+                    });
+                    companies = Array.from(compMap.values());
+                    writeJsonFile(COMPANIES_FILE, companies);
+                }
+            } catch (supaErr) {
+                console.warn('[Supabase Companies Fetch Fallback]:', supaErr.message);
+            }
+        }
+
         const safeCompanies = companies.map(trimCompanyOutput);
-        res.json({ success: true, data: safeCompanies });
+        res.json({ success: true, data: safeCompanies, source: supabase ? 'supabase_remote' : 'server_database' });
     } catch (err) {
         res.status(500).json({ success: false, error: 'Erro ao listar empresas.' });
     }
 });
 
-// Endpoint de busca rápida de empresa por slug, ID ou nome (para compartilhamento de links)
-app.get(['/api/companies/lookup', '/api/company/lookup', '/api/company/:identifier', '/api/companies/:identifier'], generalLimiter, (req, res) => {
+// Endpoint de busca rápida de empresa por slug, ID ou nome (para compartilhamento de links remotos)
+app.get(['/api/companies/lookup', '/api/company/lookup', '/api/company/:identifier', '/api/companies/:identifier'], generalLimiter, async (req, res) => {
     try {
         const query = req.query.q || req.query.empresa || req.query.loja || req.query.slug || req.params.identifier || '';
         const cleanQuery = sanitizeSlug(query).toLowerCase();
         const rawLower = String(query).toLowerCase().trim();
-        const companies = readJsonFile(COMPANIES_FILE, []);
+        let companies = readJsonFile(COMPANIES_FILE, []);
+
+        if (supabase) {
+            try {
+                const remoteCompanies = await fetchCompaniesFromSupabase();
+                if (Array.isArray(remoteCompanies) && remoteCompanies.length > 0) {
+                    const compMap = new Map();
+                    companies.forEach(c => { if (c && c.id) compMap.set(c.id, c); });
+                    remoteCompanies.forEach(rc => {
+                        if (rc && rc.id) {
+                            const prev = compMap.get(rc.id) || {};
+                            compMap.set(rc.id, { ...prev, ...rc });
+                        }
+                    });
+                    companies = Array.from(compMap.values());
+                    writeJsonFile(COMPANIES_FILE, companies);
+                }
+            } catch (e) {}
+        }
 
         if (!cleanQuery || cleanQuery === 'demo' || rawLower === 'demo' || cleanQuery === 'donfood' || rawLower === 'don food') {
             const demo = companies.find(c => c && (c.id === 'company-demo-don' || c.slug === 'demo'));
@@ -1264,7 +1388,7 @@ app.get(['/api/companies/lookup', '/api/company/lookup', '/api/company/:identifi
     }
 });
 
-app.post('/api/companies', generalLimiter, (req, res) => {
+app.post('/api/companies', generalLimiter, async (req, res) => {
     try {
         const { companies, company } = req.body;
         let existing = readJsonFile(COMPANIES_FILE, []);
@@ -1272,13 +1396,13 @@ app.post('/api/companies', generalLimiter, (req, res) => {
         existing.forEach(c => { if (c && c.id) compMap.set(c.id, c); });
 
         if (Array.isArray(companies)) {
-            companies.forEach(c => {
+            for (const c of companies) {
                 if (c && c.id) {
                     const prev = compMap.get(c.id) || {};
                     compMap.set(c.id, { ...prev, ...c });
-                    saveCompanyToSupabase(c).catch(e => console.warn('[Supabase Sync Catch]:', e.message));
+                    await saveCompanyToSupabase(c);
                 }
-            });
+            }
             const merged = Array.from(compMap.values());
             writeJsonFile(COMPANIES_FILE, merged);
             return res.json({ success: true, count: merged.length });
@@ -1287,7 +1411,7 @@ app.post('/api/companies', generalLimiter, (req, res) => {
             compMap.set(company.id, { ...prev, ...company });
             const merged = Array.from(compMap.values());
             writeJsonFile(COMPANIES_FILE, merged);
-            saveCompanyToSupabase(company).catch(e => console.warn('[Supabase Sync Catch]:', e.message));
+            await saveCompanyToSupabase(company);
             return res.json({ success: true, company });
         }
         res.status(400).json({ success: false, error: 'Formato inválido de empresas.' });
@@ -1296,7 +1420,7 @@ app.post('/api/companies', generalLimiter, (req, res) => {
     }
 });
 
-app.post('/api/companies/upsert', generalLimiter, (req, res) => {
+app.post('/api/companies/upsert', generalLimiter, async (req, res) => {
     try {
         const { company, companies } = req.body;
         let existing = readJsonFile(COMPANIES_FILE, []);
@@ -1304,22 +1428,22 @@ app.post('/api/companies/upsert', generalLimiter, (req, res) => {
         existing.forEach(c => { if (c && c.id) compMap.set(c.id, c); });
 
         if (Array.isArray(companies)) {
-            companies.forEach(c => {
+            for (const c of companies) {
                 if (c && c.id) {
                     const prev = compMap.get(c.id) || {};
                     compMap.set(c.id, { ...prev, ...c });
-                    saveCompanyToSupabase(c).catch(e => console.warn('[Supabase Sync Catch]:', e.message));
+                    await saveCompanyToSupabase(c);
                 }
-            });
+            }
         }
         if (company && company.id) {
             const prev = compMap.get(company.id) || {};
             compMap.set(company.id, { ...prev, ...company });
-            saveCompanyToSupabase(company).catch(e => console.warn('[Supabase Sync Catch]:', e.message));
+            await saveCompanyToSupabase(company);
         }
         const merged = Array.from(compMap.values());
         writeJsonFile(COMPANIES_FILE, merged);
-        res.json({ success: true, count: merged.length });
+        res.json({ success: true, count: merged.length, message: 'Dados sincronizados com o banco remoto Supabase.' });
     } catch (err) {
         res.status(500).json({ success: false, error: 'Erro ao persistir empresa.' });
     }
