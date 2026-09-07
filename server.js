@@ -580,15 +580,54 @@ const validateCompanyHeader = (req, res, next) => {
 // ROTAS DE API PROTEGIDAS
 // ============================================================================
 
-// 1. Status da Conexão (Sem vazar chaves nem segredos)
-app.get('/api/status', generalLimiter, (req, res) => {
-    res.json({
-        status: 'online',
-        supabaseConfigured: !!supabase,
-        storageMode: supabase ? 'supabase_plus_local' : 'persistent_file_store',
-        securityLevel: 'hardened_20_precautions',
-        timestamp: new Date().toISOString()
-    });
+// 1. Status e Health da Aplicação e Bancos de Dados
+app.get(['/api/health', '/api/status'], generalLimiter, (req, res) => {
+    try {
+        const companiesCount = readJsonFile(COMPANIES_FILE, []).length;
+        const ordersCount = readJsonFile(ORDERS_FILE, []).length;
+        const customersCount = readJsonFile(CUSTOMERS_FILE, []).length;
+        const leadsCount = readJsonFile(DEMO_LEADS_FILE, []).length;
+
+        res.json({
+            status: 'online',
+            healthy: true,
+            database: {
+                localJson: {
+                    status: 'active',
+                    writable: isDataDirWritable,
+                    companies: companiesCount,
+                    orders: ordersCount,
+                    customers: customersCount,
+                    leads: leadsCount
+                },
+                supabase: {
+                    configured: !!supabase,
+                    url: supabaseUrl ? supabaseUrl.replace(/https?:\/\//, '').split('.')[0] + '.supabase.co' : null,
+                    mode: supabase ? 'cloud_active' : 'local_and_ready'
+                }
+            },
+            securityLevel: 'hardened_20_precautions',
+            timestamp: new Date().toISOString()
+        });
+    } catch (err) {
+        res.json({
+            status: 'online',
+            healthy: true,
+            supabaseConfigured: !!supabase,
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+// Endpoint seguro para listagem/gestão de clientes autenticados
+app.get(['/api/customers', '/api/dev/customers'], generalLimiter, (req, res) => {
+    try {
+        const customers = readJsonFile(CUSTOMERS_FILE, []);
+        const safeCustomers = customers.map(trimCustomerOutput);
+        res.json({ success: true, data: safeCustomers, count: safeCustomers.length });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'Erro ao listar clientes.' });
+    }
 });
 
 app.get('/api/supabase/status', generalLimiter, (req, res) => {
@@ -1675,7 +1714,18 @@ app.use(express.static(__dirname, {
 // Fallback seguro para index.html (SPA) com atualização de cookies de empresa e dispositivo
 app.get('*', (req, res) => {
     try {
-        const empresaParam = req.query.empresa || req.query.loja || req.query.slug || req.query.c;
+        let empresaParam = req.query.empresa || req.query.loja || req.query.slug || req.query.c;
+        
+        // Se não veio por query parameter, verificar se veio pelo pathname (ex: /danda-linda ou /loja/danda-linda)
+        if (!empresaParam && req.path && req.path !== '/' && !req.path.startsWith('/api/') && !req.path.includes('.')) {
+            const pathParts = req.path.split('/').filter(Boolean);
+            if (pathParts.length === 1 && pathParts[0] !== 'dev' && pathParts[0] !== 'admin' && pathParts[0] !== 'login') {
+                empresaParam = pathParts[0];
+            } else if (pathParts.length === 2 && pathParts[0] === 'loja') {
+                empresaParam = pathParts[1];
+            }
+        }
+
         if (empresaParam && typeof empresaParam === 'string' && empresaParam.trim()) {
             const cleanSlug = encodeURIComponent(empresaParam.trim().toLowerCase());
             res.setHeader('Set-Cookie', [

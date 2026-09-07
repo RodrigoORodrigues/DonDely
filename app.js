@@ -1803,7 +1803,7 @@
                 const headers = { 'Content-Type': 'application/json' };
                 if (token) headers['Authorization'] = `Bearer ${token}`;
 
-                await fetch('/api/companies', {
+                await fetch('/api/companies/upsert', {
                     method: 'POST',
                     headers: headers,
                     body: JSON.stringify({ companies: companies })
@@ -1853,7 +1853,7 @@
                                             slug: 'demo',
                                             isDemo: true,
                                             name: 'Don Food',
-                                            adminPassword: existing.adminPassword || sc.adminPassword || 'admin123'
+                                            adminPassword: existing.adminPassword || sc.adminPassword || 'admin'
                                         });
                                     } else {
                                         const existing = compMap.get(sc.id) || {};
@@ -1862,13 +1862,18 @@
                                             ...sc,
                                             isDemo: false,
                                             slug: sc.slug ? sanitizeSlug(sc.slug) : (existing.slug ? sanitizeSlug(existing.slug) : generateSlug(sc.name || sc.id)),
-                                            adminPassword: existing.adminPassword || sc.adminPassword || 'admin123'
+                                            adminPassword: existing.adminPassword || sc.adminPassword || 'admin'
                                         });
                                     }
                                 }
                             });
                             companies = Array.from(compMap.values());
                             localStorage.setItem('companies', JSON.stringify(companies));
+                            
+                            // Se houveram empresas locais adicionadas que não estavam no servidor, sincroniza de volta
+                            if (companies.length > serverComps.length) {
+                                syncCompaniesToServer();
+                            }
                         } else if (companies && companies.length > 0) {
                             // Servidor vazio mas temos empresas locais - sincronizar
                             syncCompaniesToServer();
@@ -1887,7 +1892,7 @@
                                 if (lookupJson && lookupJson.success && lookupJson.data) {
                                     const sc = lookupJson.data;
                                     target = sc;
-                                    const idx = companies.findIndex(c => c.id === sc.id);
+                                    const idx = companies.findIndex(c => c.id === sc.id || c.slug === sc.slug);
                                     if (idx >= 0) {
                                         companies[idx] = { ...companies[idx], ...sc };
                                     } else {
@@ -1903,6 +1908,9 @@
                         activeCompanyId = target.id;
                         localStorage.setItem('activeCompanyId', activeCompanyId);
                         currentAppView = 'store';
+                        if (typeof CookieManager !== 'undefined') {
+                            CookieManager.syncStoreSession(target);
+                        }
                     }
                 }
 
@@ -5143,13 +5151,13 @@
                                 <span>🔗</span>
                                 <span>${officialUrl}</span>
                             </div>
-                            <div style="display: flex; gap: 0.35rem;">
-                                <button type="button" onclick="copyCompanyLink('${compSlug}')" class="btn-admin" style="background: #EEF2FF; color: #4F46E5; border: 1px solid #C7D2FE; font-size: 0.72rem; padding: 0.25rem 0.55rem; font-weight: 600;">
+                            <div style="display: flex; gap: 0.35rem; align-items: center;">
+                                <button type="button" onclick="copyCompanyLink('${compSlug}')" class="btn-admin" style="background: #EEF2FF; color: #4F46E5; border: 1px solid #C7D2FE; font-size: 0.72rem; padding: 0.25rem 0.55rem; font-weight: 600; cursor: pointer;">
                                     📋 Copiar Link
                                 </button>
-                                <button type="button" onclick="window.open('/?empresa=${compSlug}', '_blank')" class="btn-admin" style="background: #FFFFFF; color: #334155; border: 1px solid #CBD5E1; font-size: 0.72rem; padding: 0.25rem 0.55rem; font-weight: 600;">
+                                <a href="/?empresa=${encodeURIComponent(compSlug)}" target="_blank" rel="noopener noreferrer" class="btn-admin" style="background: #FFFFFF; color: #334155; border: 1px solid #CBD5E1; font-size: 0.72rem; padding: 0.25rem 0.55rem; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 3px;">
                                     🚀 Testar Acesso
-                                </button>
+                                </a>
                             </div>
                         </div>
                     </div>
@@ -5165,7 +5173,8 @@
             const emailInput = document.getElementById('devNewCompEmail');
             const email = emailInput ? emailInput.value.trim() : `contato@${name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`;
             const slugInput = document.getElementById('devNewCompSlug');
-            const slug = (slugInput && slugInput.value.trim()) ? sanitizeSlug(slugInput.value) : generateSlug(name);
+            const rawSlug = (slugInput && slugInput.value.trim()) ? slugInput.value.trim() : name;
+            const slug = sanitizeSlug(rawSlug) || generateSlug(name);
             const subtitle = document.getElementById('devNewCompSubtitle').value.trim() || 'Delivery rápido e sabor inigualável!';
             const whatsapp = document.getElementById('devNewCompWhatsapp').value.trim() || '5521999999999';
             const instagram = document.getElementById('devNewCompInstagram')?.value.trim() || '';
@@ -5178,13 +5187,14 @@
             const presetType = document.getElementById('devNewCompPreset').value;
             const themeKey = document.getElementById('devNewCompTheme').value;
 
-            const newCompanyId = 'company-' + Date.now();
+            const newCompanyId = 'company-' + slug + '-' + Date.now().toString(36);
             const initialProducts = MENU_PRESETS[presetType] || MENU_PRESETS.acai;
             const initialTheme = THEME_PRESETS[themeKey] || THEME_PRESETS.acai;
 
             const newCompany = {
                 id: newCompanyId,
                 slug: slug,
+                aliases: [slug, sanitizeSlug(name)],
                 name: name,
                 email: email,
                 subtitle: subtitle,
@@ -5200,14 +5210,44 @@
                 schedule: defaultSettings.schedule,
                 themeColors: initialTheme,
                 products: initialProducts,
-                orders: []
+                orders: [],
+                isDemo: false
             };
 
-            companies.push(newCompany);
+            // 1. Inserir localmente
+            const existingIdx = companies.findIndex(c => c.id === newCompany.id || c.slug === newCompany.slug);
+            if (existingIdx >= 0) {
+                companies[existingIdx] = newCompany;
+            } else {
+                companies.push(newCompany);
+            }
+            
+            localStorage.setItem('companies', JSON.stringify(companies));
             saveData();
-            await syncCompaniesToServer();
+            
+            // 2. Persistir imediatamente no servidor (API central)
+            try {
+                await fetch('/api/companies/upsert', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ company: newCompany, companies: companies })
+                });
+            } catch (err) {
+                console.warn('[Sync] Falha ao enviar para o servidor, salvo em localStorage:', err);
+            }
+
             renderDevCompanyList();
+            renderActiveCompanySelectUI();
+            
             const officialUrl = getCompanyOfficialUrl(newCompany);
+            
+            // Sincronizar cookies da sessão
+            if (typeof CookieManager !== 'undefined') {
+                CookieManager.syncStoreSession(newCompany);
+            }
+
+            showNotification(`🎉 Loja "${name}" criada e ativada com sucesso!`, 'success');
+            
             alert(`🎉 Empresa "${name}" cadastrada com sucesso!\n\n🌐 Link Oficial Exclusivo:\n${officialUrl}\n\n📧 E-mail de Login: ${email}\n🔑 Senha: ${password}`);
             switchDevTab('companies');
         }

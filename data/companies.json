@@ -2,7 +2,12 @@
   {
     "id": "company-demo-don",
     "slug": "demo",
-    "aliases": ["acai", "donfood", "don-food", "acaiteria"],
+    "aliases": [
+      "acai",
+      "donfood",
+      "don-food",
+      "acaiteria"
+    ],
     "isDemo": true,
     "name": "Don Food",
     "email": "demo@donfood.com",
@@ -46,10 +51,34 @@
       }
     ],
     "deliveryNeighborhoods": [
-      { "id": "b1", "name": "Centro / Região Central", "fee": 3.00, "time": "20 - 35 min", "zone": "Zona 1" },
-      { "id": "b2", "name": "Jardins / Bairro Nobre", "fee": 5.00, "time": "25 - 40 min", "zone": "Zona 2" },
-      { "id": "b3", "name": "Vila Nova / Zona Sul", "fee": 7.00, "time": "30 - 45 min", "zone": "Zona 3" },
-      { "id": "b4", "name": "Planalto / Zona Norte", "fee": 9.00, "time": "35 - 50 min", "zone": "Zona 4" }
+      {
+        "id": "b1",
+        "name": "Centro / Região Central",
+        "fee": 3,
+        "time": "20 - 35 min",
+        "zone": "Zona 1"
+      },
+      {
+        "id": "b2",
+        "name": "Jardins / Bairro Nobre",
+        "fee": 5,
+        "time": "25 - 40 min",
+        "zone": "Zona 2"
+      },
+      {
+        "id": "b3",
+        "name": "Vila Nova / Zona Sul",
+        "fee": 7,
+        "time": "30 - 45 min",
+        "zone": "Zona 3"
+      },
+      {
+        "id": "b4",
+        "name": "Planalto / Zona Norte",
+        "fee": 9,
+        "time": "35 - 50 min",
+        "zone": "Zona 4"
+      }
     ],
     "products": [
       {
@@ -100,6 +129,83 @@
         "id": 401,
         "name": "🍰 Bolo de Pote Ninho com Nutella & Morango",
         "tag": "🍰 CONFEITARIA",
+        "description": "Pão de ló leve e molhadinho intercalado com camadas generosas de brigadeiro de Leite Ninho, Nutella pura e pedaços de morangos frescos.",
+        "price": 14.5,
+        "image": "https://images.unsplash.com/photo-1587314168485-3236d6710814?w=500&fit=crop",
+        "available": true,
+        "isAcai": false,
+        "isCustomizable": false
+      },
+      {
+        "id": 104,
+        "name": "🥤 Coca-Cola Original Lata 350ml Geladíssima",
+        "tag": "🥤 BEBIDAS",
+        "description": "Refrigerante Coca-Cola lata 350ml trincando de gelada.",
+        "price": 6.5,
+        "image": "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=500&fit=crop",
+        "available": true,
+        "isAcai": false,
+        "isCustomizable": false
+      }
+    ],
+    "orders": []
+  },
+  {
+    "id": "company-test-1",
+    "slug": "test-loja",
+    "name": "Loja Teste",
+    "products": []
+  },
+  {
+    "id": "company-danda-linda",
+    "slug": "danda-linda",
+    "name": "Danda linda",
+    "email": "danda@don.com",
+    "subtitle": "Marmitaria saborosa e caseira com entrega rápida!",
+    "whatsappNumber": "5521973076638",
+    "instagram": "",
+    "cnpj": "",
+    "address": "",
+    "logoUrl": "",
+    "adminPassword": "admin",
+    "deliveryFee": 6,
+    "deliveryTime": "30 - 45 min",
+    "presetType": "marmita",
+    "themeColors": {
+      "primary": "#D97706",
+      "primaryDark": "#B45309",
+      "secondary": "#EA580C",
+      "bgAccent": "#FFFDF7"
+    },
+    "coupons": [
+      {
+        "code": "DON10",
+        "discount": 10,
+        "type": "percent",
+        "minOrder": 30,
+        "active": true
+      }
+    ],
+    "deliveryNeighborhoods": [
+      { "id": "b1", "name": "Centro / Região Central", "fee": 3, "time": "20 - 35 min", "zone": "Zona 1" },
+      { "id": "b2", "name": "Jardins / Bairro Nobre", "fee": 5, "time": "25 - 40 min", "zone": "Zona 2" }
+    ],
+    "products": [
+      {
+        "id": 301,
+        "name": "🍱 Marmita Executiva Bife Acebolado Premium",
+        "tag": "🍱 MARMITARIA",
+        "description": "Bife bovino macio grelhado na chapa com cebolas douradas, arroz branco soltinho, feijão carioca fresquinho, farofa crocante e salada da horta.",
+        "price": 24.9,
+        "image": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&fit=crop",
+        "available": true,
+        "isAcai": false,
+        "isCustomizable": false
+      },
+      {
+        "id": 401,
+        "name": "🍰 Bolo de Pote Ninho com Nutella & Morango",
+        "tag": "🍰 SOBREMESAS",
         "description": "Pão de ló leve e molhadinho intercalado com camadas generosas de brigadeiro de Leite Ninho, Nutella pura e pedaços de morangos frescos.",
         "price": 14.5,
         "image": "https://images.unsplash.com/photo-1587314168485-3236d6710814?w=500&fit=crop",
