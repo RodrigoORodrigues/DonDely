@@ -530,6 +530,67 @@
         let knownOrderIds = new Set();
 
         // ============================================================================
+        // GERENCIADOR DE COOKIES & SESSÃO MULTI-TENANT (MOBILE & DESKTOP)
+        // ============================================================================
+        const CookieManager = {
+            set(name, value, days = 365) {
+                try {
+                    let expires = '';
+                    if (days) {
+                        const date = new Date();
+                        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                        expires = '; expires=' + date.toUTCString();
+                    }
+                    document.cookie = name + '=' + encodeURIComponent(value || '') + expires + '; path=/; SameSite=Lax';
+                } catch(e) {}
+            },
+            get(name) {
+                try {
+                    const nameEQ = name + '=';
+                    const ca = document.cookie.split(';');
+                    for (let i = 0; i < ca.length; i++) {
+                        let c = ca[i];
+                        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+                        if (c.indexOf(nameEQ) === 0) return decodeURIComponent(c.substring(nameEQ.length, c.length));
+                    }
+                } catch(e) {}
+                return null;
+            },
+            erase(name) {
+                try {
+                    document.cookie = name + '=; Max-Age=-99999999; path=/; SameSite=Lax';
+                } catch(e) {}
+            },
+            syncStoreSession(comp, role = 'auto') {
+                if (!comp) return;
+                const slug = comp.slug || (typeof getCompanySlug === 'function' ? getCompanySlug(comp) : (comp.id || 'demo'));
+                const isMobile = (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) || (window.innerWidth <= 768);
+                
+                // 1. Atualizar cookies da loja acessada no celular ou computador
+                this.set('donfood_company_slug', slug, 365);
+                this.set('donfood_company_id', comp.id, 365);
+                this.set('donfood_company_name', comp.name, 365);
+                this.set('donfood_device', isMobile ? 'mobile' : 'desktop', 365);
+                this.set('donfood_last_access', new Date().toISOString(), 365);
+
+                // 2. Se houver cliente logado neste dispositivo, renova cookies do cliente
+                if (loggedCustomer) {
+                    this.set('donfood_customer_id', loggedCustomer.id || loggedCustomer.phone || loggedCustomer.email || 'customer', 365);
+                    this.set('donfood_customer_name', loggedCustomer.name || 'Cliente', 365);
+                    this.set('donfood_customer_phone', loggedCustomer.phone || '', 365);
+                    this.set('donfood_customer_role', 'customer', 365);
+                }
+
+                // 3. Se for login de empresa / painel administrativo
+                if ((AuthManager && AuthManager.isCompanyOwner && AuthManager.isCompanyOwner()) || role === 'admin') {
+                    this.set('donfood_admin_company', comp.id, 30);
+                    this.set('donfood_admin_logged', 'true', 30);
+                }
+            }
+        };
+        window.CookieManager = CookieManager;
+
+        // ============================================================================
         // ETAPA 2: CENTRALIZADOR DE AUTENTICAÇÃO E PAPÉIS RBAC (SUPER_ADMIN, COMPANY_OWNER, CUSTOMER)
         // ============================================================================
         const ROLES = Object.freeze({
@@ -565,6 +626,9 @@
             },
             isCustomerLoggedIn() {
                 return !!loggedCustomer;
+            },
+            isAdminAuthenticated() {
+                return this.isSuperAdmin() || this.isCompanyOwner();
             },
             getAuthHeader() {
                 const superToken = sessionStorage.getItem('devAuthToken');
@@ -629,6 +693,9 @@
                 sessionStorage.setItem('loggedCompanyId', company.id);
                 sessionStorage.setItem('currentRole', ROLES.COMPANY_OWNER);
                 if (token) sessionStorage.setItem('companyAuthToken', token);
+                if (typeof CookieManager !== 'undefined') {
+                    CookieManager.syncStoreSession(company, 'admin');
+                }
                 updateAdminHeaderUI();
                 updateMobileHeaderMenuUI();
             },
@@ -643,6 +710,11 @@
                 localStorage.removeItem('isAdminLoggedIn');
                 localStorage.removeItem('isDevLoggedIn');
                 localStorage.removeItem('loggedCompanyId');
+                if (typeof CookieManager !== 'undefined') {
+                    CookieManager.erase('donfood_admin_company');
+                    CookieManager.erase('donfood_admin_logged');
+                    CookieManager.erase('donfood_admin_token');
+                }
                 closeAdminPanel();
                 updateAdminHeaderUI();
                 updateMobileHeaderMenuUI();
@@ -655,6 +727,10 @@
                 loggedCustomer = customer;
                 localStorage.setItem('loggedCustomer', JSON.stringify(customer));
                 if (token) sessionStorage.setItem('customerAuthToken', token);
+                const currentComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
+                if (typeof CookieManager !== 'undefined') {
+                    CookieManager.syncStoreSession(currentComp, 'customer');
+                }
                 updateCustomerHeaderUI();
                 updateAdminHeaderUI();
             },
@@ -662,6 +738,12 @@
                 loggedCustomer = null;
                 localStorage.removeItem('loggedCustomer');
                 sessionStorage.removeItem('customerAuthToken');
+                if (typeof CookieManager !== 'undefined') {
+                    CookieManager.erase('donfood_customer_id');
+                    CookieManager.erase('donfood_customer_name');
+                    CookieManager.erase('donfood_customer_phone');
+                    CookieManager.erase('donfood_customer_role');
+                }
                 updateCustomerHeaderUI();
                 updateAdminHeaderUI();
             },
@@ -1643,6 +1725,14 @@
                     const systemPaths = ['api', 'login', 'dev', 'admin', 'pedidos', 'carrinho', 'assets', 'static', 'favicon.ico', 'styles.css', 'app.js', 'robots.txt', 'sitemap.xml'];
                     if (candidate && !systemPaths.includes(candidate.toLowerCase()) && !candidate.includes('.')) {
                         return candidate.trim();
+                    }
+                }
+
+                // 4. Cookies de dispositivo (Celular ou Computador)
+                if (typeof CookieManager !== 'undefined') {
+                    const cookieSlug = CookieManager.get('donfood_company_slug');
+                    if (cookieSlug && cookieSlug.trim() && cookieSlug.toLowerCase() !== 'demo') {
+                        return cookieSlug.trim();
                     }
                 }
             } catch (e) {}
@@ -3026,6 +3116,11 @@
                 activeCompanyId = activeComp.id;
             }
 
+            // Sincronizar cookies no celular/navegador para a empresa ativa (cliente ou admin)
+            if (typeof CookieManager !== 'undefined') {
+                CookieManager.syncStoreSession(activeComp);
+            }
+
             // 3. Atualizar Visibilidade do Banner de Demonstração e Landing Page Showcase
             const isCurrentDemo = isCompanyDemo(activeComp);
             
@@ -3195,6 +3290,11 @@
             activeCompanyId = target.id;
             localStorage.setItem('activeCompanyId', activeCompanyId);
             currentAppView = 'store';
+
+            // Atualizar e sincronizar cookies no dispositivo (Mobile ou Desktop)
+            if (typeof CookieManager !== 'undefined') {
+                CookieManager.syncStoreSession(target);
+            }
             
             // Atualizar a URL no navegador para refletir a empresa ativa
             try {
@@ -4997,7 +5097,6 @@
 
             if (!container) return;
             container.innerHTML = companies.map(comp => {
-                const isActive = comp.id === activeCompanyId;
                 const isDemo = comp.isDemo || comp.id === 'company-demo-don' || comp.slug === 'demo';
                 const compEmail = comp.email || 'demo@donfood.com';
                 const compSlug = getCompanySlug(comp);
@@ -5005,12 +5104,12 @@
                 const safePassword = comp.adminPassword || 'admin';
 
                 return `
-                    <div style="background: ${isActive ? '#EEF2FF' : '#F8FAFC'}; border: 1.5px solid ${isActive ? '#6366F1' : '#E2E8F0'}; border-radius: 10px; padding: 0.85rem 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
+                    <div style="background: #FFFFFF; border: 1.5px solid #E2E8F0; border-radius: 10px; padding: 0.85rem 1rem; display: flex; flex-direction: column; gap: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
                         <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;">
                             <div>
                                 <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; flex-wrap: wrap;">
-                                    <strong style="font-size: 0.95rem; color: #1E1B4B;">${comp.name}</strong>
-                                    ${isActive ? '<span style="background: #4F46E5; color: white; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 10px;">★ ATIVA</span>' : ''}
+                                    <strong style="font-size: 0.98rem; color: #1E1B4B;">${comp.name}</strong>
+                                    <span style="background: #10B981; color: white; font-size: 0.65rem; font-weight: 700; padding: 2px 7px; border-radius: 10px; display: inline-flex; align-items: center; gap: 3px;">🟢 ATIVA</span>
                                     ${isDemo ? '<span style="background: #EA580C; color: white; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 10px;">✨ EMPRESA DEMO</span>' : ''}
                                 </div>
                                 <div style="font-size: 0.8rem; color: var(--gray-600); display: flex; gap: 0.8rem; flex-wrap: wrap; align-items: center;">
@@ -5024,16 +5123,14 @@
                                 </div>
                             </div>
                             <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
-                                <button type="button" onclick="openEditCompanyByDev('${comp.id}')" class="btn-admin" style="background: #3B82F6; color: white; font-size: 0.75rem; padding: 0.35rem 0.65rem;">
+                                <button type="button" onclick="openEditCompanyByDev('${comp.id}')" class="btn-admin" style="background: #3B82F6; color: white; font-size: 0.75rem; padding: 0.35rem 0.65rem; font-weight: 600;">
                                     ✏️ Editar
                                 </button>
-                                ${!isActive ? `
-                                    <button type="button" onclick="switchActiveCompany('${comp.id}')" class="btn-admin" style="background: #10B981; color: white; font-size: 0.75rem; padding: 0.35rem 0.65rem;">
-                                        ✅ Ativar
-                                    </button>
-                                ` : ''}
+                                <button type="button" onclick="openStoreBySlug('${compSlug}')" class="btn-admin" style="background: #10B981; color: white; font-size: 0.75rem; padding: 0.35rem 0.65rem; font-weight: 600;">
+                                    🏪 Abrir Cardápio
+                                </button>
                                 ${!isDemo ? `
-                                    <button type="button" onclick="deleteCompanyByDev('${comp.id}')" class="btn-admin" style="background: #EF4444; color: white; font-size: 0.75rem; padding: 0.35rem 0.65rem;">
+                                    <button type="button" onclick="deleteCompanyByDev('${comp.id}')" class="btn-admin" style="background: #EF4444; color: white; font-size: 0.75rem; padding: 0.35rem 0.65rem; font-weight: 600;">
                                         🗑️ Excluir
                                     </button>
                                 ` : ''}
@@ -5041,7 +5138,7 @@
                         </div>
 
                         <!-- BARRA DE LINK OFICIAL DO SITE -->
-                        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; padding: 0.45rem 0.75rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; font-size: 0.78rem; flex-wrap: wrap;">
+                        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 0.45rem 0.75rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; font-size: 0.78rem; flex-wrap: wrap;">
                             <div style="display: flex; align-items: center; gap: 0.4rem; font-family: monospace; color: #4F46E5; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                                 <span>🔗</span>
                                 <span>${officialUrl}</span>
@@ -5050,7 +5147,7 @@
                                 <button type="button" onclick="copyCompanyLink('${compSlug}')" class="btn-admin" style="background: #EEF2FF; color: #4F46E5; border: 1px solid #C7D2FE; font-size: 0.72rem; padding: 0.25rem 0.55rem; font-weight: 600;">
                                     📋 Copiar Link
                                 </button>
-                                <button type="button" onclick="window.open('/?empresa=${compSlug}', '_blank')" class="btn-admin" style="background: #F1F5F9; color: #334155; border: 1px solid #CBD5E1; font-size: 0.72rem; padding: 0.25rem 0.55rem; font-weight: 600;">
+                                <button type="button" onclick="window.open('/?empresa=${compSlug}', '_blank')" class="btn-admin" style="background: #FFFFFF; color: #334155; border: 1px solid #CBD5E1; font-size: 0.72rem; padding: 0.25rem 0.55rem; font-weight: 600;">
                                     🚀 Testar Acesso
                                 </button>
                             </div>

@@ -1672,8 +1672,18 @@ app.use(express.static(__dirname, {
     }
 }));
 
-// Fallback seguro para index.html (SPA)
+// Fallback seguro para index.html (SPA) com atualização de cookies de empresa e dispositivo
 app.get('*', (req, res) => {
+    try {
+        const empresaParam = req.query.empresa || req.query.loja || req.query.slug || req.query.c;
+        if (empresaParam && typeof empresaParam === 'string' && empresaParam.trim()) {
+            const cleanSlug = encodeURIComponent(empresaParam.trim().toLowerCase());
+            res.setHeader('Set-Cookie', [
+                `donfood_company_slug=${cleanSlug}; Path=/; Max-Age=31536000; SameSite=Lax`,
+                `donfood_last_access=${encodeURIComponent(new Date().toISOString())}; Path=/; Max-Age=31536000; SameSite=Lax`
+            ]);
+        }
+    } catch(e) {}
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
