@@ -390,6 +390,9 @@ async function saveCompanyToSupabase(company) {
             name: company.name || 'Empresa Sem Nome',
             slug: company.slug ? sanitizeSlug(company.slug) : sanitizeSlug(company.name || company.id),
             email: company.email || 'contato@donfood.com',
+            admin_password: company.adminPassword || '',
+            cnpj: company.cnpj || '',
+            address: company.address || '',
             phone: company.whatsappNumber || company.phone || '',
             whatsapp: company.whatsappNumber || company.phone || '',
             logo_url: company.logoUrl || '',
@@ -509,6 +512,7 @@ async function fetchCompaniesFromSupabase() {
                 cnpj: sc.cnpj || st.cnpj || '',
                 address: sc.address || st.address || '',
                 logoUrl: sc.logo_url || st.logo_url || '',
+                adminPassword: sc.admin_password || '',
                 deliveryFee: Number(st.delivery_fee || 5),
                 deliveryTime: st.delivery_time || '30 - 45 min',
                 presetType: sc.category || st.preset_type || 'burguer',
@@ -543,26 +547,23 @@ async function deleteCompanyFromSupabase(companyId) {
 function mapOrderToSupabase(order, companyId) {
     if (!order) return null;
     const targetCompId = companyId || order.companyId || order.company_id || 'company-demo-don';
-    const numId = parseInt(String(order.id || '').replace(/\D/g, ''), 10) || null;
     return {
         id: String(order.id || ''),
         company_id: targetCompId,
-        order_number: numId,
         customer_name: order.customerName || order.customer_name || 'Cliente',
         customer_phone: order.customerPhone || order.customer_phone || '',
         customer_address: order.customerAddress || order.customer_address || '',
         customer_neighborhood: order.customerNeighborhood || order.customer_neighborhood || '',
-        customer_complement: order.customerComplement || order.customer_complement || '',
-        delivery_type: order.deliveryType || order.delivery_type || (order.isPickup ? 'pickup' : 'delivery'),
         payment_method: order.paymentMethod || order.payment_method || 'PIX',
-        payment_change_for: Number(order.cashChangeFor || order.payment_change_for || 0) || null,
         items: Array.isArray(order.items) ? order.items : [],
         subtotal: Number(order.subtotal || 0),
         delivery_fee: Number(order.deliveryFee || order.delivery_fee || 0),
         discount: Number(order.discount || order.discountValue || 0),
         total: Number(order.total || 0),
         status: order.status || 'RECEIVED',
-        notes: order.observations || order.notes || '',
+        observations: order.observations || order.notes || '',
+        coupon_code: order.couponCode || order.coupon_code || null,
+        cash_change_for: Number(order.cashChangeFor || order.cash_change_for || 0) || null,
         created_at: order.created_at || new Date().toISOString(),
         updated_at: new Date().toISOString()
     };
@@ -588,14 +589,13 @@ async function saveCustomerToSupabase(customer, companyId) {
     if (!supabase || !customer) return;
     try {
         const custPayload = {
-            id: String(customer.id || 'cust_' + Date.now()),
-            company_id: companyId || customer.companyId || 'company-demo-don',
+            id: crypto.randomUUID(),
             phone: String(customer.phone || ''),
             name: customer.name || 'Cliente',
+            password_hash: customer.passwordHash || '',
+            salt: customer.salt || '',
             address: customer.address || '',
             neighborhood: customer.neighborhood || '',
-            complement: customer.reference || customer.complement || '',
-            total_orders: 1,
             created_at: customer.created_at || new Date().toISOString(),
             updated_at: new Date().toISOString()
         };
@@ -865,7 +865,7 @@ app.post('/api/auth/register', authLimiter, (req, res) => {
 });
 
 // Login de Cliente (Papel: CUSTOMER)
-app.post('/api/auth/login', authLimiter, (req, res) => {
+app.post('/api/auth/login', authLimiter, async (req, res) => {
     try {
         const { phone, password } = req.body;
         const cleanPhone = sanitizeString(phone, 30).replace(/\D/g, '');
@@ -875,7 +875,28 @@ app.post('/api/auth/login', authLimiter, (req, res) => {
         }
 
         const customers = readJsonFile(CUSTOMERS_FILE, []);
-        const customer = customers.find(c => c.phone.replace(/\D/g, '') === cleanPhone);
+        let customer = customers.find(c => c.phone.replace(/\D/g, '') === cleanPhone);
+
+        if (!customer && supabase) {
+            const { data: remoteCustomer, error: remoteError } = await supabase
+                .from('customers')
+                .select('*')
+                .eq('phone', cleanPhone)
+                .maybeSingle();
+            if (!remoteError && remoteCustomer) {
+                customer = {
+                    id: remoteCustomer.id,
+                    name: remoteCustomer.name,
+                    phone: remoteCustomer.phone,
+                    passwordHash: remoteCustomer.password_hash,
+                    salt: remoteCustomer.salt,
+                    address: remoteCustomer.address || '',
+                    neighborhood: remoteCustomer.neighborhood || '',
+                    reference: remoteCustomer.reference || '',
+                    created_at: remoteCustomer.created_at
+                };
+            }
+        }
 
         if (!customer) {
             return res.status(401).json({ success: false, error: 'Telefone ou senha inválidos.' });
@@ -969,7 +990,7 @@ app.post('/api/auth/google-login', authLimiter, async (req, res) => {
 });
 
 // Login do Proprietário da Loja (Papel: COMPANY_OWNER)
-app.post('/api/auth/company-login', authLimiter, (req, res) => {
+app.post('/api/auth/company-login', authLimiter, async (req, res) => {
     try {
         const { email, identifier, phone, password, companyId } = req.body;
         const rawIdentifier = sanitizeString(identifier || email || phone || '', 100).toLowerCase().trim();
@@ -980,7 +1001,23 @@ app.post('/api/auth/company-login', authLimiter, (req, res) => {
             return res.status(400).json({ success: false, error: 'Senha é obrigatória.' });
         }
 
-        const companies = readJsonFile(COMPANIES_FILE, []);
+        let companies = readJsonFile(COMPANIES_FILE, []);
+        if (supabase) {
+            const remoteCompanies = await fetchCompaniesFromSupabase();
+            if (Array.isArray(remoteCompanies) && remoteCompanies.length > 0) {
+                const companyMap = new Map(companies.filter(c => c && c.id).map(c => [c.id, c]));
+                remoteCompanies.forEach(remote => {
+                    const local = companyMap.get(remote.id) || {};
+                    companyMap.set(remote.id, {
+                        ...local,
+                        ...remote,
+                        adminPassword: remote.adminPassword || local.adminPassword || ''
+                    });
+                });
+                companies = Array.from(companyMap.values());
+                writeJsonFile(COMPANIES_FILE, companies);
+            }
+        }
         let matched = null;
 
         if (rawIdentifier) {

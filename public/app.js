@@ -9246,10 +9246,16 @@
                 // Modo offline / local
             }
 
-            const account = customerAccounts.find(acc => acc.phone === phone && acc.password === password);
+            const account = (res && res.success && res.customer)
+                ? res.customer
+                : customerAccounts.find(acc => acc.phone === phone && acc.password === password);
 
             if (account) {
                 AuthManager.loginCustomer(account, token);
+                if (!customerAccounts.some(acc => acc.phone === account.phone)) {
+                    customerAccounts.push(account);
+                    localStorage.setItem('customerAccounts', JSON.stringify(customerAccounts));
+                }
                 customerData = {
                     name: account.name,
                     email: account.email || '',

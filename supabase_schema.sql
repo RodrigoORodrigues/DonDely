@@ -19,6 +19,10 @@ CREATE TABLE IF NOT EXISTS public.companies (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Campos usados pelo login e pela sincronização do painel administrativo.
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS admin_password TEXT;
+
 -- 2. Tabela de Configurações das Empresas
 CREATE TABLE IF NOT EXISTS public.company_settings (
     company_id TEXT PRIMARY KEY REFERENCES public.companies(id) ON DELETE CASCADE,
@@ -39,6 +43,8 @@ CREATE TABLE IF NOT EXISTS public.company_settings (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE public.company_settings ADD COLUMN IF NOT EXISTS subtitle TEXT;
+
 -- 3. Tabela de Produtos
 CREATE TABLE IF NOT EXISTS public.products (
     id BIGINT PRIMARY KEY,
@@ -54,6 +60,11 @@ CREATE TABLE IF NOT EXISTS public.products (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS promo_price NUMERIC(10,2);
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS image_url TEXT;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS tag TEXT;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS is_customizable BOOLEAN DEFAULT FALSE;
 
 -- 4. Tabela de Pedidos (Orders)
 CREATE TABLE IF NOT EXISTS public.orders (
@@ -76,6 +87,9 @@ CREATE TABLE IF NOT EXISTS public.orders (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS coupon_code TEXT;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS cash_change_for NUMERIC(10,2);
 
 -- 5. Tabela de Clientes
 CREATE TABLE IF NOT EXISTS public.customers (
