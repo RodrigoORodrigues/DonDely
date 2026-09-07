@@ -533,14 +533,30 @@ async function fetchCompaniesFromSupabase() {
 
 async function deleteCompanyFromSupabase(companyId) {
     if (!supabase || !companyId || companyId === 'company-demo-don') return;
-    try {
-        await supabase.from('orders').delete().eq('company_id', companyId);
-        await supabase.from('products').delete().eq('company_id', companyId);
-        await supabase.from('company_settings').delete().eq('company_id', companyId);
-        await supabase.from('customers').delete().eq('company_id', companyId);
-        await supabase.from('companies').delete().eq('id', companyId);
-    } catch (err) {
-        console.warn('[Supabase] Erro ao excluir empresa:', err.message);
+    const dependentTables = ['orders', 'products', 'company_settings'];
+    for (const table of dependentTables) {
+        const { error } = await supabase.from(table).delete().eq('company_id', companyId);
+        if (error) {
+            throw new Error(`Falha ao excluir dados de ${table}: ${error.message}`);
+        }
+    }
+
+    const { error: companyError } = await supabase.from('companies').delete().eq('id', companyId);
+    if (companyError) {
+        throw new Error(`Falha ao excluir empresa: ${companyError.message}`);
+    }
+}
+
+async function deleteRemoteCompaniesMissingFrom(localCompanies) {
+    if (!supabase) return;
+    const keepIds = new Set(localCompanies.filter(c => c && c.id).map(c => String(c.id)));
+    const { data: remoteCompanies, error } = await supabase.from('companies').select('id');
+    if (error) throw new Error(`Falha ao consultar empresas remotas: ${error.message}`);
+
+    for (const remote of remoteCompanies || []) {
+        if (remote && remote.id && !keepIds.has(String(remote.id)) && remote.id !== 'company-demo-don') {
+            await deleteCompanyFromSupabase(String(remote.id));
+        }
     }
 }
 
@@ -1311,17 +1327,8 @@ app.get('/api/companies', generalLimiter, async (req, res) => {
             try {
                 const remoteCompanies = await fetchCompaniesFromSupabase();
                 if (Array.isArray(remoteCompanies) && remoteCompanies.length > 0) {
-                    const compMap = new Map();
-                    // Adicionar locais
-                    companies.forEach(c => { if (c && c.id) compMap.set(c.id, c); });
-                    // Sobrescrever com banco remoto Supabase
-                    remoteCompanies.forEach(rc => {
-                        if (rc && rc.id) {
-                            const prev = compMap.get(rc.id) || {};
-                            compMap.set(rc.id, { ...prev, ...rc });
-                        }
-                    });
-                    companies = Array.from(compMap.values());
+                    // O banco remoto é a fonte de verdade quando está disponível.
+                    companies = remoteCompanies;
                     writeJsonFile(COMPANIES_FILE, companies);
                 }
             } catch (supaErr) {
@@ -1348,15 +1355,7 @@ app.get(['/api/companies/lookup', '/api/company/lookup', '/api/company/:identifi
             try {
                 const remoteCompanies = await fetchCompaniesFromSupabase();
                 if (Array.isArray(remoteCompanies) && remoteCompanies.length > 0) {
-                    const compMap = new Map();
-                    companies.forEach(c => { if (c && c.id) compMap.set(c.id, c); });
-                    remoteCompanies.forEach(rc => {
-                        if (rc && rc.id) {
-                            const prev = compMap.get(rc.id) || {};
-                            compMap.set(rc.id, { ...prev, ...rc });
-                        }
-                    });
-                    companies = Array.from(compMap.values());
+                    companies = remoteCompanies;
                     writeJsonFile(COMPANIES_FILE, companies);
                 }
             } catch (e) {}
@@ -1479,6 +1478,7 @@ app.post('/api/companies/upsert', generalLimiter, async (req, res) => {
             await saveCompanyToSupabase(company);
         }
         const merged = Array.from(compMap.values());
+        await deleteRemoteCompaniesMissingFrom(merged);
         writeJsonFile(COMPANIES_FILE, merged);
         res.json({ success: true, count: merged.length, message: 'Dados sincronizados com o banco remoto Supabase.' });
     } catch (err) {
@@ -1486,7 +1486,7 @@ app.post('/api/companies/upsert', generalLimiter, async (req, res) => {
     }
 });
 
-app.post('/api/companies/delete', generalLimiter, (req, res) => {
+app.post('/api/companies/delete', generalLimiter, async (req, res) => {
     try {
         const { companyId } = req.body;
         if (!companyId || companyId === 'company-demo-don') {
@@ -1495,9 +1495,12 @@ app.post('/api/companies/delete', generalLimiter, (req, res) => {
         let existing = readJsonFile(COMPANIES_FILE, []);
         existing = existing.filter(c => c.id !== companyId);
         writeJsonFile(COMPANIES_FILE, existing);
-        deleteCompanyFromSupabase(companyId).catch(e => console.warn('[Supabase Delete Catch]:', e.message));
+        if (supabase) {
+            await deleteCompanyFromSupabase(companyId);
+        }
         res.json({ success: true, message: 'Empresa excluída com sucesso.' });
     } catch (err) {
+        console.error('[Companies Delete]:', err.message);
         res.status(500).json({ success: false, error: 'Erro ao excluir empresa.' });
     }
 });
