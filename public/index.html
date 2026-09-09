@@ -228,7 +228,7 @@
                 <div class="form-group">
                     <label class="form-label">Senha de Administrador da Loja</label>
                     <div class="password-input-wrapper">
-                        <input type="password" class="form-input" id="adminPassword" placeholder="Digite uma senha segura">
+                        <input type="password" class="form-input" id="adminPassword" placeholder="Digite uma senha segura" autocomplete="new-password">
                         <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('adminPassword', this)" title="Mostrar ou ocultar senha" aria-label="Mostrar senha">👁️</button>
                     </div>
                     <small style="color: var(--gray-600); font-size: 0.75rem; margin-top: 0.25rem; display: block;">Use uma senha forte para proteger o painel admin</small>
@@ -981,7 +981,7 @@
                     <div class="form-group">
                         <label class="form-label">Senha *</label>
                         <div class="password-input-wrapper">
-                            <input type="password" class="form-input" id="loginPassword" placeholder="Sua senha" required>
+                            <input type="password" class="form-input" id="loginPassword" placeholder="Sua senha" required autocomplete="current-password">
                             <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('loginPassword', this)" title="Mostrar ou ocultar senha" aria-label="Mostrar senha">👁️</button>
                         </div>
                     </div>
@@ -1038,7 +1038,7 @@
                     <div class="form-group">
                         <label class="form-label">Crie uma Senha *</label>
                         <div class="password-input-wrapper">
-                            <input type="password" class="form-input" id="authRegisterPassword" placeholder="Mínimo 4 caracteres" required minlength="4">
+                            <input type="password" class="form-input" id="authRegisterPassword" placeholder="Mínimo 4 caracteres" required minlength="4" autocomplete="new-password">
                             <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('authRegisterPassword', this)" title="Mostrar ou ocultar senha" aria-label="Mostrar senha">👁️</button>
                         </div>
                     </div>
@@ -2781,7 +2781,7 @@
             </p>
             <form id="devPasswordForm" onsubmit="handleDevPasswordSubmit(event)">
                 <div class="password-input-wrapper" style="margin-bottom: 0.75rem;">
-                    <input type="password" id="devPasswordInput" class="form-input" placeholder="Digite a senha mestre..." style="text-align: center; font-size: 1.05rem;" required autofocus>
+                    <input type="password" id="devPasswordInput" class="form-input" placeholder="Digite a senha mestre..." style="text-align: center; font-size: 1.05rem;" required autofocus autocomplete="current-password">
                     <button type="button" id="devPasswordToggleBtn" class="toggle-password-btn" onclick="togglePasswordVisibility('devPasswordInput', this)" title="Mostrar ou ocultar senha" aria-label="Mostrar senha">👁️</button>
                 </div>
                 <div id="devPasswordError" style="color: var(--danger); font-size: 0.82rem; font-weight: bold; display: none; margin-bottom: 0.75rem;">❌ Senha incorreta! Tente novamente.</div>
@@ -3029,7 +3029,7 @@
                         <div class="form-group">
                             <label class="form-label">Senha Admin da Loja *</label>
                             <div class="password-input-wrapper">
-                                <input type="password" class="form-input" id="devNewCompPassword" required placeholder="admin123">
+                                <input type="password" class="form-input" id="devNewCompPassword" required placeholder="admin123" autocomplete="new-password">
                                 <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('devNewCompPassword', this)" title="Mostrar ou ocultar senha" aria-label="Mostrar senha">👁️</button>
                             </div>
                         </div>
@@ -3227,7 +3227,7 @@
                 <div class="form-group" id="devEditCustomerPasswordGroup">
                     <label class="form-label">Senha de Acesso do Cliente</label>
                     <div class="password-input-wrapper">
-                        <input type="password" class="form-input" id="devEditCustomerPassword" placeholder="Senha do cliente (opcional)">
+                        <input type="password" class="form-input" id="devEditCustomerPassword" placeholder="Senha do cliente (opcional)" autocomplete="new-password">
                         <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('devEditCustomerPassword', this)" title="Mostrar senha" aria-label="Mostrar senha">👁️</button>
                     </div>
                 </div>
@@ -3279,7 +3279,7 @@
                     <div class="form-group">
                         <label class="form-label">Nova Senha da Empresa (deixe em branco para manter)</label>
                         <div class="password-input-wrapper">
-                            <input type="password" class="form-input" id="devEditCompPassword" placeholder="Senha de login">
+                            <input type="password" class="form-input" id="devEditCompPassword" placeholder="Senha de login" autocomplete="new-password">
                             <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('devEditCompPassword', this)" title="Mostrar ou ocultar senha" aria-label="Mostrar senha">👁️</button>
                         </div>
                     </div>

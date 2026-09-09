@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 450" role="img" aria-label="Super barca de acai">
+  <defs>
+    <linearGradient id="acai" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#6d2084"/>
+      <stop offset="1" stop-color="#25052f"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="200" cy="410" rx="105" ry="16" fill="#000" opacity=".15"/>
+  <path d="M82 125h236l-30 270c-2 14-14 24-28 24H140c-14 0-26-10-28-24z" fill="url(#acai)" stroke="#fff" stroke-width="5"/>
+  <ellipse cx="200" cy="125" rx="118" ry="30" fill="#4b1261" stroke="#fff" stroke-width="5"/>
+  <path d="M105 125q35-42 75 0t75 0t40 0" fill="none" stroke="#fff7d6" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="145" cy="82" r="25" fill="#facc15"/>
+  <circle cx="205" cy="72" r="28" fill="#ef4444"/>
+  <circle cx="260" cy="88" r="24" fill="#facc15"/>
+  <path d="M190 45q15-22 30 0" fill="none" stroke="#16a34a" stroke-width="10" stroke-linecap="round"/>
+</svg>
