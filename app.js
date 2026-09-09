@@ -1803,13 +1803,18 @@
                 const headers = { 'Content-Type': 'application/json' };
                 if (token) headers['Authorization'] = `Bearer ${token}`;
 
-                await fetch('/api/companies/upsert', {
+                const response = await fetch('/api/companies/upsert', {
                     method: 'POST',
                     headers: headers,
                     body: JSON.stringify({ companies: companies })
                 });
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.error || 'O servidor recusou a sincronização das empresas.');
+                }
             } catch (err) {
-                console.warn('[Sync] Sincronização de empresas em modo offline:', err);
+                console.error('[Sync] Falha ao sincronizar empresas:', err);
+                throw err;
             }
         }
 
@@ -5271,7 +5276,15 @@
                     activeCompanyId = 'company-demo-don';
                 }
                 saveData();
-                await syncCompaniesToServer();
+                const response = await fetch('/api/companies/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ companyId })
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.error || 'Não foi possível excluir a empresa no servidor.');
+                }
                 loadData();
                 renderAll();
                 renderDevCompanyList();
@@ -9384,10 +9397,16 @@
                 // Modo offline / local
             }
 
-            const account = customerAccounts.find(acc => acc.phone === phone && acc.password === password);
+            const account = (res && res.success && res.customer)
+                ? res.customer
+                : customerAccounts.find(acc => acc.phone === phone && acc.password === password);
 
             if (account) {
                 AuthManager.loginCustomer(account, token);
+                if (!customerAccounts.some(acc => acc.phone === account.phone)) {
+                    customerAccounts.push(account);
+                    localStorage.setItem('customerAccounts', JSON.stringify(customerAccounts));
+                }
                 customerData = {
                     name: account.name,
                     email: account.email || '',
