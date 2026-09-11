@@ -3144,17 +3144,30 @@
             const viewParam = (urlParams.get('view') || urlParams.get('pagina') || '').toLowerCase();
             const hashLower = (window.location.hash || '').toLowerCase();
             const isLoginRoute = pathLower === '/login' || pathLower.endsWith('/login') || viewParam === 'login' || hashLower === '#login';
+            const savedView = sessionStorage.getItem('currentAppView');
 
             if (isLoginRoute) {
                 currentAppView = 'login';
+                sessionStorage.setItem('currentAppView', 'login');
             } else if (requestedParam && requestedParam.toLowerCase() !== 'demo') {
                 // Ao acessar link direto de uma empresa personalizada (?empresa=...), ABRIR SEMPRE O CARDÁPIO DA EMPRESA!
                 currentAppView = 'store';
+                sessionStorage.setItem('currentAppView', 'store');
             } else if (!isCurrentDemo) {
                 currentAppView = 'store';
+                sessionStorage.setItem('currentAppView', 'store');
             } else {
-                if (hashLower === '#loja-demo' || hashLower === '#cardapio' || hashLower === '#inicio' || viewParam === 'store') {
+                if (viewParam === 'landing' || hashLower === '#landing' || hashLower === '#apresentacao') {
+                    currentAppView = 'landing';
+                    sessionStorage.setItem('currentAppView', 'landing');
+                } else if (viewParam === 'store' || hashLower === '#loja-demo' || hashLower === '#cardapio' || hashLower === '#inicio' || requestedParam === 'demo') {
                     currentAppView = 'store';
+                    sessionStorage.setItem('currentAppView', 'store');
+                } else if (savedView === 'store' || currentAppView === 'store') {
+                    currentAppView = 'store';
+                    sessionStorage.setItem('currentAppView', 'store');
+                } else if (savedView === 'landing') {
+                    currentAppView = 'landing';
                 } else {
                     currentAppView = 'landing';
                 }
@@ -4031,11 +4044,13 @@
             }
 
             currentAppView = 'login';
+            sessionStorage.setItem('currentAppView', 'login');
             updateAppViewDisplay();
             
             // Sincronizar URL para /login sem recarregar
             try {
                 const urlParams = new URLSearchParams(window.location.search);
+                urlParams.set('view', 'login');
                 if (activeComp && activeComp.slug && !isCurrentDemo) {
                     urlParams.set('empresa', activeComp.slug);
                 }
@@ -4065,6 +4080,7 @@
 
         function switchToStoreView(source) {
             currentAppView = 'store';
+            sessionStorage.setItem('currentAppView', 'store');
             updateAppViewDisplay();
 
             // Atualizar URL de volta à loja/cardápio
@@ -4074,7 +4090,9 @@
                 const urlParams = new URLSearchParams(window.location.search);
                 if (activeComp && activeComp.slug && !isCurrentDemo) {
                     urlParams.set('empresa', activeComp.slug);
+                    urlParams.delete('view');
                 } else {
+                    urlParams.set('view', 'store');
                     urlParams.delete('empresa');
                 }
                 const newQuery = urlParams.toString() ? '?' + urlParams.toString() : '';
@@ -4100,14 +4118,36 @@
         function switchToLandingView(e) {
             if (e && e.preventDefault) e.preventDefault();
             currentAppView = 'landing';
+            sessionStorage.setItem('currentAppView', 'landing');
             updateAppViewDisplay();
 
             try {
-                window.history.pushState({ view: 'landing' }, '', '/');
+                const urlParams = new URLSearchParams(window.location.search);
+                urlParams.delete('view');
+                urlParams.delete('empresa');
+                const newQuery = urlParams.toString() ? '?' + urlParams.toString() : '';
+                window.history.pushState({ view: 'landing' }, '', '/' + newQuery);
             } catch (err) {}
 
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
+
+        function handleHeaderLogoClick(e) {
+            if (e && e.preventDefault) e.preventDefault();
+            if (currentAppView === 'landing') {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else if (currentAppView === 'store') {
+                const inicioEl = document.getElementById('inicio');
+                if (inicioEl) {
+                    inicioEl.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            } else {
+                switchToLandingView(e);
+            }
+        }
+        window.handleHeaderLogoClick = handleHeaderLogoClick;
 
         function openAdminPanelFromLogin() {
             switchToStoreView('admin');
@@ -6231,6 +6271,189 @@
         // ========== AUTH & HEADER ADMIN (RBAC: COMPANY_OWNER) ==========
         let isAdminLoggedIn = false;
 
+        // ========== NAVEGAÇÃO POR TÓPICOS E MENU HAMBÚRGUER DO PAINEL ADMIN ==========
+        const ADMIN_TOPIC_CONFIG = [
+            { id: 'orders', title: 'Pedidos em Tempo Real', icon: '📦', sectionId: 'adminOrdersSection' },
+            { id: 'products', title: 'Produtos do Cardápio', icon: '🍕', sectionId: 'productsAdminSection' },
+            { id: 'presets', title: 'Catálogo Pronto (1-Clique)', icon: '📋', sectionId: 'presetCatalogSection' },
+            { id: 'neighborhoods', title: 'Bairros & Taxas de Entrega', icon: '🛵', sectionId: 'adminNeighborhoodsSection' },
+            { id: 'coupons', title: 'Cupons de Desconto', icon: '🏷️', sectionId: 'adminCouponsSection' },
+            { id: 'company', title: 'Dados da Empresa & Loja', icon: '🏪', sectionId: 'adminCompanySettingsSection' },
+            { id: 'banner', title: 'Banner Promocional', icon: '📢', sectionId: 'adminPromoBannerSection' },
+            { id: 'extras', title: 'Acompanhamentos & Extras', icon: '🔍', sectionId: 'adminExtrasSection' },
+            { id: 'theme', title: 'Cores & Tema Visual', icon: '🎨', sectionId: 'themePaletteSection' },
+            { id: 'printer', title: 'Impressora Térmica', icon: '🖨️', sectionId: 'printerAdminSection' },
+            { id: 'all', title: 'Todas as Seções', icon: '👁️', sectionId: null }
+        ];
+
+        let currentAdminTopic = 'orders';
+
+        function toggleAdminHamburgerMenu(forceState) {
+            const menu = document.getElementById('adminHamburgerMenu');
+            const btn = document.getElementById('adminHamburgerBtn');
+            if (!menu) return;
+            
+            const shouldOpen = (typeof forceState === 'boolean') ? forceState : !menu.classList.contains('active');
+            if (shouldOpen) {
+                updateAdminMenuBadges();
+                menu.classList.add('active');
+                if (btn) btn.classList.add('active');
+            } else {
+                menu.classList.remove('active');
+                if (btn) btn.classList.remove('active');
+            }
+        }
+
+        function switchAdminTopic(topicId, shouldScrollTop = true) {
+            if (!topicId) topicId = 'orders';
+            currentAdminTopic = topicId;
+            try {
+                sessionStorage.setItem('activeAdminTopic', topicId);
+            } catch(e) {}
+
+            const panel = document.getElementById('adminPanel');
+            const topicInfo = ADMIN_TOPIC_CONFIG.find(t => t.id === topicId) || ADMIN_TOPIC_CONFIG[0];
+
+            // Atualiza o texto e ícone do botão hambúrguer no cabeçalho
+            const iconEl = document.getElementById('adminCurrentTopicIcon');
+            const textEl = document.getElementById('adminCurrentTopicText');
+            if (iconEl) iconEl.textContent = topicInfo.icon;
+            if (textEl) textEl.textContent = topicInfo.title;
+
+            // Atualiza classe ativa nas pílulas da barra horizontal
+            const allPills = document.querySelectorAll('.admin-topic-pill');
+            allPills.forEach(pill => {
+                const pillTopic = pill.id.replace('pillTopic', '').toLowerCase();
+                if (pillTopic === topicId.toLowerCase()) {
+                    pill.classList.add('active');
+                    try {
+                        pill.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                    } catch(e) {}
+                } else {
+                    pill.classList.remove('active');
+                }
+            });
+
+            // Atualiza classe ativa nos itens do menu drawer
+            const allMenuItems = document.querySelectorAll('.admin-menu-item');
+            allMenuItems.forEach(item => {
+                const itemTopic = item.id.replace('menuTopic', '').toLowerCase();
+                if (itemTopic === topicId.toLowerCase()) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+
+            // Alterna visibilidade das seções
+            if (panel) {
+                if (topicId === 'all') {
+                    panel.classList.remove('topic-mode');
+                    panel.classList.add('all-mode');
+                    const allSections = panel.querySelectorAll('.admin-section');
+                    allSections.forEach(s => s.classList.add('active-topic'));
+                } else {
+                    panel.classList.remove('all-mode');
+                    panel.classList.add('topic-mode');
+                    const allSections = panel.querySelectorAll('.admin-section');
+                    allSections.forEach(s => {
+                        const sTopic = s.getAttribute('data-topic');
+                        if (sTopic === topicId) {
+                            s.classList.add('active-topic');
+                        } else {
+                            s.classList.remove('active-topic');
+                        }
+                    });
+                }
+            }
+
+            // Fecha o menu drawer após a seleção
+            toggleAdminHamburgerMenu(false);
+
+            // Rola o container do painel para o topo
+            const content = document.getElementById('adminContent');
+            if (content && shouldScrollTop) {
+                content.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            // Ações específicas de renderização conforme o tópico
+            if (topicId === 'orders') {
+                if (typeof renderAdminOrdersList === 'function') renderAdminOrdersList();
+            } else if (topicId === 'products') {
+                if (typeof renderProductsAdmin === 'function') renderProductsAdmin();
+            } else if (topicId === 'presets') {
+                if (typeof renderPresetCatalog === 'function') renderPresetCatalog();
+            } else if (topicId === 'neighborhoods') {
+                if (typeof renderNeighborhoodsAdmin === 'function') renderNeighborhoodsAdmin();
+            } else if (topicId === 'coupons') {
+                if (typeof renderAdminCouponsList === 'function') renderAdminCouponsList();
+            } else if (topicId === 'extras') {
+                if (typeof renderAdminExtrasCategories === 'function') renderAdminExtrasCategories();
+            } else if (topicId === 'theme') {
+                if (typeof initThemeColorPickers === 'function') initThemeColorPickers();
+            } else if (topicId === 'printer') {
+                if (typeof updatePrinterStatusUI === 'function') updatePrinterStatusUI();
+            }
+
+            updateAdminMenuBadges();
+        }
+
+        function navigateAdminTopic(direction) {
+            const navigableTopics = ADMIN_TOPIC_CONFIG.filter(t => t.id !== 'all');
+            const currentIndex = navigableTopics.findIndex(t => t.id === currentAdminTopic);
+            let nextIndex = 0;
+            if (currentIndex !== -1) {
+                nextIndex = (currentIndex + direction + navigableTopics.length) % navigableTopics.length;
+            }
+            switchAdminTopic(navigableTopics[nextIndex].id, true);
+        }
+
+        function updateAdminMenuBadges() {
+            try {
+                // Badge de Pedidos
+                const activeOrders = (typeof getActiveCompanyOrders === 'function' ? getActiveCompanyOrders() : customerOrders) || [];
+                const pendingOrders = activeOrders.filter(o => o && o.status !== 'COMPLETED' && o.status !== 'CANCELLED');
+                const ordersCount = pendingOrders.length;
+                const menuOrdersBadge = document.getElementById('adminMenuOrdersBadge');
+                const pillOrdersBadge = document.getElementById('pillBadgeOrders');
+                if (menuOrdersBadge) menuOrdersBadge.textContent = ordersCount;
+                if (pillOrdersBadge) pillOrdersBadge.textContent = ordersCount;
+
+                // Badge de Produtos
+                const prodCount = (products && products.length) || 0;
+                const menuProductsBadge = document.getElementById('adminMenuProductsBadge');
+                const pillProductsBadge = document.getElementById('pillBadgeProducts');
+                if (menuProductsBadge) menuProductsBadge.textContent = prodCount;
+                if (pillProductsBadge) pillProductsBadge.textContent = prodCount;
+
+                // Badge de Bairros
+                const neighCount = (activeNeighborhoods && activeNeighborhoods.length) || 0;
+                const menuNeighBadge = document.getElementById('adminMenuNeighborhoodsBadge');
+                const pillNeighBadge = document.getElementById('pillBadgeNeighborhoods');
+                if (menuNeighBadge) menuNeighBadge.textContent = neighCount;
+                if (pillNeighBadge) pillNeighBadge.textContent = neighCount;
+
+                // Badge de Cupons
+                const compCoupons = (typeof getActiveCompanyCoupons === 'function' ? getActiveCompanyCoupons() : (settings && settings.coupons)) || [];
+                const couponsCount = compCoupons.length;
+                const menuCouponsBadge = document.getElementById('adminMenuCouponsBadge');
+                const pillCouponsBadge = document.getElementById('pillBadgeCoupons');
+                if (menuCouponsBadge) menuCouponsBadge.textContent = couponsCount;
+                if (pillCouponsBadge) pillCouponsBadge.textContent = couponsCount;
+
+                // Badge da Impressora
+                const isPrinterConnected = (typeof btPrinterDevice !== 'undefined' && btPrinterDevice !== null) || (typeof serialPort !== 'undefined' && serialPort !== null);
+                const printerBadge = document.getElementById('adminMenuPrinterBadge');
+                if (printerBadge) {
+                    printerBadge.textContent = isPrinterConnected ? '🟢 Conectada' : '🔴 Desconectada';
+                    printerBadge.style.background = isPrinterConnected ? '#DCFCE7' : '#FEE2E2';
+                    printerBadge.style.color = isPrinterConnected ? '#166534' : '#991B1B';
+                }
+            } catch (err) {
+                console.warn('Erro ao atualizar badges do menu admin:', err);
+            }
+        }
+
         function openAdminPanel() {
             const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
             const isCurrentDemo = isCompanyDemo(activeComp);
@@ -6244,6 +6467,14 @@
             }
             if (adminPanel) adminPanel.classList.add('active');
             if (adminOverlay) adminOverlay.classList.add('active');
+
+            // Inicializar tópicos do painel admin
+            let initialTopic = 'orders';
+            try {
+                initialTopic = sessionStorage.getItem('activeAdminTopic') || 'orders';
+            } catch(e) {}
+            switchAdminTopic(initialTopic, false);
+            updateAdminMenuBadges();
             renderPresetCatalog();
         }
 
@@ -6466,6 +6697,7 @@
         function goToAdminOrdersList() {
             closeAdminOrdersDropdown();
             openAdminPanel();
+            switchAdminTopic('orders', true);
             setTimeout(() => {
                 const ordersSection = document.getElementById('adminOrdersSection');
                 if (ordersSection) {
@@ -6478,6 +6710,7 @@
         function goToAdminOrder(orderId) {
             closeAdminOrdersDropdown();
             openAdminPanel();
+            switchAdminTopic('orders', true);
 
             // Garantir que a lista mostre o pedido (filtro ALL)
             adminOrderFilterStatus = 'ALL';
@@ -11756,8 +11989,9 @@
         }
 
         function closeAdminPanel() {
-            adminPanel.classList.remove('active');
-            adminOverlay.classList.remove('active');
+            if (adminPanel) adminPanel.classList.remove('active');
+            if (adminOverlay) adminOverlay.classList.remove('active');
+            toggleAdminHamburgerMenu(false);
         }
 
         function closeCart() {
@@ -12444,6 +12678,10 @@
         window.ROLES = ROLES;
         window.AuthManager = AuthManager;
         window.openAdminPanel = openAdminPanel;
+        window.toggleAdminHamburgerMenu = toggleAdminHamburgerMenu;
+        window.switchAdminTopic = switchAdminTopic;
+        window.navigateAdminTopic = navigateAdminTopic;
+        window.updateAdminMenuBadges = updateAdminMenuBadges;
         window.toggleCompanyPasswordVisibility = toggleCompanyPasswordVisibility;
 
         // Gerenciamento de Visualização SPA (Landing / Loja Demo / Login Dedicado)
