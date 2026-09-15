@@ -1200,6 +1200,26 @@
                         </div>
                     </div>
                 </div>
+                <!-- OPÇÕES DE ENCOMENDA/AGENDAMENTO -->
+                <div class="form-group" style="background: #F0F9FF; border: 1.5px solid #BAE6FD; border-radius: 10px; padding: 0.85rem; margin-bottom: 0.85rem;">
+                    <div style="font-weight: 800; color: #0C4A6E; font-size: 0.88rem; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 0.35rem;">
+                        📅 Opções de Pedido deste Produto
+                    </div>
+                    <div class="form-switch" style="margin-bottom: 0.55rem;">
+                        <label class="switch">
+                            <input type="checkbox" id="productAllowImmediate" checked>
+                            <span class="slider"></span>
+                        </label>
+                        <span class="switch-label" style="font-size: 0.84rem; color: #334155; font-weight: 600;">⚡ Aceita Pedido Imediato</span>
+                    </div>
+                    <div class="form-switch">
+                        <label class="switch">
+                            <input type="checkbox" id="productAllowScheduling" checked>
+                            <span class="slider"></span>
+                        </label>
+                        <span class="switch-label" style="font-size: 0.84rem; color: #334155; font-weight: 600;">📅 Aceita Encomenda Agendada</span>
+                    </div>
+                </div>
 
                 <div class="form-group">
                     <div class="form-switch">
@@ -3719,6 +3739,9 @@
             <div class="cart-footer" id="cartFooter" style="display: none;">
                 <!-- FORMULÁRIO DE DADOS DO CLIENTE -->
                 <div id="customerFormContainer"></div>
+                
+                <!-- SEÇÃO DE TIPO DE PEDIDO (AGORA x ENCOMENDA) -->
+                <div id="cartSchedulingContainer"></div>
 
                 <!-- SELETOR DE FORMA DE PAGAMENTO -->
                 <div id="paymentSelectionContainer"></div>

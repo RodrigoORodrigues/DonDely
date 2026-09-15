@@ -67,17 +67,15 @@ export const DeliveryFeeEngine = {
         let neighborhoodZoneName = '';
         let selectedId = selectedNeighborhoodId;
 
-        // 1. Caso 'other' (bairro digitado manualmente)
         if (selectedId === 'other') {
-            neighborhoodName = DefensiveUtils.safeString(customNeighborhoodName) || 
-                               (customerData && DefensiveUtils.safeString(customerData.neighborhood)) || 
+            neighborhoodName = DefensiveUtils.safeString(customNeighborhoodName) ||
+                               (customerData && DefensiveUtils.safeString(customerData.neighborhood)) ||
                                'Outro Bairro';
             neighborhoodZone = 'outra';
             neighborhoodZoneName = 'Outra Região';
             return { fee, time, neighborhoodName, neighborhoodZone, neighborhoodZoneName, selectedId };
         }
 
-        // 2. Procura pelo ID ou nome exato na lista ativa
         if (selectedId) {
             const found = safeList.find(n => n && (n.id === selectedId || (n.name && n.name.toLowerCase() === String(selectedId).toLowerCase())));
             if (found) {
@@ -85,15 +83,14 @@ export const DeliveryFeeEngine = {
                 time = DefensiveUtils.safeString(found.time, 50, safeDefTime);
                 neighborhoodName = DefensiveUtils.safeString(found.name);
                 neighborhoodZone = DefensiveUtils.safeString(found.zone);
-                neighborhoodZoneName = DefensiveUtils.safeString(found.zoneName) || 
-                    (found.zone === 'centro' ? 'Centro' : 
-                    (found.zone === 'zona_sul' ? 'Zona Sul' : 
+                neighborhoodZoneName = DefensiveUtils.safeString(found.zoneName) ||
+                    (found.zone === 'centro' ? 'Centro' :
+                    (found.zone === 'zona_sul' ? 'Zona Sul' :
                     (found.zone === 'zona_norte' ? 'Zona Norte' : 'Outra Região')));
                 return { fee, time, neighborhoodName, neighborhoodZone, neighborhoodZoneName, selectedId: found.id || selectedId };
             }
         }
 
-        // 3. Fallback para os dados do cliente em cache
         if (customerData && customerData.neighborhood) {
             const custName = DefensiveUtils.safeString(customerData.neighborhood);
             const custId = DefensiveUtils.safeString(customerData.neighborhoodId);
@@ -124,38 +121,17 @@ export const CouponEngine = {
         const list = DefensiveUtils.safeArray(availableCoupons);
 
         if (!safeCode) {
-            return {
-                isValid: false,
-                code: '',
-                discount: 0,
-                discountValue: 0,
-                description: '',
-                error: 'Informe o código do cupom.'
-            };
+            return { isValid: false, code: '', discount: 0, discountValue: 0, description: '', error: 'Informe o código do cupom.' };
         }
 
         const found = list.find(c => c && DefensiveUtils.safeString(c.code).toUpperCase() === safeCode);
 
         if (!found) {
-            return {
-                isValid: false,
-                code: safeCode,
-                discount: 0,
-                discountValue: 0,
-                description: '',
-                error: `Cupom "${safeCode}" não encontrado.`
-            };
+            return { isValid: false, code: safeCode, discount: 0, discountValue: 0, description: '', error: `Cupom "${safeCode}" não encontrado.` };
         }
 
         if (found.active === false) {
-            return {
-                isValid: false,
-                code: found.code,
-                discount: 0,
-                discountValue: 0,
-                description: found.description || '',
-                error: `O cupom "${found.code}" está inativo ou pausado.`
-            };
+            return { isValid: false, code: found.code, discount: 0, discountValue: 0, description: found.description || '', error: `O cupom "${found.code}" está inativo ou pausado.` };
         }
 
         const discountPercent = DefensiveUtils.safeNumber(found.discount, 0, 0, 100);
@@ -197,12 +173,7 @@ export const CartOrderCalculator = {
         const totalItems = this.countTotalItems(safeCart);
         const subtotal = this.calculateSubtotal(safeCart);
 
-        let couponInfo = {
-            isValid: false,
-            code: null,
-            discount: 0,
-            discountValue: 0
-        };
+        let couponInfo = { isValid: false, code: null, discount: 0, discountValue: 0 };
 
         if (appliedCoupon && appliedCoupon.code) {
             const calc = CouponEngine.validateAndCalculateCoupon({
@@ -210,9 +181,7 @@ export const CartOrderCalculator = {
                 subtotal,
                 availableCoupons
             });
-            if (calc.isValid) {
-                couponInfo = calc;
-            }
+            if (calc.isValid) couponInfo = calc;
         }
 
         const deliveryFee = deliveryInfo ? DefensiveUtils.safeNumber(deliveryInfo.fee, 0, 0) : 0;
@@ -242,16 +211,20 @@ export const OrderMessageBuilder = {
         company = {},
         settings = {},
         deliveryInfo = {},
-        availableCoupons = []
+        availableCoupons = [],
+        isScheduled = false,
+        scheduledDate = null,
+        scheduledTime = null
     } = {}) {
         const breakdown = CartOrderCalculator.calculateFullOrderBreakdown({
-            cart,
-            appliedCoupon,
-            deliveryInfo,
-            availableCoupons
+            cart, appliedCoupon, deliveryInfo, availableCoupons
         });
 
-        const generatedId = orderId || ('#' + Math.floor(1000 + Math.random() * 9000));
+        const generatedId = orderId || (
+            '#' + Date.now().toString(36).slice(-6).toUpperCase() +
+            Math.floor(Math.random() * 100).toString().padStart(2, '0')
+        );
+
         const compId = DefensiveUtils.safeString(company.id || settings.activeCompanyId, 60, 'company-demo-don');
         const compName = DefensiveUtils.safeString(company.name || settings.restaurantName, 100, 'Don Food');
         const compWa = DefensiveUtils.safeString(company.whatsappNumber || settings.whatsappNumber, 30);
@@ -263,6 +236,10 @@ export const OrderMessageBuilder = {
             quantity: DefensiveUtils.safeInteger(item.quantity, 1, 1, 99),
             price: DefensiveUtils.safeNumber(item.price, 0, 0)
         }));
+
+        const safeSched = isScheduled === true
+            && DefensiveUtils.safeString(scheduledDate, 20)
+            && DefensiveUtils.safeString(scheduledTime, 10);
 
         return {
             id: generatedId,
@@ -287,6 +264,10 @@ export const OrderMessageBuilder = {
             deliveryFee: breakdown.deliveryFee,
             total: breakdown.finalTotal,
             status: 'RECEIVED',
+            isScheduled: !!safeSched,
+            scheduledDate: safeSched ? DefensiveUtils.safeString(scheduledDate, 20) : null,
+            scheduledTime: safeSched ? DefensiveUtils.safeString(scheduledTime, 10) : null,
+            orderType: safeSched ? 'SCHEDULED' : 'IMMEDIATE',
             created_at: new Date().toISOString()
         };
     },
@@ -295,10 +276,19 @@ export const OrderMessageBuilder = {
         if (!order) return '';
         const o = DefensiveUtils.safeObject(order);
         const safeRestName = DefensiveUtils.safeString(restaurantName || o.companyName, 100, 'Don Food');
-        
+
         let message = `*💜 Novo Pedido ${o.id || ''} - ${safeRestName}*\n\n`;
-        
-        // Dados do cliente
+
+        if (o.isScheduled && o.scheduledDate && o.scheduledTime) {
+            const [y, m, d] = String(o.scheduledDate).split('-');
+            const dateFormatted = (y && m && d) ? `${d}/${m}/${y}` : o.scheduledDate;
+            message += `*📅 ENCOMENDA AGENDADA*\n`;
+            message += `📆 Data: *${dateFormatted}*\n`;
+            message += `⏰ Horário: *${o.scheduledTime}*\n\n`;
+        } else {
+            message += `*⚡ PEDIDO IMEDIATO*\n\n`;
+        }
+
         message += `*📋 DADOS DO CLIENTE & ENTREGA*\n`;
         message += `👤 Nome: ${DefensiveUtils.safeString(o.customerName)}\n`;
         if (o.customerNeighborhood) {
@@ -310,14 +300,12 @@ export const OrderMessageBuilder = {
         }
         message += `📱 Telefone: ${DefensiveUtils.safeString(o.customerPhone)}\n\n`;
 
-        // Forma de Pagamento e Previsão de Entrega
-        message += `*💳 FORMA DE PAGAMENTO*\n`;
-        message += `• ${DefensiveUtils.safeString(o.paymentMethod, 100, 'Pix')}\n\n`;
+        message += `*💳 FORMA DE PAGAMENTO*\n• ${DefensiveUtils.safeString(o.paymentMethod, 100, 'Pix')}\n\n`;
 
-        message += `*⏱️ PREVISÃO DE ENTREGA*\n`;
-        message += `• ~${DefensiveUtils.safeString(o.deliveryTime, 50, '30 - 45 min')}\n\n`;
-        
-        // Pedido
+        if (!o.isScheduled) {
+            message += `*⏱️ PREVISÃO DE ENTREGA*\n• ~${DefensiveUtils.safeString(o.deliveryTime, 50, '30 - 45 min')}\n\n`;
+        }
+
         message += `*🛒 ITENS DO PEDIDO*\n`;
         DefensiveUtils.safeArray(o.items).forEach(item => {
             const qty = DefensiveUtils.safeInteger(item.quantity, 1);
@@ -351,19 +339,25 @@ export const EscPosReceiptBuilder = {
         const doubleLine = '='.repeat(cols) + '\n';
 
         let text = '';
-        text += '\x1B\x40'; // Inicializar
-        text += '\x1B\x61\x01'; // Centralizar
-        text += '\x1D\x21\x11'; // Fonte dupla
+        text += '\x1B\x40';
+        text += '\x1B\x61\x01';
+        text += '\x1D\x21\x11';
         text += `${storeName.toUpperCase()}\n`;
-        text += '\x1D\x21\x00'; // Normal
+        text += '\x1D\x21\x00';
         if (storeCnpj) text += `CNPJ: ${storeCnpj}\n`;
         if (storeAddress) text += `${storeAddress}\n`;
         text += `COMPROVANTE DE PEDIDO ${paperWidth}MM\n`;
         text += doubleLine;
 
-        text += '\x1B\x61\x00'; // Alinhar à esquerda
+        text += '\x1B\x61\x00';
         text += `PEDIDO  : ${order.id || '#0000'}\n`;
         text += `DATA    : ${order.date || 'Hoje'}\n`;
+
+        // NOVO: Encomenda agendada
+        if (order.isScheduled && order.scheduledDate && order.scheduledTime) {
+            text += `ENCOMENDA: ${order.scheduledDate} ${order.scheduledTime}\n`;
+        }
+
         text += `CLIENTE : ${order.customerName || 'Cliente'}\n`;
         text += `TEL     : ${order.customerPhone || '-'}\n`;
         if (order.customerNeighborhood) {
@@ -372,7 +366,9 @@ export const EscPosReceiptBuilder = {
         text += `ENDERECO: ${order.customerAddress || '-'}\n`;
         if (order.customerReference) text += `REF     : ${order.customerReference}\n`;
         text += `PAGAMENTO: ${order.paymentMethod || 'Pix'}\n`;
-        text += `PREVISAO : ${order.deliveryTime || '30 - 45 min'}\n`;
+        if (!order.isScheduled) {
+            text += `PREVISAO : ${order.deliveryTime || '30 - 45 min'}\n`;
+        }
         text += line;
 
         text += 'ITENS SOLICITADOS:\n';
@@ -403,7 +399,7 @@ export const EscPosReceiptBuilder = {
         text += 'Obrigado pela preferencia!\n';
         if (storeInstagram) text += `${storeInstagram}\n`;
         text += '\n\n\n\n';
-        text += '\x1D\x56\x00'; // Cortar papel
+        text += '\x1D\x56\x00';
 
         return encoder.encode(text);
     }

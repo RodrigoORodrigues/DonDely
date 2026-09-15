@@ -15,27 +15,38 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
-const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 
 // ============================================================================
-// PRECAUÇÃO #18 & #19 & #15: SECURITY HEADERS, HTTPS & OCULTAR POWERED-BY
+// SEGURANÇA: SESSION_SECRET OBRIGATÓRIO EM PRODUÇÃO
+// ============================================================================
+let SESSION_SECRET = process.env.SESSION_SECRET;
+if (!SESSION_SECRET || SESSION_SECRET.length < 32) {
+    if (NODE_ENV === 'production') {
+        console.error('❌ FATAL: SESSION_SECRET ausente ou fraco em produção!');
+        console.error('   Gere com: node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"');
+        process.exit(1);
+    }
+    SESSION_SECRET = crypto.randomBytes(32).toString('hex');
+    console.warn('⚠️  SESSION_SECRET gerado em runtime (APENAS DEV). Sessões serão invalidadas ao reiniciar.');
+}
+
+// ============================================================================
+// SECURITY HEADERS, HTTPS & OCULTAR POWERED-BY
 // ============================================================================
 app.disable('x-powered-by');
 
 app.use((req, res, next) => {
-    // 19. Forçar HTTPS em ambientes de produção
     const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
     if (!isHttps && NODE_ENV === 'production') {
         return res.redirect(301, `https://${req.headers.host}${req.url}`);
     }
 
-    // 18. Security Headers
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
     res.setHeader('X-XSS-Protection', '1; mode=block');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('Permissions-Policy', 'geolocation=(), camera=(), microphone=()');
-    
+
     if (isHttps) {
         res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
     }
@@ -44,17 +55,16 @@ app.use((req, res, next) => {
 });
 
 // ============================================================================
-// PRECAUÇÃO #16: RESTRINGIR UPLOADS & TAMANHO MÁXIMO DE PAYLOAD (2MB)
+// RESTRINGIR UPLOADS & TAMANHO MÁXIMO DE PAYLOAD (2MB)
 // ============================================================================
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
 // ============================================================================
-// PRECAUÇÃO #11 & #12: RATE LIMITING & BOT PROTECTION (IN-MEMORY SLIDING WINDOW)
+// RATE LIMITING & BOT PROTECTION
 // ============================================================================
 const rateLimitStore = new Map();
 
-// Limpar registros antigos a cada 5 minutos
 setInterval(() => {
     const now = Date.now();
     for (const [ip, records] of rateLimitStore.entries()) {
@@ -89,11 +99,9 @@ function createRateLimiter(maxRequests = 100, windowMs = 60000, label = 'Geral')
     };
 }
 
-// 12. Bot Protection Middleware: Verifica honeypot e user-agent malicioso
 function botProtectionMiddleware(req, res, next) {
     if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
         const body = req.body || {};
-        // Se preencheu campo honeypot oculto, rejeita silenciosamente como bot
         if (body._bot_check || body.website_hp || body.honeypot) {
             console.warn(`🤖 [BOT DETECTADO E BLOQUEADO] IP: ${req.ip}`);
             return res.status(400).json({ success: false, error: 'Requisição inválida.' });
@@ -110,7 +118,7 @@ const orderReadLimiter = createRateLimiter(600, 60000, 'Consulta Pedidos');
 const orderWriteLimiter = createRateLimiter(120, 60000, 'Envio Pedidos');
 
 // ============================================================================
-// PRECAUÇÃO #5 & #10: CRIPTOGRAFIA DE DADOS, HASH SEGURO E ASSINATURA HMAC
+// CRIPTOGRAFIA DE DADOS, HASH SEGURO E ASSINATURA HMAC
 // ============================================================================
 function hashPassword(password, salt = null) {
     if (!password) return { hash: '', salt: '' };
@@ -129,8 +137,19 @@ function verifyPassword(password, hash, salt) {
     }
 }
 
+function validateCompanyPassword(enteredPassword, storedPassword) {
+    if (!storedPassword) return false;
+    // Se formato salt:hash → validar com PBKDF2
+    if (storedPassword.includes(':')) {
+        const [salt, hash] = storedPassword.split(':');
+        return verifyPassword(enteredPassword, hash, salt);
+    }
+    // Fallback texto plano (compatibilidade com cadastros antigos)
+    return enteredPassword === storedPassword;
+}
+
 function generateSessionToken(payload) {
-    const data = JSON.stringify({ ...payload, exp: Date.now() + 86400000 }); // 24h
+    const data = JSON.stringify({ ...payload, exp: Date.now() + 86400000 });
     const b64Data = Buffer.from(data).toString('base64url');
     const signature = crypto.createHmac('sha256', SESSION_SECRET).update(b64Data).digest('base64url');
     return `${b64Data}.${signature}`;
@@ -142,11 +161,11 @@ function verifySessionToken(token) {
     if (parts.length !== 2) return null;
     const [b64Data, signature] = parts;
     const expectedSig = crypto.createHmac('sha256', SESSION_SECRET).update(b64Data).digest('base64url');
-    
+
     try {
         if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSig))) return null;
         const decoded = JSON.parse(Buffer.from(b64Data, 'base64url').toString('utf-8'));
-        if (decoded.exp && decoded.exp < Date.now()) return null; // Expirado
+        if (decoded.exp && decoded.exp < Date.now()) return null;
         return decoded;
     } catch {
         return null;
@@ -154,14 +173,11 @@ function verifySessionToken(token) {
 }
 
 // ============================================================================
-// PRECAUÇÃO #14 & #8: VALIDAÇÃO DE INPUTS & BLOQUEIO DE MASS ASSIGNMENT
+// VALIDAÇÃO DE INPUTS & BLOQUEIO DE MASS ASSIGNMENT
 // ============================================================================
 function sanitizeString(str, maxLength = 255) {
     if (typeof str !== 'string') return '';
-    return str
-        .trim()
-        .slice(0, maxLength)
-        .replace(/[<>]/g, ''); // Evita tags HTML maliciosas
+    return str.trim().slice(0, maxLength).replace(/[<>]/g, '');
 }
 
 function sanitizeSlug(text) {
@@ -187,7 +203,6 @@ function sanitizeNumber(val, defaultVal = 0, min = 0, max = 999999) {
     return Math.max(min, Math.min(max, num));
 }
 
-// 8. Whitelist estrita e completa de campos de pedidos
 function sanitizeOrderPayload(input, fallbackCompanyId = 'company-demo-don') {
     if (!input || typeof input !== 'object') return null;
 
@@ -218,7 +233,15 @@ function sanitizeOrderPayload(input, fallbackCompanyId = 'company-demo-don') {
     const total = sanitizeNumber(input.total, Math.max(0, subtotal + deliveryFee - discount));
     const cashChangeFor = input.cashChangeFor ? sanitizeNumber(input.cashChangeFor, 0) : null;
 
-    // Sanitizar itens preservando details e opções
+    // NOVO: campos de encomenda/agendamento
+    const rawIsScheduled = input.isScheduled === true;
+    const rawDate = sanitizeString(input.scheduledDate || '', 20);
+    const rawTime = sanitizeString(input.scheduledTime || '', 10);
+    const scheduledDate = (rawIsScheduled && /^\d{4}-\d{2}-\d{2}$/.test(rawDate)) ? rawDate : null;
+    const scheduledTime = (rawIsScheduled && /^\d{2}:\d{2}$/.test(rawTime)) ? rawTime : null;
+    const isScheduled = (rawIsScheduled && scheduledDate && scheduledTime) ? true : false;
+    const orderType = isScheduled ? 'SCHEDULED' : 'IMMEDIATE';
+
     const items = Array.isArray(input.items) ? input.items.map(item => ({
         id: item.id ? String(item.id).slice(0, 50) : undefined,
         name: sanitizeString(item.name || 'Item', 120),
@@ -253,14 +276,15 @@ function sanitizeOrderPayload(input, fallbackCompanyId = 'company-demo-don') {
         cashChangeFor,
         observations,
         status,
+        isScheduled,
+        scheduledDate,
+        scheduledTime,
+        orderType,
         created_at: input.created_at || new Date().toISOString(),
         updated_at: input.updated_at || new Date().toISOString()
     };
 }
 
-// ============================================================================
-// PRECAUÇÃO #17: TRIM & SANITIZAÇÃO DE RESPOSTAS DE API (NUNCA VAZAR SENHAS)
-// ============================================================================
 function trimCompanyOutput(company) {
     if (!company) return null;
     const safe = { ...company };
@@ -281,7 +305,7 @@ function trimCustomerOutput(customer) {
 }
 
 // ============================================================================
-// PERSISTÊNCIA LOCAL SEGURA (JSON FILES COM FALLBACK EM MEMÓRIA & TMP)
+// PERSISTÊNCIA LOCAL SEGURA
 // ============================================================================
 let DATA_DIR = path.join(__dirname, 'data');
 let isDataDirWritable = false;
@@ -295,7 +319,6 @@ try {
     fs.unlinkSync(testFile);
     isDataDirWritable = true;
 } catch (e) {
-    // Ambiente Serverless ou Somente-Leitura (Vercel / Lambda)
     DATA_DIR = path.join(os.tmpdir(), 'donfood_data');
     try {
         if (!fs.existsSync(DATA_DIR)) {
@@ -312,7 +335,6 @@ const COMPANIES_FILE = path.join(DATA_DIR, 'companies.json');
 const CUSTOMERS_FILE = path.join(DATA_DIR, 'customers.json');
 const DEMO_LEADS_FILE = path.join(DATA_DIR, 'demo_leads.json');
 
-// Memória cache para suportar ambientes sem escrita em disco
 const memoryStorage = new Map();
 
 function readJsonFile(filePath, defaultValue = []) {
@@ -325,7 +347,6 @@ function readJsonFile(filePath, defaultValue = []) {
             return parsed;
         }
 
-        // Tentar buscar do diretório base do projeto se estiver rodando em /tmp
         const seedPath = path.join(__dirname, 'data', baseName);
         if (seedPath !== filePath && fs.existsSync(seedPath)) {
             try {
@@ -355,13 +376,11 @@ function writeJsonFile(filePath, data) {
     memoryStorage.set(baseName, data);
     try {
         fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
-    } catch (err) {
-        // Silencioso em caso de restrição de escrita, garantindo consistência em memória
-    }
+    } catch (err) {}
 }
 
 // ============================================================================
-// PRECAUÇÃO #1 & #3: CLIENTE SUPABASE SEGURO (API KEYS PROTEGIDAS NO BACKEND)
+// CLIENTE SUPABASE SEGURO
 // ============================================================================
 const rawSupabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseUrl = typeof rawSupabaseUrl === 'string' ? rawSupabaseUrl.replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '') : '';
@@ -373,24 +392,28 @@ if (supabaseUrl && supabaseKey) {
         supabase = createClient(supabaseUrl, supabaseKey, {
             auth: { persistSession: false, autoRefreshToken: false }
         });
-        console.log('✅ [Segurança] Supabase configurado com chaves protegidas no servidor:', supabaseUrl);
+        console.log('✅ [Segurança] Supabase configurado:', supabaseUrl);
     } catch (err) {
         console.error('❌ [Segurança] Falha ao inicializar Supabase:', err.message);
     }
 }
 
-// ============================================================================
-// HELPERS DE PERSISTÊNCIA DIRETA NO SUPABASE (BANCO DE DADOS REMOTO CENTRAL)
-// ============================================================================
 async function saveCompanyToSupabase(company) {
     if (!supabase || !company || !company.id) return;
     try {
+        // Hashear senha se ainda estiver em texto plano
+        let pwd = company.adminPassword || '';
+        if (pwd && !pwd.includes(':')) {
+            const { hash, salt } = hashPassword(pwd);
+            pwd = `${salt}:${hash}`;
+        }
+
         const compPayload = {
             id: String(company.id),
             name: company.name || 'Empresa Sem Nome',
             slug: company.slug ? sanitizeSlug(company.slug) : sanitizeSlug(company.name || company.id),
             email: company.email || 'contato@donfood.com',
-            admin_password: company.adminPassword || '',
+            admin_password: pwd,
             cnpj: company.cnpj || '',
             address: company.address || '',
             phone: company.whatsappNumber || company.phone || '',
@@ -402,9 +425,7 @@ async function saveCompanyToSupabase(company) {
             updated_at: new Date().toISOString()
         };
         const { error: cErr } = await supabase.from('companies').upsert([compPayload]);
-        if (cErr) {
-            console.warn('[Supabase] Erro ao sincronizar company:', cErr.message);
-        }
+        if (cErr) console.warn('[Supabase] Erro company:', cErr.message);
 
         const settingsPayload = {
             company_id: String(company.id),
@@ -425,9 +446,7 @@ async function saveCompanyToSupabase(company) {
             updated_at: new Date().toISOString()
         };
         const { error: sErr } = await supabase.from('company_settings').upsert([settingsPayload]);
-        if (sErr) {
-            console.warn('[Supabase] Erro ao sincronizar company_settings:', sErr.message);
-        }
+        if (sErr) console.warn('[Supabase] Erro settings:', sErr.message);
 
         if (Array.isArray(company.products) && company.products.length > 0) {
             const prodPayloads = company.products.map(p => ({
@@ -447,30 +466,21 @@ async function saveCompanyToSupabase(company) {
                 updated_at: new Date().toISOString()
             }));
             const { error: pErr } = await supabase.from('products').upsert(prodPayloads);
-            if (pErr) {
-                console.warn('[Supabase] Erro ao sincronizar products:', pErr.message);
-            }
+            if (pErr) console.warn('[Supabase] Erro products:', pErr.message);
         }
     } catch (err) {
-        console.warn('[Supabase] Erro geral ao salvar empresa:', err.message);
+        console.warn('[Supabase] Erro geral:', err.message);
     }
 }
 
 async function fetchCompaniesFromSupabase() {
     if (!supabase) return null;
     try {
-        const { data: supaCompanies, error: compErr } = await supabase
-            .from('companies')
-            .select('*');
+        const { data: supaCompanies, error: compErr } = await supabase.from('companies').select('*');
         if (compErr || !Array.isArray(supaCompanies) || supaCompanies.length === 0) return null;
 
-        const { data: supaSettings } = await supabase
-            .from('company_settings')
-            .select('*');
-
-        const { data: supaProducts } = await supabase
-            .from('products')
-            .select('*');
+        const { data: supaSettings } = await supabase.from('company_settings').select('*');
+        const { data: supaProducts } = await supabase.from('products').select('*');
 
         const settingsMap = new Map();
         if (Array.isArray(supaSettings)) {
@@ -526,7 +536,7 @@ async function fetchCompaniesFromSupabase() {
             };
         });
     } catch (err) {
-        console.warn('[Supabase] Falha ao ler empresas do Supabase:', err.message);
+        console.warn('[Supabase] Falha leitura:', err.message);
         return null;
     }
 }
@@ -536,18 +546,18 @@ async function deleteCompanyFromSupabase(companyId) {
     const dependentTables = ['orders', 'products', 'company_settings'];
     for (const table of dependentTables) {
         const { error } = await supabase.from(table).delete().eq('company_id', companyId);
-        if (error) {
-            throw new Error(`Falha ao excluir dados de ${table}: ${error.message}`);
-        }
+        if (error) throw new Error(`Falha ao excluir ${table}: ${error.message}`);
     }
-
     const { error: companyError } = await supabase.from('companies').delete().eq('id', companyId);
-    if (companyError) {
-        throw new Error(`Falha ao excluir empresa: ${companyError.message}`);
-    }
+    if (companyError) throw new Error(`Falha ao excluir empresa: ${companyError.message}`);
 }
 
 async function deleteRemoteCompaniesMissingFrom(localCompanies) {
+    // PROTEÇÃO: só apaga se ALLOW_REMOTE_PRUNE=true
+    if (process.env.ALLOW_REMOTE_PRUNE !== 'true') {
+        console.log('[Segurança] SKIP: ALLOW_REMOTE_PRUNE != true.');
+        return;
+    }
     if (!supabase) return;
     const keepIds = new Set(localCompanies.filter(c => c && c.id).map(c => String(c.id)));
     const { data: remoteCompanies, error } = await supabase.from('companies').select('id');
@@ -555,6 +565,7 @@ async function deleteRemoteCompaniesMissingFrom(localCompanies) {
 
     for (const remote of remoteCompanies || []) {
         if (remote && remote.id && !keepIds.has(String(remote.id)) && remote.id !== 'company-demo-don') {
+            console.warn(`[Segurança] Removendo empresa órfã: ${remote.id}`);
             await deleteCompanyFromSupabase(String(remote.id));
         }
     }
@@ -580,6 +591,10 @@ function mapOrderToSupabase(order, companyId) {
         observations: order.observations || order.notes || '',
         coupon_code: order.couponCode || order.coupon_code || null,
         cash_change_for: Number(order.cashChangeFor || order.cash_change_for || 0) || null,
+        is_scheduled: order.isScheduled === true,
+        scheduled_date: order.scheduledDate || null,
+        scheduled_time: order.scheduledTime || null,
+        order_type: order.orderType || (order.isScheduled ? 'SCHEDULED' : 'IMMEDIATE'),
         created_at: order.created_at || new Date().toISOString(),
         updated_at: new Date().toISOString()
     };
@@ -590,14 +605,11 @@ async function saveOrderToSupabase(order, companyId) {
     try {
         const payload = mapOrderToSupabase(order, companyId);
         if (payload && payload.id) {
-            // Garantir que a empresa exista antes de inserir chave estrangeira
             const { error: oErr } = await supabase.from('orders').upsert([payload]);
-            if (oErr) {
-                console.warn('[Supabase] Erro ao persistir pedido:', oErr.message);
-            }
+            if (oErr) console.warn('[Supabase] Erro pedido:', oErr.message);
         }
     } catch (err) {
-        console.warn('[Supabase] Erro ao salvar pedido:', err.message);
+        console.warn('[Supabase] Erro salvar pedido:', err.message);
     }
 }
 
@@ -616,16 +628,14 @@ async function saveCustomerToSupabase(customer, companyId) {
             updated_at: new Date().toISOString()
         };
         const { error } = await supabase.from('customers').upsert([custPayload]);
-        if (error) {
-            console.warn('[Supabase] Erro ao persistir cliente:', error.message);
-        }
+        if (error) console.warn('[Supabase] Erro cliente:', error.message);
     } catch (err) {
-        console.warn('[Supabase] Erro ao salvar cliente:', err.message);
+        console.warn('[Supabase] Erro salvar cliente:', err.message);
     }
 }
 
 // ============================================================================
-// ETAPA 2: CENTRALIZADOR DE AUTENTICAÇÃO E PAPÉIS RBAC (SUPER_ADMIN, COMPANY_OWNER, CUSTOMER)
+// RBAC — CENTRALIZADOR DE AUTENTICAÇÃO
 // ============================================================================
 export const ROLES = Object.freeze({
     SUPER_ADMIN: 'SUPER_ADMIN',
@@ -655,16 +665,9 @@ const authenticateToken = (req, res, next) => {
 const requireRole = (...allowedRoles) => {
     return (req, res, next) => {
         const userRole = req.user?.role || ROLES.CUSTOMER;
-        if (userRole === ROLES.SUPER_ADMIN) {
-            return next(); // Super Admin possui acesso irrestrito
-        }
-        if (allowedRoles.includes(userRole)) {
-            return next();
-        }
-        return res.status(403).json({
-            success: false,
-            error: 'Acesso não autorizado para este perfil de usuário.'
-        });
+        if (userRole === ROLES.SUPER_ADMIN) return next();
+        if (allowedRoles.includes(userRole)) return next();
+        return res.status(403).json({ success: false, error: 'Acesso não autorizado.' });
     };
 };
 
@@ -675,10 +678,8 @@ const validateCompanyHeader = (req, res, next) => {
 };
 
 // ============================================================================
-// ROTAS DE API PROTEGIDAS
+// ROTAS DE API
 // ============================================================================
-
-// 1. Status e Health da Aplicação e Bancos de Dados
 app.get(['/api/health', '/api/status'], generalLimiter, (req, res) => {
     try {
         const companiesCount = readJsonFile(COMPANIES_FILE, []).length;
@@ -690,34 +691,17 @@ app.get(['/api/health', '/api/status'], generalLimiter, (req, res) => {
             status: 'online',
             healthy: true,
             database: {
-                localJson: {
-                    status: 'active',
-                    writable: isDataDirWritable,
-                    companies: companiesCount,
-                    orders: ordersCount,
-                    customers: customersCount,
-                    leads: leadsCount
-                },
-                supabase: {
-                    configured: !!supabase,
-                    url: supabaseUrl ? supabaseUrl.replace(/https?:\/\//, '').split('.')[0] + '.supabase.co' : null,
-                    mode: supabase ? 'cloud_active' : 'local_and_ready'
-                }
+                localJson: { status: 'active', writable: isDataDirWritable, companies: companiesCount, orders: ordersCount, customers: customersCount, leads: leadsCount },
+                supabase: { configured: !!supabase, url: supabaseUrl ? supabaseUrl.replace(/https?:\/\//, '').split('.')[0] + '.supabase.co' : null, mode: supabase ? 'cloud_active' : 'local_and_ready' }
             },
             securityLevel: 'hardened_20_precautions',
             timestamp: new Date().toISOString()
         });
     } catch (err) {
-        res.json({
-            status: 'online',
-            healthy: true,
-            supabaseConfigured: !!supabase,
-            timestamp: new Date().toISOString()
-        });
+        res.json({ status: 'online', healthy: true, supabaseConfigured: !!supabase, timestamp: new Date().toISOString() });
     }
 });
 
-// Endpoint seguro para listagem/gestão de clientes autenticados
 app.get(['/api/customers', '/api/dev/customers'], generalLimiter, (req, res) => {
     try {
         const customers = readJsonFile(CUSTOMERS_FILE, []);
@@ -736,39 +720,28 @@ app.get('/api/supabase/status', generalLimiter, (req, res) => {
     });
 });
 
-// Configuração segura do cliente Supabase para o frontend (apenas URL base e Chave Anon pública)
 app.get('/api/supabase/config', generalLimiter, (req, res) => {
     try {
         const rawUrl = process.env.SUPABASE_URL || '';
         const cleanUrl = typeof rawUrl === 'string' ? rawUrl.replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '') : '';
-        res.json({
-            supabaseUrl: cleanUrl,
-            supabaseAnonKey: process.env.SUPABASE_ANON_KEY || ''
-        });
+        res.json({ supabaseUrl: cleanUrl, supabaseAnonKey: process.env.SUPABASE_ANON_KEY || '' });
     } catch (err) {
         res.json({ supabaseUrl: '', supabaseAnonKey: '' });
     }
 });
 
 // ============================================================================
-// SISTEMA REALTIME: TRANSMISSÃO INSTANTÂNEA DE PEDIDOS PARA OS PAINÉIS
+// REALTIME — TRANSMISSÃO DE PEDIDOS
 // ============================================================================
 const realtimeOrderClients = new Set();
 
 function broadcastRealtimeOrder(eventType, orderData) {
     if (!orderData) return;
-    const payload = JSON.stringify({
-        eventType, // 'INSERT', 'UPDATE', 'DELETE'
-        data: orderData,
-        timestamp: new Date().toISOString()
-    });
+    const payload = JSON.stringify({ eventType, data: orderData, timestamp: new Date().toISOString() });
 
     realtimeOrderClients.forEach(client => {
         try {
-            // Isolamento de multi-empresa no SSE: apenas enviar se for a mesma empresa ou se o cliente for dev/admin
-            if (client.companyId && orderData.companyId && client.companyId !== orderData.companyId && client.companyId !== 'all') {
-                return;
-            }
+            if (client.companyId && orderData.companyId && client.companyId !== orderData.companyId && client.companyId !== 'all') return;
             client.res.write(`data: ${payload}\n\n`);
         } catch (e) {
             realtimeOrderClients.delete(client);
@@ -778,11 +751,7 @@ function broadcastRealtimeOrder(eventType, orderData) {
     if (supabase) {
         try {
             const channel = supabase.channel('orders-realtime-broadcast');
-            channel.send({
-                type: 'broadcast',
-                event: 'order_event',
-                payload: { eventType, data: orderData }
-            }).catch(() => {});
+            channel.send({ type: 'broadcast', event: 'order_event', payload: { eventType, data: orderData } }).catch(() => {});
         } catch (e) {}
     }
 }
@@ -801,9 +770,7 @@ app.get('/api/orders/stream', (req, res) => {
         res.write(`data: ${JSON.stringify({ eventType: 'CONNECTED', timestamp: new Date().toISOString() })}\n\n`);
 
         const heartbeat = setInterval(() => {
-            try {
-                res.write(`: heartbeat\n\n`);
-            } catch (err) {
+            try { res.write(`: heartbeat\n\n`); } catch (err) {
                 clearInterval(heartbeat);
                 realtimeOrderClients.delete(client);
             }
@@ -814,22 +781,13 @@ app.get('/api/orders/stream', (req, res) => {
             realtimeOrderClients.delete(client);
         });
     } catch (err) {
-        try {
-            res.status(200).json({ success: false, message: 'SSE fallback' });
-        } catch (e) {}
+        try { res.status(200).json({ success: false, message: 'SSE fallback' }); } catch (e) {}
     }
 });
 
-app.get('/api/realtime/orders', (req, res) => {
-    req.url = '/api/orders/stream';
-    app._router.handle(req, res);
-});
-
 // ============================================================================
-// PRECAUÇÃO #6 & #10: AUTENTICAÇÃO SEGURA SERVER-SIDE (CLIENTES & EMPRESA)
+// AUTENTICAÇÃO
 // ============================================================================
-
-// Registro de Cliente
 app.post('/api/auth/register', authLimiter, (req, res) => {
     try {
         const { name, phone, password, address, neighborhood, reference } = req.body;
@@ -861,26 +819,15 @@ app.post('/api/auth/register', authLimiter, (req, res) => {
 
         customers.push(newCustomer);
         writeJsonFile(CUSTOMERS_FILE, customers);
-        saveCustomerToSupabase(newCustomer).catch(e => console.warn('[Supabase Customer Catch]:', e.message));
+        saveCustomerToSupabase(newCustomer).catch(e => console.warn('[Supabase Cust]:', e.message));
 
-        const token = generateSessionToken({
-            role: ROLES.CUSTOMER,
-            customerId: newCustomer.id,
-            phone: newCustomer.phone,
-            name: newCustomer.name
-        });
-        res.status(201).json({
-            success: true,
-            role: ROLES.CUSTOMER,
-            token,
-            customer: trimCustomerOutput(newCustomer)
-        });
+        const token = generateSessionToken({ role: ROLES.CUSTOMER, customerId: newCustomer.id, phone: newCustomer.phone, name: newCustomer.name });
+        res.status(201).json({ success: true, role: ROLES.CUSTOMER, token, customer: trimCustomerOutput(newCustomer) });
     } catch (err) {
         res.status(500).json({ success: false, error: 'Erro ao processar cadastro.' });
     }
 });
 
-// Login de Cliente (Papel: CUSTOMER)
 app.post('/api/auth/login', authLimiter, async (req, res) => {
     try {
         const { phone, password } = req.body;
@@ -895,21 +842,13 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 
         if (!customer && supabase) {
             const { data: remoteCustomer, error: remoteError } = await supabase
-                .from('customers')
-                .select('*')
-                .eq('phone', cleanPhone)
-                .maybeSingle();
+                .from('customers').select('*').eq('phone', cleanPhone).maybeSingle();
             if (!remoteError && remoteCustomer) {
                 customer = {
-                    id: remoteCustomer.id,
-                    name: remoteCustomer.name,
-                    phone: remoteCustomer.phone,
-                    passwordHash: remoteCustomer.password_hash,
-                    salt: remoteCustomer.salt,
-                    address: remoteCustomer.address || '',
-                    neighborhood: remoteCustomer.neighborhood || '',
-                    reference: remoteCustomer.reference || '',
-                    created_at: remoteCustomer.created_at
+                    id: remoteCustomer.id, name: remoteCustomer.name, phone: remoteCustomer.phone,
+                    passwordHash: remoteCustomer.password_hash, salt: remoteCustomer.salt,
+                    address: remoteCustomer.address || '', neighborhood: remoteCustomer.neighborhood || '',
+                    reference: remoteCustomer.reference || '', created_at: remoteCustomer.created_at
                 };
             }
         }
@@ -923,24 +862,13 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
             return res.status(401).json({ success: false, error: 'Telefone ou senha inválidos.' });
         }
 
-        const token = generateSessionToken({
-            role: ROLES.CUSTOMER,
-            customerId: customer.id,
-            phone: customer.phone,
-            name: customer.name
-        });
-        res.json({
-            success: true,
-            role: ROLES.CUSTOMER,
-            token,
-            customer: trimCustomerOutput(customer)
-        });
+        const token = generateSessionToken({ role: ROLES.CUSTOMER, customerId: customer.id, phone: customer.phone, name: customer.name });
+        res.json({ success: true, role: ROLES.CUSTOMER, token, customer: trimCustomerOutput(customer) });
     } catch (err) {
         res.status(500).json({ success: false, error: 'Erro ao processar login.' });
     }
 });
 
-// Login / Cadastro Rápido com Google (Papel: CUSTOMER)
 app.post('/api/auth/google-login', authLimiter, async (req, res) => {
     try {
         const { email, name, picture, googleId, phone, address, neighborhood, reference } = req.body;
@@ -953,23 +881,18 @@ app.post('/api/auth/google-login', authLimiter, async (req, res) => {
         }
 
         const customers = readJsonFile(CUSTOMERS_FILE, []);
-        let customer = customers.find(c => 
-            (c.email && c.email.toLowerCase() === cleanEmail) || 
+        let customer = customers.find(c =>
+            (c.email && c.email.toLowerCase() === cleanEmail) ||
             (c.googleId && c.googleId === cleanGoogleId)
         );
 
         if (!customer) {
             customer = {
                 id: `cust_google_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`,
-                name: cleanName,
-                email: cleanEmail,
-                googleId: cleanGoogleId,
-                picture: sanitizeString(picture, 500) || '',
-                phone: sanitizeString(phone, 30) || cleanEmail,
-                address: sanitizeString(address, 200) || '',
-                neighborhood: sanitizeString(neighborhood, 100) || '',
-                reference: sanitizeString(reference, 150) || '',
-                provider: 'google',
+                name: cleanName, email: cleanEmail, googleId: cleanGoogleId,
+                picture: sanitizeString(picture, 500) || '', phone: sanitizeString(phone, 30) || cleanEmail,
+                address: sanitizeString(address, 200) || '', neighborhood: sanitizeString(neighborhood, 100) || '',
+                reference: sanitizeString(reference, 150) || '', provider: 'google',
                 created_at: new Date().toISOString()
             };
             customers.push(customer);
@@ -985,27 +908,15 @@ app.post('/api/auth/google-login', authLimiter, async (req, res) => {
         }
 
         writeJsonFile(CUSTOMERS_FILE, customers);
-        saveCustomerToSupabase(customer).catch(e => console.warn('[Supabase Google Customer Catch]:', e.message));
+        saveCustomerToSupabase(customer).catch(e => console.warn('[Supabase G Cust]:', e.message));
 
-        const token = generateSessionToken({
-            role: ROLES.CUSTOMER,
-            customerId: customer.id,
-            email: customer.email,
-            name: customer.name
-        });
-
-        res.json({
-            success: true,
-            role: ROLES.CUSTOMER,
-            token,
-            customer: trimCustomerOutput(customer)
-        });
+        const token = generateSessionToken({ role: ROLES.CUSTOMER, customerId: customer.id, email: customer.email, name: customer.name });
+        res.json({ success: true, role: ROLES.CUSTOMER, token, customer: trimCustomerOutput(customer) });
     } catch (err) {
-        res.status(500).json({ success: false, error: 'Erro ao processar autenticação com Google.' });
+        res.status(500).json({ success: false, error: 'Erro ao processar autenticação Google.' });
     }
 });
 
-// Login do Proprietário da Loja (Papel: COMPANY_OWNER)
 app.post('/api/auth/company-login', authLimiter, async (req, res) => {
     try {
         const { email, identifier, phone, password, companyId } = req.body;
@@ -1024,111 +935,95 @@ app.post('/api/auth/company-login', authLimiter, async (req, res) => {
                 const companyMap = new Map(companies.filter(c => c && c.id).map(c => [c.id, c]));
                 remoteCompanies.forEach(remote => {
                     const local = companyMap.get(remote.id) || {};
-                    companyMap.set(remote.id, {
-                        ...local,
-                        ...remote,
-                        adminPassword: remote.adminPassword || local.adminPassword || ''
-                    });
+                    companyMap.set(remote.id, { ...local, ...remote, adminPassword: remote.adminPassword || local.adminPassword || '' });
                 });
                 companies = Array.from(companyMap.values());
                 writeJsonFile(COMPANIES_FILE, companies);
             }
         }
+
         let matched = null;
 
         if (rawIdentifier) {
             matched = companies.find(c => {
-                if (c.adminPassword !== cleanPassword) return false;
+                if (!validateCompanyPassword(cleanPassword, c.adminPassword)) return false;
                 const cEmail = (c.email || '').toLowerCase().trim();
                 const cPhone = (c.phone || c.whatsapp || '').replace(/\D/g, '');
                 if (cEmail && cEmail === rawIdentifier) return true;
                 if (cleanDigits && cleanDigits.length >= 8 && cPhone) {
-                    if (cPhone === cleanDigits || cPhone.endsWith(cleanDigits) || cleanDigits.endsWith(cPhone)) {
-                        return true;
-                    }
+                    if (cPhone === cleanDigits || cPhone.endsWith(cleanDigits) || cleanDigits.endsWith(cPhone)) return true;
                 }
                 return false;
             });
         }
 
         if (!matched && companyId) {
-            matched = companies.find(c => c.id === companyId && c.adminPassword === cleanPassword);
+            matched = companies.find(c => c.id === companyId && validateCompanyPassword(cleanPassword, c.adminPassword));
         }
 
         if (!matched) {
-            matched = companies.find(c => c.adminPassword === cleanPassword);
+            matched = companies.find(c => validateCompanyPassword(cleanPassword, c.adminPassword));
         }
 
         if (!matched) {
             return res.status(401).json({ success: false, error: 'Credenciais da empresa inválidas.' });
         }
 
-        const token = generateSessionToken({
-            role: ROLES.COMPANY_OWNER,
-            companyId: matched.id,
-            companyName: matched.name,
-            email: matched.email || rawIdentifier
-        });
-
-        res.json({
-            success: true,
-            role: ROLES.COMPANY_OWNER,
-            token,
-            company: trimCompanyOutput(matched)
-        });
+        const token = generateSessionToken({ role: ROLES.COMPANY_OWNER, companyId: matched.id, companyName: matched.name, email: matched.email || rawIdentifier });
+        res.json({ success: true, role: ROLES.COMPANY_OWNER, token, company: trimCompanyOutput(matched) });
     } catch (err) {
         res.status(500).json({ success: false, error: 'Erro no login da empresa.' });
     }
 });
 
-// Login de Super Administrador / Desenvolvedor (Papel: SUPER_ADMIN)
+// ============================================================================
+// DEV LOGIN — SEM SENHAS HARDCODED EM PRODUÇÃO
+// ============================================================================
 app.post('/api/auth/dev-login', authLimiter, (req, res) => {
     try {
         const { password } = req.body;
         const cleanPassword = sanitizeString(password, 100);
-        const validPasswords = ['admin123', 'donfimdev', 'donfim', '123456'];
+
+        const validPasswords = [];
         if (process.env.DEV_SUPER_ADMIN_PASSWORD) {
             validPasswords.push(process.env.DEV_SUPER_ADMIN_PASSWORD);
         }
-
-        if (!cleanPassword || !validPasswords.includes(cleanPassword)) {
-            return res.status(401).json({ success: false, error: 'Senha de desenvolvedor/super admin incorreta.' });
+        if (NODE_ENV !== 'production') {
+            validPasswords.push('admin123');
         }
 
-        const token = generateSessionToken({
-            role: ROLES.SUPER_ADMIN,
-            name: 'Super Administrador',
-            permissions: ['*']
-        });
+        if (validPasswords.length === 0) {
+            console.warn('[Segurança] Painel Dev bloqueado: DEV_SUPER_ADMIN_PASSWORD não configurado.');
+            return res.status(503).json({
+                success: false,
+                error: 'Painel Dev não configurado. Defina DEV_SUPER_ADMIN_PASSWORD.'
+            });
+        }
 
+        if (!cleanPassword || !validPasswords.includes(cleanPassword)) {
+            console.warn(`[Segurança] Falha de login Dev de IP: ${req.ip}`);
+            return res.status(401).json({ success: false, error: 'Senha de desenvolvedor incorreta.' });
+        }
+
+        const token = generateSessionToken({ role: ROLES.SUPER_ADMIN, name: 'Super Administrador', permissions: ['*'] });
         res.json({
             success: true,
             role: ROLES.SUPER_ADMIN,
             token,
-            user: {
-                role: ROLES.SUPER_ADMIN,
-                name: 'Super Administrador',
-                permissions: ['*']
-            }
+            user: { role: ROLES.SUPER_ADMIN, name: 'Super Administrador', permissions: ['*'] }
         });
     } catch (err) {
         res.status(500).json({ success: false, error: 'Erro no login administrativo.' });
     }
 });
 
-// Obter Perfil e Papel Autenticado
 app.get('/api/auth/me', authenticateToken, (req, res) => {
-    res.json({
-        success: true,
-        user: req.user
-    });
+    res.json({ success: true, user: req.user });
 });
 
 // ============================================================================
-// ROTAS DE PEDIDOS (COM PRECAUÇÕES #7, #8, #11, #13, #14)
+// PEDIDOS
 // ============================================================================
-
-// 1. Obter pedidos (filtrados por empresa ou por telefone do cliente)
 app.get('/api/orders', orderReadLimiter, validateCompanyHeader, async (req, res) => {
     try {
         const { companyId } = req;
@@ -1144,27 +1039,18 @@ app.get('/api/orders', orderReadLimiter, validateCompanyHeader, async (req, res)
         const targetCompanyId = (companyId && companyId !== 'all') ? companyId : 'company-demo-don';
 
         if (customerPhone) {
-            // Filtrar pedidos deste cliente específico (em qualquer loja)
             filtered = filtered.filter(o => o && o.customerPhone && o.customerPhone.replace(/\D/g, '') === customerPhone);
         } else {
-            // Isolamento estrito por empresa: nunca despejar pedidos de todas as lojas para chamadas anônimas
-            filtered = filtered.filter(o => 
-                o && (
-                    o.companyId === targetCompanyId || 
-                    (!o.companyId && targetCompanyId === 'company-demo-don')
-                )
+            filtered = filtered.filter(o =>
+                o && (o.companyId === targetCompanyId || (!o.companyId && targetCompanyId === 'company-demo-don'))
             );
         }
 
-        // Se Supabase estiver ativo, sincronizar com consultas parametrizadas
         if (supabase && targetCompanyId) {
             try {
                 const { data: supaOrders, error } = await supabase
-                    .from('orders')
-                    .select('*')
-                    .eq('company_id', targetCompanyId)
-                    .order('created_at', { ascending: false });
-                
+                    .from('orders').select('*').eq('company_id', targetCompanyId).order('created_at', { ascending: false });
+
                 if (!error && Array.isArray(supaOrders) && supaOrders.length > 0) {
                     const map = new Map();
                     supaOrders.forEach(o => { if (o && o.id) map.set(o.id, o); });
@@ -1172,7 +1058,7 @@ app.get('/api/orders', orderReadLimiter, validateCompanyHeader, async (req, res)
                     filtered = Array.from(map.values());
                 }
             } catch (supaErr) {
-                console.warn('[Segurança] Fallback para arquivo local de pedidos:', supaErr.message);
+                console.warn('[Segurança] Fallback local:', supaErr.message);
             }
         }
 
@@ -1183,12 +1069,6 @@ app.get('/api/orders', orderReadLimiter, validateCompanyHeader, async (req, res)
     }
 });
 
-app.get('/api/supabase/orders', validateCompanyHeader, (req, res) => {
-    req.url = '/api/orders';
-    app._router.handle(req, res);
-});
-
-// 2. Criar novo Pedido (com sanitização e bloqueio de mass assignment)
 app.post('/api/orders', orderWriteLimiter, validateCompanyHeader, async (req, res) => {
     try {
         const fallbackComp = req.companyId || 'company-demo-don';
@@ -1199,8 +1079,8 @@ app.post('/api/orders', orderWriteLimiter, validateCompanyHeader, async (req, re
         }
 
         const allOrders = readJsonFile(ORDERS_FILE, []);
-        const existingIdx = allOrders.findIndex(o => 
-            String(o.id) === String(sanitizedOrder.id) || 
+        const existingIdx = allOrders.findIndex(o =>
+            String(o.id) === String(sanitizedOrder.id) ||
             String(o.id).replace('#', '') === String(sanitizedOrder.id).replace('#', '')
         );
 
@@ -1211,11 +1091,10 @@ app.post('/api/orders', orderWriteLimiter, validateCompanyHeader, async (req, re
         }
         writeJsonFile(ORDERS_FILE, allOrders);
 
-        console.log(`📦 [NOVO PEDIDO RECEBIDO] ID: ${sanitizedOrder.id} | Loja: ${sanitizedOrder.companyName || sanitizedOrder.companyId} | Total: R$ ${sanitizedOrder.total}`);
+        const typeLabel = sanitizedOrder.isScheduled ? '📅 ENCOMENDA' : '⚡ IMEDIATO';
+        console.log(`${typeLabel} [NOVO PEDIDO] ID: ${sanitizedOrder.id} | Loja: ${sanitizedOrder.companyName} | Total: R$ ${sanitizedOrder.total}`);
 
-        saveOrderToSupabase(sanitizedOrder, sanitizedOrder.companyId).catch(e => console.warn('[Supabase Order Catch]:', e.message));
-
-        // Transmissão Realtime imediata para todos os painéis e clientes conectados
+        saveOrderToSupabase(sanitizedOrder, sanitizedOrder.companyId).catch(e => console.warn('[Supabase Ord]:', e.message));
         broadcastRealtimeOrder('INSERT', sanitizedOrder);
 
         res.status(201).json({ success: true, data: sanitizedOrder });
@@ -1224,25 +1103,18 @@ app.post('/api/orders', orderWriteLimiter, validateCompanyHeader, async (req, re
     }
 });
 
-app.post('/api/supabase/orders', validateCompanyHeader, (req, res) => {
-    req.url = '/api/orders';
-    app._router.handle(req, res);
-});
-
-// 3. Atualizar Status do Pedido
 app.patch('/api/orders/:id/status', orderWriteLimiter, validateCompanyHeader, async (req, res) => {
     try {
         const rawId = decodeURIComponent(sanitizeString(req.params.id, 50));
         const rawStatus = sanitizeString(req.body.status, 30);
 
         if (!['RECEIVED', 'PREPARING', 'DELIVERING', 'COMPLETED', 'CANCELLED'].includes(rawStatus)) {
-            return res.status(400).json({ success: false, error: 'Status de pedido inválido.' });
+            return res.status(400).json({ success: false, error: 'Status inválido.' });
         }
 
         const allOrders = readJsonFile(ORDERS_FILE, []);
-        let order = allOrders.find(o => 
-            String(o.id) === String(rawId) || 
-            String(o.id).replace('#', '') === String(rawId).replace('#', '')
+        let order = allOrders.find(o =>
+            String(o.id) === String(rawId) || String(o.id).replace('#', '') === String(rawId).replace('#', '')
         );
 
         if (order) {
@@ -1250,7 +1122,6 @@ app.patch('/api/orders/:id/status', orderWriteLimiter, validateCompanyHeader, as
             order.updated_at = new Date().toISOString();
             writeJsonFile(ORDERS_FILE, allOrders);
         } else {
-            // Se o pedido não estiver na lista (ex: salvo antes da limpeza), registrar entrada com status
             order = {
                 id: rawId.startsWith('#') ? rawId : `#${rawId}`,
                 companyId: req.companyId || 'company-demo-don',
@@ -1263,38 +1134,26 @@ app.patch('/api/orders/:id/status', orderWriteLimiter, validateCompanyHeader, as
 
         if (supabase) {
             try {
-                await supabase
-                    .from('orders')
-                    .update({ status: rawStatus, updated_at: new Date().toISOString() })
-                    .eq('id', order.id);
+                await supabase.from('orders').update({ status: rawStatus, updated_at: new Date().toISOString() }).eq('id', order.id);
             } catch (supaErr) {
-                console.warn('[Segurança] Falha ao atualizar status no Supabase:', supaErr.message);
+                console.warn('[Segurança] Falha status Supabase:', supaErr.message);
             }
         }
 
-        // Transmissão Realtime da atualização de status
         broadcastRealtimeOrder('UPDATE', order);
-
-        console.log(`🔄 [STATUS ATUALIZADO] Pedido: ${order.id} ➔ ${rawStatus}`);
+        console.log(`🔄 [STATUS] Pedido: ${order.id} ➔ ${rawStatus}`);
         res.json({ success: true, data: order });
     } catch (err) {
-        res.status(500).json({ success: false, error: 'Erro ao atualizar status do pedido.' });
+        res.status(500).json({ success: false, error: 'Erro ao atualizar status.' });
     }
 });
 
-app.patch('/api/supabase/orders/:id/status', validateCompanyHeader, (req, res) => {
-    req.url = `/api/orders/${req.params.id}/status`;
-    app._router.handle(req, res);
-});
-
-// 4. Excluir Pedido
 app.delete('/api/orders/:id', orderWriteLimiter, validateCompanyHeader, async (req, res) => {
     try {
         const rawId = decodeURIComponent(sanitizeString(req.params.id, 50));
         let allOrders = readJsonFile(ORDERS_FILE, []);
-        allOrders = allOrders.filter(o => 
-            String(o.id) !== String(rawId) && 
-            String(o.id).replace('#', '') !== String(rawId).replace('#', '')
+        allOrders = allOrders.filter(o =>
+            String(o.id) !== String(rawId) && String(o.id).replace('#', '') !== String(rawId).replace('#', '')
         );
         writeJsonFile(ORDERS_FILE, allOrders);
 
@@ -1302,13 +1161,11 @@ app.delete('/api/orders/:id', orderWriteLimiter, validateCompanyHeader, async (r
             try {
                 await supabase.from('orders').delete().eq('id', rawId);
             } catch (supaErr) {
-                console.warn('[Segurança] Falha ao excluir do Supabase:', supaErr.message);
+                console.warn('[Segurança] Falha excluir Supabase:', supaErr.message);
             }
         }
 
-        // Transmissão Realtime da exclusão
         broadcastRealtimeOrder('DELETE', { id: rawId });
-
         res.json({ success: true, message: 'Pedido excluído com sucesso.' });
     } catch (err) {
         res.status(500).json({ success: false, error: 'Erro ao excluir pedido.' });
@@ -1316,23 +1173,21 @@ app.delete('/api/orders/:id', orderWriteLimiter, validateCompanyHeader, async (r
 });
 
 // ============================================================================
-// ROTAS DE EMPRESAS (PERSISTÊNCIA E SINCRONIZAÇÃO COMPLETA NO SUPABASE)
+// EMPRESAS
 // ============================================================================
 app.get('/api/companies', generalLimiter, async (req, res) => {
     try {
         let companies = readJsonFile(COMPANIES_FILE, []);
-        
-        // Se o Supabase estiver configurado, carregar dados atualizados do banco de dados remoto
+
         if (supabase) {
             try {
                 const remoteCompanies = await fetchCompaniesFromSupabase();
                 if (Array.isArray(remoteCompanies) && remoteCompanies.length > 0) {
-                    // O banco remoto é a fonte de verdade quando está disponível.
                     companies = remoteCompanies;
                     writeJsonFile(COMPANIES_FILE, companies);
                 }
             } catch (supaErr) {
-                console.warn('[Supabase Companies Fetch Fallback]:', supaErr.message);
+                console.warn('[Supabase Companies Fallback]:', supaErr.message);
             }
         }
 
@@ -1343,7 +1198,6 @@ app.get('/api/companies', generalLimiter, async (req, res) => {
     }
 });
 
-// Endpoint de busca rápida de empresa por slug, ID ou nome (para compartilhamento de links remotos)
 app.get(['/api/companies/lookup', '/api/company/lookup', '/api/company/:identifier', '/api/companies/:identifier'], generalLimiter, async (req, res) => {
     try {
         const query = req.query.q || req.query.empresa || req.query.loja || req.query.slug || req.params.identifier || '';
@@ -1366,14 +1220,12 @@ app.get(['/api/companies/lookup', '/api/company/lookup', '/api/company/:identifi
             return res.json({ success: true, data: demo ? trimCompanyOutput(demo) : null });
         }
 
-        // 1. Busca por slug exato ou slug sanitizado
         let found = companies.find(c => {
             if (!c) return false;
             const cSlug = sanitizeSlug(c.slug || '').toLowerCase();
             return cSlug === cleanQuery || cSlug === rawLower;
         });
 
-        // 2. Busca por ID
         if (!found) {
             found = companies.find(c => {
                 if (!c) return false;
@@ -1382,7 +1234,6 @@ app.get(['/api/companies/lookup', '/api/company/lookup', '/api/company/:identifi
             });
         }
 
-        // 3. Busca por aliases ou presetType (ex: hamburgueria, pizzaria, marmitas-fitnes, etc.)
         if (!found) {
             found = companies.find(c => {
                 if (!c) return false;
@@ -1392,7 +1243,6 @@ app.get(['/api/companies/lookup', '/api/company/lookup', '/api/company/:identifi
             });
         }
 
-        // 4. Busca por Nome da empresa
         if (!found) {
             found = companies.find(c => {
                 if (!c) return false;
@@ -1402,7 +1252,6 @@ app.get(['/api/companies/lookup', '/api/company/lookup', '/api/company/:identifi
             });
         }
 
-        // 5. Busca por aproximação no nome ou slug se o termo tiver 3 ou mais caracteres
         if (!found && cleanQuery.length >= 3) {
             found = companies.find(c => {
                 if (!c) return false;
@@ -1420,7 +1269,7 @@ app.get(['/api/companies/lookup', '/api/company/lookup', '/api/company/:identifi
         res.status(404).json({ success: false, error: 'Empresa não encontrada.' });
     } catch (err) {
         console.error('[LOOKUP ERROR]:', err);
-        res.status(500).json({ success: false, error: 'Erro ao buscar dados da empresa: ' + err.message });
+        res.status(500).json({ success: false, error: 'Erro ao buscar empresa: ' + err.message });
     }
 });
 
@@ -1450,7 +1299,7 @@ app.post('/api/companies', generalLimiter, async (req, res) => {
             await saveCompanyToSupabase(company);
             return res.json({ success: true, company });
         }
-        res.status(400).json({ success: false, error: 'Formato inválido de empresas.' });
+        res.status(400).json({ success: false, error: 'Formato inválido.' });
     } catch (err) {
         res.status(500).json({ success: false, error: 'Erro ao salvar empresas.' });
     }
@@ -1480,7 +1329,7 @@ app.post('/api/companies/upsert', generalLimiter, async (req, res) => {
         const merged = Array.from(compMap.values());
         await deleteRemoteCompaniesMissingFrom(merged);
         writeJsonFile(COMPANIES_FILE, merged);
-        res.json({ success: true, count: merged.length, message: 'Dados sincronizados com o banco remoto Supabase.' });
+        res.json({ success: true, count: merged.length, message: 'Sincronizado.' });
     } catch (err) {
         res.status(500).json({ success: false, error: 'Erro ao persistir empresa.' });
     }
@@ -1495,17 +1344,14 @@ app.post('/api/companies/delete', generalLimiter, async (req, res) => {
         let existing = readJsonFile(COMPANIES_FILE, []);
         existing = existing.filter(c => c.id !== companyId);
         writeJsonFile(COMPANIES_FILE, existing);
-        if (supabase) {
-            await deleteCompanyFromSupabase(companyId);
-        }
-        res.json({ success: true, message: 'Empresa excluída com sucesso.' });
+        if (supabase) await deleteCompanyFromSupabase(companyId);
+        res.json({ success: true, message: 'Empresa excluída.' });
     } catch (err) {
         console.error('[Companies Delete]:', err.message);
         res.status(500).json({ success: false, error: 'Erro ao excluir empresa.' });
     }
 });
 
-// Sincronização em Lote por Empresa (Apenas SUPER_ADMIN ou COMPANY_OWNER da respectiva empresa)
 app.post('/api/supabase/sync-company', generalLimiter, authenticateToken, validateCompanyHeader, requireRole(ROLES.COMPANY_OWNER, ROLES.SUPER_ADMIN), async (req, res) => {
     const { companyId } = req;
     const { company, settings, products, orders } = req.body;
@@ -1531,14 +1377,14 @@ app.post('/api/supabase/sync-company', generalLimiter, authenticateToken, valida
             }
         }
 
-        res.json({ success: true, message: `Dados da empresa ${companyId} sincronizados com segurança.` });
+        res.json({ success: true, message: `Dados da empresa ${companyId} sincronizados.` });
     } catch (err) {
-        res.status(500).json({ success: false, error: 'Falha na sincronização de dados.' });
+        res.status(500).json({ success: false, error: 'Falha na sincronização.' });
     }
 });
 
 // ============================================================================
-// ROTAS DE CAPTURA DE LEADS E TESTE GRÁTIS 24H (LOJA DEMO & PAINEL DEV)
+// LEADS E TESTE GRÁTIS
 // ============================================================================
 app.post('/api/demo/unlock', generalLimiter, (req, res) => {
     try {
@@ -1546,16 +1392,13 @@ app.post('/api/demo/unlock', generalLimiter, (req, res) => {
         const cleanPhone = (phone || '').replace(/\D/g, '');
 
         if (!cleanPhone || cleanPhone.length < 8) {
-            return res.status(400).json({
-                success: false,
-                error: 'Por favor, informe um número de telefone ou WhatsApp válido.'
-            });
+            return res.status(400).json({ success: false, error: 'Telefone válido é obrigatório.' });
         }
 
         const cleanName = sanitizeString(name || 'Interessado Demo', 100);
         const leads = readJsonFile(DEMO_LEADS_FILE, []);
         const now = Date.now();
-        const trialExpiresAt = now + 24 * 60 * 60 * 1000; // 24 horas
+        const trialExpiresAt = now + 24 * 60 * 60 * 1000;
 
         const existingIndex = leads.findIndex(l => (l.phone || '').replace(/\D/g, '') === cleanPhone);
         let savedLead;
@@ -1573,34 +1416,23 @@ app.post('/api/demo/unlock', generalLimiter, (req, res) => {
         } else {
             savedLead = {
                 id: `lead_${now}_${Math.random().toString(36).substring(2, 7)}`,
-                phone: phone.trim(),
-                cleanPhone: cleanPhone,
-                name: cleanName,
-                createdAt: new Date().toISOString(),
-                trialExpiresAt: trialExpiresAt,
+                phone: phone.trim(), cleanPhone: cleanPhone, name: cleanName,
+                createdAt: new Date().toISOString(), trialExpiresAt: trialExpiresAt,
                 storeSlug: sanitizeString(storeSlug || 'demo', 50),
                 source: sanitizeString(source || 'store-demo', 50),
-                unlockCount: 1,
-                status: 'ACTIVE_TRIAL'
+                unlockCount: 1, status: 'ACTIVE_TRIAL'
             };
             leads.unshift(savedLead);
         }
 
         writeJsonFile(DEMO_LEADS_FILE, leads);
-
-        res.json({
-            success: true,
-            message: 'Acesso de teste de 24 horas liberado com sucesso!',
-            lead: savedLead,
-            trialExpiresAt: trialExpiresAt
-        });
+        res.json({ success: true, message: 'Acesso liberado!', lead: savedLead, trialExpiresAt });
     } catch (err) {
-        console.error('Erro ao registrar lead de teste:', err.message);
-        res.status(500).json({ success: false, error: 'Erro ao processar liberação de teste.' });
+        console.error('Erro lead:', err.message);
+        res.status(500).json({ success: false, error: 'Erro ao processar.' });
     }
 });
 
-// 21. Gestão de Contatos/Leads de Teste (Exclusivo para Desenvolvedor/Super Admin)
 app.get('/api/dev/leads', generalLimiter, authenticateToken, requireRole(ROLES.SUPER_ADMIN), (req, res) => {
     try {
         const leads = readJsonFile(DEMO_LEADS_FILE, []);
@@ -1612,7 +1444,7 @@ app.get('/api/dev/leads', generalLimiter, authenticateToken, requireRole(ROLES.S
         }));
         res.json({ success: true, data: formattedLeads, total: formattedLeads.length });
     } catch (err) {
-        res.status(500).json({ success: false, error: 'Erro ao listar contatos capturados.' });
+        res.status(500).json({ success: false, error: 'Erro ao listar leads.' });
     }
 });
 
@@ -1622,13 +1454,12 @@ app.delete('/api/dev/leads/:id', generalLimiter, authenticateToken, requireRole(
         const leads = readJsonFile(DEMO_LEADS_FILE, []);
         const filtered = leads.filter(l => l.id !== id && l.cleanPhone !== id);
         writeJsonFile(DEMO_LEADS_FILE, filtered);
-        res.json({ success: true, message: 'Lead removido com sucesso.', remaining: filtered.length });
+        res.json({ success: true, message: 'Lead removido.', remaining: filtered.length });
     } catch (err) {
-        res.status(500).json({ success: false, error: 'Erro ao excluir lead.' });
+        res.status(500).json({ success: false, error: 'Erro ao excluir.' });
     }
 });
 
-// 22. Download seguro do schema Supabase para o Super Admin
 app.get('/api/dev/supabase-schema', generalLimiter, authenticateToken, requireRole(ROLES.SUPER_ADMIN), (req, res) => {
     try {
         const schemaPath = path.join(__dirname, 'supabase_schema.sql');
@@ -1637,22 +1468,18 @@ app.get('/api/dev/supabase-schema', generalLimiter, authenticateToken, requireRo
             res.setHeader('Content-Disposition', 'attachment; filename="supabase_schema.sql"');
             return res.sendFile(schemaPath);
         }
-        res.status(404).json({ success: false, error: 'Arquivo supabase_schema.sql não encontrado.' });
+        res.status(404).json({ success: false, error: 'Arquivo não encontrado.' });
     } catch (err) {
-        res.status(500).json({ success: false, error: 'Erro ao obter schema SQL.' });
+        res.status(500).json({ success: false, error: 'Erro ao obter schema.' });
     }
 });
 
 // ============================================================================
-// GOOGLE OAUTH & CLIENT AUTHENTICATION ENDPOINTS
+// GOOGLE OAUTH
 // ============================================================================
 app.get('/api/auth/google/config', (req, res) => {
     const clientId = process.env.GOOGLE_CLIENT_ID || process.env.CLIENT_ID || '';
-    res.json({
-        hasGoogleAuth: Boolean(clientId),
-        clientId: clientId || null,
-        callbackUrl: `${req.protocol}://${req.get('host')}/auth/google/callback`
-    });
+    res.json({ hasGoogleAuth: Boolean(clientId), clientId: clientId || null, callbackUrl: `${req.protocol}://${req.get('host')}/auth/google/callback` });
 });
 
 app.get('/api/auth/google/url', (req, res) => {
@@ -1662,11 +1489,7 @@ app.get('/api/auth/google/url', (req, res) => {
     const redirectUri = `${protocol}://${host}/auth/google/callback`;
 
     if (!clientId) {
-        return res.json({
-            configured: false,
-            message: 'GOOGLE_CLIENT_ID não configurado no ambiente.',
-            redirectUri
-        });
+        return res.json({ configured: false, message: 'GOOGLE_CLIENT_ID não configurado.', redirectUri });
     }
 
     const params = new URLSearchParams({
@@ -1679,14 +1502,9 @@ app.get('/api/auth/google/url', (req, res) => {
     });
 
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
-    res.json({
-        configured: true,
-        url: authUrl,
-        redirectUri
-    });
+    res.json({ configured: true, url: authUrl, redirectUri });
 });
 
-// Callback Google OAuth
 app.get(['/auth/callback', '/auth/callback/', '/auth/google/callback', '/auth/google/callback/'], async (req, res) => {
     const { code, error } = req.query;
     const clientId = process.env.GOOGLE_CLIENT_ID || process.env.CLIENT_ID;
@@ -1696,142 +1514,61 @@ app.get(['/auth/callback', '/auth/callback/', '/auth/google/callback', '/auth/go
     const redirectUri = `${protocol}://${host}/auth/google/callback`;
 
     if (error) {
-        return res.send(`
-            <!DOCTYPE html>
-            <html>
-            <head><title>Erro na Autenticação Google</title></head>
-            <body style="font-family: sans-serif; text-align: center; padding: 3rem;">
-                <h3 style="color: #DC2626;">Autenticação Cancelada ou Falhou</h3>
-                <p>${error}</p>
-                <script>
-                    if (window.opener) {
-                        window.opener.postMessage({ type: 'OAUTH_AUTH_ERROR', error: '${error}' }, '*');
-                        setTimeout(() => window.close(), 1500);
-                    }
-                </script>
-            </body>
-            </html>
-        `);
+        return res.send(`<!DOCTYPE html><html><body style="font-family:sans-serif;text-align:center;padding:3rem;"><h3 style="color:#DC2626;">Cancelado</h3><p>${error}</p><script>if(window.opener){window.opener.postMessage({type:'OAUTH_AUTH_ERROR',error:'${error}'},'*');setTimeout(()=>window.close(),1500);}</script></body></html>`);
     }
 
     let userData = null;
 
     if (code && clientId && clientSecret) {
         try {
-            // Troca o código pelo access_token
             const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({
-                    code,
-                    client_id: clientId,
-                    client_secret: clientSecret,
-                    redirect_uri: redirectUri,
-                    grant_type: 'authorization_code'
-                })
+                body: new URLSearchParams({ code, client_id: clientId, client_secret: clientSecret, redirect_uri: redirectUri, grant_type: 'authorization_code' })
             });
-
             const tokenData = await tokenRes.json();
             if (tokenData.access_token) {
-                const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                    headers: { Authorization: `Bearer ${tokenData.access_token}` }
-                });
+                const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: `Bearer ${tokenData.access_token}` } });
                 userData = await userRes.json();
             }
-        } catch (err) {
-            console.error('Erro na troca do token Google OAuth:', err);
-        }
+        } catch (err) { console.error('Erro Google OAuth:', err); }
     }
 
     const payload = userData ? {
-        email: userData.email,
-        name: userData.name || userData.given_name || 'Usuário Google',
-        picture: userData.picture || '',
-        googleId: userData.sub,
-        provider: 'google'
-    } : {
-        email: req.query.email || 'usuario.google@gmail.com',
-        name: 'Usuário Google',
-        provider: 'google'
-    };
+        email: userData.email, name: userData.name || userData.given_name || 'Usuário Google',
+        picture: userData.picture || '', googleId: userData.sub, provider: 'google'
+    } : { email: req.query.email || 'usuario.google@gmail.com', name: 'Usuário Google', provider: 'google' };
 
-    res.send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="utf-8">
-            <title>Google Autenticado</title>
-            <style>
-                body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #F8FAFC; color: #1E293B; }
-                .card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); text-align: center; max-width: 380px; }
-                .spinner { width: 36px; height: 36px; border: 3px solid #E2E8F0; border-top-color: #4285F4; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem auto; }
-                @keyframes spin { to { transform: rotate(360deg); } }
-            </style>
-        </head>
-        <body>
-            <div class="card">
-                <div class="spinner"></div>
-                <h3 style="margin: 0 0 0.5rem 0;">Conectando com o Google...</h3>
-                <p style="color: #64748B; font-size: 0.9rem; margin: 0;">Identificação confirmada com sucesso. Esta janela fechará automaticamente.</p>
-            </div>
-            <script>
-                const payload = ${JSON.stringify(payload)};
-                if (window.opener) {
-                    window.opener.postMessage({
-                        type: 'OAUTH_AUTH_SUCCESS',
-                        provider: 'google',
-                        user: payload
-                    }, '*');
-                    setTimeout(() => window.close(), 600);
-                } else {
-                    window.location.href = '/';
-                }
-            </script>
-        </body>
-        </html>
-    `);
+    res.send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Autenticado</title><style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#F8FAFC;}.card{background:white;padding:2rem;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.08);text-align:center;}</style></head><body><div class="card"><h3>Conectando...</h3><p style="color:#64748B;">Fechando automaticamente.</p></div><script>const payload=${JSON.stringify(payload)};if(window.opener){window.opener.postMessage({type:'OAUTH_AUTH_SUCCESS',provider:'google',user:payload},'*');setTimeout(()=>window.close(),600);}else{window.location.href='/';}</script></body></html>`);
 });
 
-// Servir estilos e arquivos estáticos prioritários
+// ============================================================================
+// ARQUIVOS ESTÁTICOS
+// ============================================================================
 app.get('/styles.css', (req, res) => {
     res.type('text/css');
     const localPath = path.join(__dirname, 'styles.css');
-    if (fs.existsSync(localPath)) {
-        return res.sendFile(localPath);
-    }
+    if (fs.existsSync(localPath)) return res.sendFile(localPath);
     const pubPath = path.join(__dirname, 'public', 'styles.css');
-    if (fs.existsSync(pubPath)) {
-        return res.sendFile(pubPath);
-    }
+    if (fs.existsSync(pubPath)) return res.sendFile(pubPath);
     res.send('/* styles.css */');
 });
 
-// Stubs para extensões de terceiros do navegador (evitando erros 404 no console)
 app.get(['/laydate.css', '/layer.css', '/code.css'], (req, res) => {
     res.type('text/css').send('/* Browser Extension Safe Stub */');
 });
 
 app.get('/favicon.ico', (req, res) => {
     const favPath = path.join(__dirname, 'favicon.ico');
-    if (fs.existsSync(favPath)) {
-        res.type('image/x-icon');
-        return res.sendFile(favPath);
-    }
+    if (fs.existsSync(favPath)) { res.type('image/x-icon'); return res.sendFile(favPath); }
     const pubFav = path.join(__dirname, 'public', 'favicon.ico');
-    if (fs.existsSync(pubFav)) {
-        res.type('image/x-icon');
-        return res.sendFile(pubFav);
-    }
+    if (fs.existsSync(pubFav)) { res.type('image/x-icon'); return res.sendFile(pubFav); }
     res.status(204).end();
 });
 
-// ============================================================================
-// PRECAUÇÃO #22: BLOQUEIO CRÍTICO DE ARQUIVOS SENSÍVEIS (LGPD & ZERO DATA LEAK)
-// Impede que qualquer arquivo de dados (.json), bancos, credenciais ou código de backend seja servido estaticamente
-// ============================================================================
 app.use((req, res, next) => {
     const rawPath = (req.path || '').toLowerCase();
-    const isRestricted = 
+    const isRestricted =
         rawPath.startsWith('/data') ||
         rawPath.startsWith('/test') ||
         rawPath.startsWith('/node_modules') ||
@@ -1848,39 +1585,32 @@ app.use((req, res, next) => {
         rawPath.endsWith('.env');
 
     if (isRestricted) {
-        return res.status(403).json({
-            success: false,
-            error: 'Acesso negado. Recurso restrito do sistema.'
-        });
+        return res.status(403).json({ success: false, error: 'Acesso negado.' });
     }
     next();
 });
 
-// Rota expressa para o Painel do Desenvolvedor (donfood.site/dev)
 app.get(['/dev', '/dev/*'], (req, res) => {
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Servir arquivos estáticos do frontend com controle de cache em tempo real
 app.use(express.static(__dirname, {
     maxAge: 0,
     etag: false,
     setHeaders: (res, path) => {
         if (path.endsWith('.html') || path.endsWith('.js') || path.endsWith('.css')) {
-            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
             res.setHeader('Pragma', 'no-cache');
             res.setHeader('Expires', '0');
         }
     }
 }));
 
-// Fallback seguro para index.html (SPA) com atualização de cookies de empresa e dispositivo
 app.get('*', (req, res) => {
     try {
         let empresaParam = req.query.empresa || req.query.loja || req.query.slug || req.query.c;
-        
-        // Se não veio por query parameter, verificar se veio pelo pathname (ex: /danda-linda ou /loja/danda-linda)
+
         if (!empresaParam && req.path && req.path !== '/' && !req.path.startsWith('/api/') && !req.path.includes('.')) {
             const pathParts = req.path.split('/').filter(Boolean);
             if (pathParts.length === 1 && pathParts[0] !== 'dev' && pathParts[0] !== 'admin' && pathParts[0] !== 'login') {
@@ -1901,22 +1631,15 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// ============================================================================
-// PRECAUÇÃO #15: TRATAMENTO GLOBAL DE ERROS (SEM VAZAR STACK TRACES)
-// ============================================================================
 app.use((err, req, res, next) => {
-    console.error('[Segurança - Erro não tratado]:', err.message);
-    res.status(500).json({
-        success: false,
-        error: 'Ocorreu um erro interno seguro. A operação foi cancelada sem afetar os dados.'
-    });
+    console.error('[Erro não tratado]:', err.message);
+    res.status(500).json({ success: false, error: 'Erro interno seguro.' });
 });
 
-// Inicialização segura compatível com Cloud Run, Servidores Node e Vercel Serverless
 if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
     app.listen(PORT, '0.0.0.0', () => {
         console.log(`🚀 Servidor Don Food ativo na porta ${PORT}`);
-        console.log(`🛡️ 20 Precauções de Segurança e Estabilidade implementadas com sucesso.`);
+        console.log(`🛡️  20 Precauções de Segurança e Estabilidade implementadas.`);
     });
 }
 

@@ -521,6 +521,10 @@
         let settings = {};
         let editingProductId = null;
         let customerData = null;
+        // ========== ESTADO DE ENCOMENDA/AGENDAMENTO NO CARRINHO ==========
+        let cartOrderMode = 'now';
+        let cartScheduledDate = '';
+        let cartScheduledTime = '';
 
         // Cliente Autenticado e Histórico de Pedidos
         let loggedCustomer = null;
@@ -626,6 +630,12 @@
             },
             isCustomerLoggedIn() {
                 return !!loggedCustomer;
+            },
+            getAuthToken() {
+                return sessionStorage.getItem('devAuthToken')
+                    || sessionStorage.getItem('companyAuthToken')
+                    || sessionStorage.getItem('customerAuthToken')
+                    || null;
             },
             isAdminAuthenticated() {
                 return this.isSuperAdmin() || this.isCompanyOwner();
@@ -3963,8 +3973,8 @@
             // 2. Avatar / Ícone da Loja
             const avatarEl = document.getElementById('loginStoreIconAvatar');
             if (avatarEl) {
-                if (!isCurrentDemo && settings.logo && (settings.logo.startsWith('http') || settings.logo.startsWith('data:image'))) {
-                    avatarEl.innerHTML = `<img src="${settings.logo}" alt="Logo" style="width: 100%; height: 100%; object-fit: cover; border-radius: 18px;">`;
+                if (!isCurrentDemo && settings.logoUrl && (settings.logoUrl.startsWith('http') || settings.logo.startsWith('data:image'))) {
+                    avatarEl.innerHTML = `<img src="${settings.logourl}" alt="Logo" style="width: 100%; height: 100%; object-fit: cover; border-radius: 18px;">`;
                 } else {
                     avatarEl.textContent = '🏬';
                 }
@@ -6849,6 +6859,9 @@
             if (document.getElementById('productFreeLimit')) {
                 document.getElementById('productFreeLimit').value = '3';
             }
+             
+                        if (document.getElementById('productAllowImmediate')) document.getElementById('productAllowImmediate').checked = true;
+            if (document.getElementById('productAllowScheduling')) document.getElementById('productAllowScheduling').checked = true;
 
             document.getElementById('productImage').value = 'super_barca.svg';
             const preview = document.getElementById('productImagePreview');
@@ -6859,7 +6872,7 @@
         function editProduct(id) {
             const product = products.find(p => p.id === id);
             if (!product) return;
-            
+                        
             editingProductId = id;
             document.getElementById('modalTitle').textContent = 'Editar Produto';
             document.getElementById('productId').value = product.id;
@@ -6889,6 +6902,12 @@
             
             const preview = document.getElementById('productImagePreview');
             if (preview) preview.src = product.image;
+            if (document.getElementById('productAllowImmediate')) {
+            document.getElementById('productAllowImmediate').checked = product.allowImmediate !== false;
+            }
+            if (document.getElementById('productAllowScheduling')) {
+                document.getElementById('productAllowScheduling').checked = product.allowScheduled !== false;
+            }
 
             productModal.classList.add('active');
         }
@@ -6912,6 +6931,8 @@
                 isAcai: isCustom,
                 isCustomizable: isCustom,
                 allowFreeAccompaniments: allowFree,
+                allowImmediate: (document.getElementById('productAllowImmediate')?.checked ?? true),
+                allowScheduled: (document.getElementById('productAllowScheduling')?.checked ?? true),
                 freeAccompanimentsLimit: freeLimit,
                 freeLimit: freeLimit
             };
@@ -8337,6 +8358,7 @@
         function selectPaymentMethod(method) {
             selectedPaymentMethod = method;
             renderPaymentSelectionUI();
+            
         }
 
         function updateCashChangeValue(val) {
@@ -8475,6 +8497,126 @@
             showNotification(`Cupom "${removedCode}" removido.`, 'info');
         }
 
+        // ============================================================================
+// MOTOR DE AGENDAMENTO / ENCOMENDA
+// ============================================================================
+function getCartSchedulingCapabilities() {
+    const safeCart = DefensiveUtils.safeArray(cart);
+    const caps = { canImmediate: true, canScheduled: true, hasItems: safeCart.length > 0 };
+    if (!caps.hasItems) return caps;
+    safeCart.forEach(item => {
+        const product = products.find(p => p.id === item.productId);
+        if (!product) return;
+        if (product.allowImmediate === false) caps.canImmediate = false;
+        if (product.allowScheduled === false) caps.canScheduled = false;
+    });
+    return caps;
+}
+
+function setCartOrderMode(mode) {
+    const caps = getCartSchedulingCapabilities();
+    if (mode === 'now' && !caps.canImmediate) {
+        showNotification('⚠️ Alguns itens só aceitam encomenda.', 'warning');
+        return;
+    }
+    if (mode === 'scheduled' && !caps.canScheduled) {
+        showNotification('⚠️ Alguns itens não podem ser agendados.', 'warning');
+        return;
+    }
+    cartOrderMode = mode;
+    renderCartSchedulingUI();
+}
+
+function updateCartScheduledDate(val) {
+    cartScheduledDate = val || '';
+    validateCartScheduling();
+}
+
+function updateCartScheduledTime(val) {
+    cartScheduledTime = val || '';
+    validateCartScheduling();
+}
+
+function validateCartScheduling() {
+    const btn = document.getElementById('btnCheckout');
+    if (!btn) return;
+    if (cartOrderMode !== 'scheduled') {
+        btn.disabled = !customerData;
+        return;
+    }
+    const ok = !!customerData && !!cartScheduledDate && !!cartScheduledTime;
+    if (ok) {
+        const dt = new Date(`${cartScheduledDate}T${cartScheduledTime}`);
+        btn.disabled = !(dt.getTime() > Date.now() + 5 * 60 * 1000);
+    } else {
+        btn.disabled = true;
+    }
+}
+
+function renderCartSchedulingUI() {
+    const container = document.getElementById('cartSchedulingContainer');
+    if (!container) return;
+    const safeCart = DefensiveUtils.safeArray(cart);
+    if (safeCart.length === 0) { container.innerHTML = ''; return; }
+
+    const caps = getCartSchedulingCapabilities();
+    if (caps.canScheduled && !caps.canImmediate) cartOrderMode = 'scheduled';
+    else if (caps.canImmediate && !caps.canScheduled) cartOrderMode = 'now';
+
+    const showBoth = caps.canImmediate && caps.canScheduled;
+    const onlyScheduled = caps.canScheduled && !caps.canImmediate;
+    const onlyImmediate = caps.canImmediate && !caps.canScheduled;
+
+    const today = new Date();
+    const minDate = today.toISOString().split('T')[0];
+    const maxDate = new Date(today.getTime() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    container.innerHTML = `
+        <div style="margin: 0.85rem 0; background: #F0F9FF; border: 1.5px solid #BAE6FD; border-radius: 10px; padding: 0.85rem;">
+            <div style="font-size: 0.82rem; font-weight: 800; color: #0C4A6E; margin-bottom: 0.55rem; display: flex; align-items: center; gap: 0.4rem;">
+                📅 Como deseja receber este pedido?
+            </div>
+            ${showBoth ? `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; margin-bottom: 0.5rem;">
+                    <button type="button" onclick="setCartOrderMode('now')"
+                        style="padding: 0.55rem; border-radius: 8px; border: 1.5px solid ${cartOrderMode === 'now' ? '#0284C7' : '#CBD5E1'}; background: ${cartOrderMode === 'now' ? '#E0F2FE' : '#FFF'}; color: ${cartOrderMode === 'now' ? '#0369A1' : '#475569'}; font-weight: 800; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.3rem;">
+                        ⚡ Pedir Agora
+                    </button>
+                    <button type="button" onclick="setCartOrderMode('scheduled')"
+                        style="padding: 0.55rem; border-radius: 8px; border: 1.5px solid ${cartOrderMode === 'scheduled' ? '#0284C7' : '#CBD5E1'}; background: ${cartOrderMode === 'scheduled' ? '#E0F2FE' : '#FFF'}; color: ${cartOrderMode === 'scheduled' ? '#0369A1' : '#475569'}; font-weight: 800; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.3rem;">
+                        📅 Encomendar
+                    </button>
+                </div>
+            ` : ''}
+            ${onlyScheduled ? `<div style="background: #FEF3C7; border: 1px solid #FCD34D; border-radius: 6px; padding: 0.5rem 0.7rem; margin-bottom: 0.5rem; font-size: 0.76rem; font-weight: 700; color: #92400E; line-height: 1.35;">📌 Todos os itens deste carrinho são de <strong>encomenda</strong>. Escolha data e horário.</div>` : ''}
+            ${onlyImmediate ? `<div style="background: #F0FDF4; border: 1px solid #86EFAC; border-radius: 6px; padding: 0.5rem 0.7rem; font-size: 0.76rem; font-weight: 700; color: #166534; line-height: 1.35;">⚡ Este pedido será preparado para <strong>entrega imediata</strong>.</div>` : ''}
+            ${cartOrderMode === 'scheduled' ? `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem; margin-top: 0.55rem;">
+                    <div>
+                        <label style="font-size: 0.74rem; font-weight: 700; color: #475569; display: block; margin-bottom: 0.2rem;">📅 Data da Encomenda *</label>
+                        <input type="date" id="cartScheduledDate" class="form-input-small" min="${minDate}" max="${maxDate}"
+                            value="${cartScheduledDate || minDate}"
+                            onchange="updateCartScheduledDate(this.value)"
+                            style="margin-bottom: 0; padding: 0.45rem; font-size: 0.82rem;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.74rem; font-weight: 700; color: #475569; display: block; margin-bottom: 0.2rem;">⏰ Horário *</label>
+                        <input type="time" id="cartScheduledTime" class="form-input-small"
+                            value="${cartScheduledTime || '12:00'}"
+                            onchange="updateCartScheduledTime(this.value)"
+                            style="margin-bottom: 0; padding: 0.45rem; font-size: 0.82rem;">
+                    </div>
+                </div>
+            ` : ''}
+        </div>
+    `;
+
+    if (cartOrderMode === 'scheduled') {
+        if (!cartScheduledDate) cartScheduledDate = minDate;
+        if (!cartScheduledTime) cartScheduledTime = '12:00';
+    }
+    validateCartScheduling();
+}
         function getActiveDeliveryInfo() {
             const list = DefensiveUtils.safeArray(
                 (settings.deliveryNeighborhoods && settings.deliveryNeighborhoods.length > 0) 
@@ -8624,6 +8766,7 @@
             
             renderCartCouponUI(totals.subtotal);
             renderPaymentSelectionUI();
+            renderCartSchedulingUI();
             updateCheckoutButton();
         }
 
@@ -9609,13 +9752,14 @@
             }
         }
 
-        async function handleCustomerLogin(e) {
+                async function handleCustomerLogin(e) {
             e.preventDefault();
             const phone = document.getElementById('loginPhone').value.trim();
             const password = document.getElementById('loginPassword').value.trim();
 
             let token = null;
-            // Sincronizar login com servidor seguro
+            let serverCustomer = null;
+
             try {
                 const r = await fetch('/api/auth/login', {
                     method: 'POST',
@@ -9625,13 +9769,12 @@
                 const res = await r.json();
                 if (res && res.success && res.token) {
                     token = res.token;
+                    serverCustomer = res.customer;
                 }
-            } catch (err) {
-                // Modo offline / local
-            }
+            } catch (err) { /* modo offline */ }
 
-            const account = (res && res.success && res.customer)
-                ? res.customer
+            const account = serverCustomer
+                ? serverCustomer
                 : customerAccounts.find(acc => acc.phone === phone && acc.password === password);
 
             if (account) {
@@ -9658,14 +9801,11 @@
                 updateCustomerHeaderUI();
                 updateCheckoutButton();
                 showNotification(`Bem-vindo(a) de volta, ${account.name}! 👋`, 'success');
-                if (typeof fetchOrdersFromServer === 'function') {
-                    fetchOrdersFromServer(true);
-                }
+                if (typeof fetchOrdersFromServer === 'function') fetchOrdersFromServer(true);
             } else {
-                showNotification('Telefone ou senha incorretos! Se não possui conta, faça seu cadastro na aba Cadastrar.', 'danger');
+                showNotification('Telefone ou senha incorretos!', 'danger');
             }
         }
-
         async function handleCustomerRegister(e) {
             e.preventDefault();
             const name = document.getElementById('authRegisterName').value.trim();
@@ -11525,10 +11665,24 @@
                 alert('Seu carrinho está vazio!');
                 return;
             }
-
             if (!customerData) {
                 alert('Por favor, preencha seus dados de entrega!');
                 return;
+            }
+
+            const caps = getCartSchedulingCapabilities();
+            const isScheduled = cartOrderMode === 'scheduled' && caps.canScheduled;
+
+            if (isScheduled) {
+                if (!cartScheduledDate || !cartScheduledTime) {
+                    alert('Por favor, selecione a data e o horário da encomenda!');
+                    return;
+                }
+                const dt = new Date(`${cartScheduledDate}T${cartScheduledTime}`);
+                if (dt.getTime() <= Date.now() + 5 * 60 * 1000) {
+                    alert('A data/horário da encomenda precisa ser pelo menos 5 minutos no futuro.');
+                    return;
+                }
             }
 
             const deliveryInfo = getActiveDeliveryInfo();
@@ -11536,7 +11690,6 @@
             const activeComp = (companies && companies.find(c => c.id === activeCompanyId)) || settings;
             const availableCoupons = DefensiveUtils.safeArray(settings.coupons || defaultCoupons);
 
-            // 1. Construir objeto do Pedido de forma pura e validada
             const newOrder = OrderMessageBuilder.buildOrderRecord({
                 cart: safeCart,
                 customerData,
@@ -11545,12 +11698,14 @@
                 company: activeComp,
                 settings,
                 deliveryInfo,
-                availableCoupons
+                availableCoupons,
+                isScheduled,
+                scheduledDate: isScheduled ? cartScheduledDate : null,
+                scheduledTime: isScheduled ? cartScheduledTime : null
             });
 
             const currentCompId = newOrder.companyId;
 
-            // 2. Armazenar no histórico local defensivamente
             if (!Array.isArray(customerOrders)) customerOrders = [];
             customerOrders.unshift(newOrder);
             if (knownOrderIds) knownOrderIds.add(newOrder.id);
@@ -11570,23 +11725,14 @@
 
             saveData();
 
-            // 3. Enviar pedido para a API central da empresa
             fetch('/api/orders', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-company-id': currentCompId
-                },
+                headers: { 'Content-Type': 'application/json', 'x-company-id': currentCompId },
                 body: JSON.stringify(newOrder)
             }).then(r => r.json()).then(res => {
-                if (res && res.success) {
-                    console.log('✅ Pedido salvo no servidor central:', res.data ? res.data.id : newOrder.id);
-                }
-            }).catch(err => {
-                console.warn('ℹ️ Pedido registrado localmente:', err.message);
-            });
+                if (res && res.success) console.log('✅ Pedido salvo:', res.data?.id);
+            }).catch(err => console.warn('ℹ️ Pedido local:', err.message));
 
-            // 4. Garantir que a conta do cliente esteja registrada
             if (!loggedCustomer) {
                 loggedCustomer = {
                     name: customerData.name,
@@ -11606,22 +11752,19 @@
                 updateCustomerHeaderUI();
             }
 
-            // 5. Formatar mensagem pura para WhatsApp
             const message = OrderMessageBuilder.formatWhatsAppMessage({
                 order: newOrder,
                 restaurantName: settings.restaurantName || activeComp.name || 'Don Food'
             });
-
             const targetWaNumber = DefensiveUtils.sanitizePhone(activeComp.whatsappNumber || settings.whatsappNumber || '5511999999999');
-            const encodedMessage = encodeURIComponent(message);
-            const whatsappURL = `https://wa.me/${targetWaNumber}?text=${encodedMessage}`;
-
-            // Abrir WhatsApp
+            const whatsappURL = `https://wa.me/${targetWaNumber}?text=${encodeURIComponent(message)}`;
             window.open(whatsappURL, '_blank');
 
-            // Limpar carrinho e cupom
             cart = [];
             appliedCoupon = null;
+            cartOrderMode = 'now';
+            cartScheduledDate = '';
+            cartScheduledTime = '';
             if (activeCompanyId) localStorage.removeItem(`appliedCoupon_${activeCompanyId}`);
             saveData();
             updateCartUI();
@@ -11630,13 +11773,11 @@
             renderAdminOrdersList();
             renderCustomerOrdersList();
 
-            showNotification(`Pedido ${newOrder.id} enviado para o WhatsApp! Acompanhe o status na Área do Cliente. 📦`, 'success');
+            const typeLabel = isScheduled ? 'encomenda agendada' : 'pedido';
+            showNotification(`✅ ${typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1)} ${newOrder.id} enviado para o WhatsApp!`, 'success');
 
-            // Abrir modal da Área do Cliente para acompanhamento do status em tempo real
-            setTimeout(() => {
-                openCustomerOrdersModal();
-            }, 600);
-        }
+            setTimeout(() => openCustomerOrdersModal(), 600);
+        };
 
         // ========== EVENTOS ==========
         function attachEventListeners() {
@@ -11985,7 +12126,7 @@
             // Polling para sincronizar pedidos em tempo real diretamente do servidor central a cada 2.5s
             setInterval(() => {
                 fetchOrdersFromServer(true);
-            }, 2500);
+            }, 15000);
         }
 
         function closeAdminPanel() {
@@ -12677,6 +12818,14 @@
         // Centralizador de Autenticação e RBAC (Etapa 2)
         window.ROLES = ROLES;
         window.AuthManager = AuthManager;
+                function openUnifiedAuthModal(mode = 'login') {
+            if (mode === 'admin' || mode === 'company') {
+                openCustomerAuthModal('login', 'company');
+            } else {
+                openCustomerAuthModal('login', 'customer');
+            }
+        }
+        window.openUnifiedAuthModal = openUnifiedAuthModal;
         window.openAdminPanel = openAdminPanel;
         window.toggleAdminHamburgerMenu = toggleAdminHamburgerMenu;
         window.switchAdminTopic = switchAdminTopic;
@@ -12726,6 +12875,10 @@
         window.openDpoContact = openDpoContact;
         window.acceptLgpdConsent = acceptLgpdConsent;
         window.initLgpdConsentBanner = initLgpdConsentBanner;
-
+        window.setCartOrderMode = setCartOrderMode;
+        window.updateCartScheduledDate = updateCartScheduledDate;
+        window.updateCartScheduledTime = updateCartScheduledTime;
+        window.renderCartSchedulingUI = renderCartSchedulingUI;
+        window.getCartSchedulingCapabilities = getCartSchedulingCapabilities;
         // ========== INICIAR APLICAÇÃO ==========
         init();
