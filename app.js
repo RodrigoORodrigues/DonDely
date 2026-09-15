@@ -3225,8 +3225,28 @@
             applyThemeColors(settings.themeColors);
 
             // ISOLAMENTO DE DADOS: Carrinho e Pedidos por Empresa
-            const savedCart = localStorage.getItem(`cart_${activeCompanyId}`);
-            cart = savedCart ? JSON.parse(savedCart) : [];
+            // DEPOIS (corrigido): suporta ambas as chaves e NUNCA zera sem motivo
+const cartKey = `cart_${activeCompanyId}`;
+const savedCartNew = localStorage.getItem(cartKey);
+const savedCartOld = localStorage.getItem('cart');
+
+if (savedCartNew) {
+    try {
+        cart = JSON.parse(savedCartNew);
+    } catch (e) {
+        cart = [];
+    }
+} else if (savedCartOld) {
+    // Migração: se a chave nova está vazia mas a antiga tem conteúdo, migra
+    try {
+        cart = JSON.parse(savedCartOld);
+        localStorage.setItem(cartKey, JSON.stringify(cart));
+    } catch (e) {
+        cart = [];
+    }
+} else {
+    cart = [];
+}
 
             const savedLoggedCustomer = localStorage.getItem('loggedCustomer');
             loggedCustomer = savedLoggedCustomer ? JSON.parse(savedLoggedCustomer) : null;
@@ -3259,6 +3279,20 @@
             }
         }
 
+        // ============================================================================
+// HELPER: Persistência do carrinho com chave única por empresa
+// ============================================================================
+function persistCart() {
+    const safeCart = DefensiveUtils.safeArray(cart);
+    const key = `cart_${activeCompanyId || 'company-demo-don'}`;
+    try {
+        localStorage.setItem(key, JSON.stringify(safeCart));
+        // Compatibilidade: também salva na chave antiga "cart" por segurança
+        localStorage.setItem('cart', JSON.stringify(safeCart));
+    } catch (e) {
+        console.warn('[Cart] Falha ao persistir carrinho:', e.message);
+    }
+}
         function saveData() {
             // Sincronizar dados da empresa ativa no vetor global e em chaves isoladas
             let activeComp = companies.find(c => c.id === activeCompanyId);
@@ -6100,7 +6134,7 @@
             };
 
             cart.push(cartItem);
-            localStorage.setItem('cart', JSON.stringify(cart));
+            persistCart();
             updateCartUI();
             triggerCartShake();
 
@@ -8306,7 +8340,7 @@
                 });
             }
 
-            localStorage.setItem('cart', JSON.stringify(cart));
+            persistCart();
             updateCartUI();
             triggerCartShake();
             
@@ -8325,14 +8359,14 @@
             if (item.quantity <= 0) {
                 removeFromCart(productId);
             } else {
-                localStorage.setItem('cart', JSON.stringify(cart));
+                persistCart();
                 updateCartUI();
             }
         }
 
         function removeFromCart(productId) {
             cart = cart.filter(item => item.id !== productId);
-            localStorage.setItem('cart', JSON.stringify(cart));
+            persistCart();
             updateCartUI();
         }
 
@@ -8346,7 +8380,7 @@
             });
             if (confirmed) {
                 cart = [];
-                localStorage.setItem('cart', JSON.stringify(cart));
+                persistCart();
                 updateCartUI();
             }
         }
