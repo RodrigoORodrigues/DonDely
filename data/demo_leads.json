@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "id": "lead_1789467629426_nxtgf",
+    "phone": "(21) 97387-9878",
+    "cleanPhone": "21973879878",
+    "name": "Interessado Demo",
+    "createdAt": "2026-09-15T10:20:29.426Z",
+    "trialExpiresAt": 1789554029426,
+    "storeSlug": "demo",
+    "source": "store-demo",
+    "unlockCount": 1,
+    "status": "ACTIVE_TRIAL"
+  }
+]
