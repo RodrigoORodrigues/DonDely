@@ -3310,6 +3310,8 @@ function persistCart() {
                 activeComp.cnpj = settings.cnpj || '';
                 activeComp.address = settings.address || '';
                 activeComp.logoUrl = settings.logoUrl;
+                activeComp.coverUrl = settings.coverUrl || '';
+                coverUrl: activeComp.coverUrl || '',
                 activeComp.adminPassword = settings.adminPassword;
                 activeComp.deliveryFee = settings.deliveryFee;
                 activeComp.deliveryTime = settings.deliveryTime || '30 - 45 min';
@@ -5537,6 +5539,8 @@ function persistCart() {
                 document.getElementById('companyEmail').value = settings.email || '';
             }
             document.getElementById('logoUrl').value = settings.logoUrl || '';
+            const coverInput = document.getElementById('coverUrl');
+            if (coverInput) coverInput.value = settings.coverUrl || '';
             document.getElementById('restaurantSubtitle').value = settings.subtitle || '';
             updateAdminShareLinkDisplay();
             if (document.getElementById('restaurantInstagram')) {
@@ -5707,7 +5711,10 @@ function persistCart() {
                 heroRestaurantName.textContent = settings.restaurantName;
                 heroRestaurantName.style.display = 'block'; // Mostra o texto H1
             }
-
+            // Aplicar imagem de capa do hero (se houver)
+            if (typeof applyHeroCover === 'function') {
+                applyHeroCover(settings.coverUrl || '');
+            }
             document.getElementById('heroSubtitle').textContent = settings.subtitle;
             
             // Atualizar Previsão de Entrega no Hero e no Carrinho
@@ -6810,6 +6817,53 @@ function persistCart() {
             }
         }
 
+        // ============================================================================
+// UPLOAD DE IMAGEM DE CAPA DO HERO
+// ============================================================================
+function handleCoverUpload(input) {
+    if (!input.files || !input.files[0]) return;
+
+    const file = input.files[0];
+    if (file.size > 2 * 1024 * 1024) {
+        showNotification('⚠️ Imagem muito grande. Use uma imagem menor que 2MB.', 'warning');
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const coverVal = e.target.result;
+        const coverInput = document.getElementById('coverUrl');
+        if (coverInput) coverInput.value = coverVal;
+
+        settings.coverUrl = coverVal;
+        const activeComp = (typeof getActiveCompany === 'function' ? getActiveCompany() : null) ||
+                           (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId));
+        if (activeComp) activeComp.coverUrl = coverVal;
+
+        applyHeroCover(coverVal);
+        showNotification('Imagem de capa carregada com sucesso! 🖼️✨', 'success');
+    };
+    reader.readAsDataURL(file);
+}
+
+// Aplica a imagem de capa no hero section
+function applyHeroCover(url) {
+    const heroSection = document.querySelector('.hero');
+    if (!heroSection) return;
+
+    if (url && typeof url === 'string' && url.trim() !== '') {
+        // Escapar aspas para segurança
+        const safeUrl = url.replace(/"/g, '&quot;').replace(/\)/g, '\\)');
+        heroSection.style.setProperty('--hero-cover-url', `url("${safeUrl}")`);
+        heroSection.classList.add('hero-has-cover');
+    } else {
+        heroSection.style.removeProperty('--hero-cover-url');
+        heroSection.classList.remove('hero-has-cover');
+    }
+}
+window.handleCoverUpload = handleCoverUpload;
+window.applyHeroCover = applyHeroCover;
+
         function handleProductImageUpload(input) {
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
@@ -7027,6 +7081,9 @@ function persistCart() {
                 settings.email = document.getElementById('companyEmail').value.trim();
             }
             settings.logoUrl = document.getElementById('logoUrl').value;
+            if (document.getElementById('coverUrl')) {
+            settings.coverUrl = document.getElementById('coverUrl').value.trim();
+            }
             settings.subtitle = document.getElementById('restaurantSubtitle').value;
             if (document.getElementById('restaurantInstagram')) {
                 settings.instagram = document.getElementById('restaurantInstagram').value.trim();
