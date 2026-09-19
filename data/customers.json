@@ -196,5 +196,16 @@
     "neighborhood": "Centro",
     "reference": "",
     "created_at": "2026-09-19T05:04:12.734Z"
+  },
+  {
+    "id": "cust_1789794828166_ec28dd10",
+    "name": "Cliente Teste Integrado",
+    "phone": "21999885113",
+    "passwordHash": "fe5e4aac94b367686a77acd1f516927b659070f356c6c53edd33d32c3fe056eb",
+    "salt": "34cd71c42af0747dd7bd95d2deaa5b2b",
+    "address": "Rua das Flores, 123",
+    "neighborhood": "Centro",
+    "reference": "",
+    "created_at": "2026-09-19T05:13:48.166Z"
   }
 ]
