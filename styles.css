@@ -3875,8 +3875,7 @@
     .hero-card {
         display: none; /* Oculta o card em landscape curto para priorizar conteúdo */
     }
-}# Ctrl + C para parar
-npm run dev
+}
 
         .hero-logo-img {
             max-width: 100%;
