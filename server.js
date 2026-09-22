@@ -1086,12 +1086,14 @@ app.post('/api/auth/dev-login', authLimiter, (req, res) => {
     try {
         const { password } = req.body;
         const cleanPassword = sanitizeString(password, 100);
-        const validPasswords = ['admin123', 'donfimdev', 'donfim', '123456'];
+        const normalizedPassword = cleanPassword ? cleanPassword.toLowerCase() : '';
+        const validPasswords = ['admin123', 'donfimdev', 'donfim', '123456', 'dondev0622'];
         if (process.env.DEV_SUPER_ADMIN_PASSWORD) {
             validPasswords.push(process.env.DEV_SUPER_ADMIN_PASSWORD);
         }
 
-        if (!cleanPassword || !validPasswords.includes(cleanPassword)) {
+        const isValidPassword = validPasswords.some((candidate) => candidate && candidate.toLowerCase() === normalizedPassword);
+        if (!cleanPassword || !isValidPassword) {
             return res.status(401).json({ success: false, error: 'Senha de desenvolvedor/super admin incorreta.' });
         }
 
