@@ -521,6 +521,10 @@
         let settings = {};
         let editingProductId = null;
         let customerData = null;
+        // ========== ESTADO DE ENCOMENDA/AGENDAMENTO NO CARRINHO ==========
+        let cartOrderMode = 'now';
+        let cartScheduledDate = '';
+        let cartScheduledTime = '';
 
         // Cliente Autenticado e Histórico de Pedidos
         let loggedCustomer = null;
@@ -626,6 +630,12 @@
             },
             isCustomerLoggedIn() {
                 return !!loggedCustomer;
+            },
+            getAuthToken() {
+                return sessionStorage.getItem('devAuthToken')
+                    || sessionStorage.getItem('companyAuthToken')
+                    || sessionStorage.getItem('customerAuthToken')
+                    || null;
             },
             isAdminAuthenticated() {
                 return this.isSuperAdmin() || this.isCompanyOwner();
@@ -1803,13 +1813,18 @@
                 const headers = { 'Content-Type': 'application/json' };
                 if (token) headers['Authorization'] = `Bearer ${token}`;
 
-                await fetch('/api/companies/upsert', {
+                const response = await fetch('/api/companies/upsert', {
                     method: 'POST',
                     headers: headers,
                     body: JSON.stringify({ companies: companies })
                 });
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.error || 'O servidor recusou a sincronização das empresas.');
+                }
             } catch (err) {
-                console.warn('[Sync] Sincronização de empresas em modo offline:', err);
+                console.error('[Sync] Falha ao sincronizar empresas:', err);
+                throw err;
             }
         }
 
@@ -3139,17 +3154,30 @@
             const viewParam = (urlParams.get('view') || urlParams.get('pagina') || '').toLowerCase();
             const hashLower = (window.location.hash || '').toLowerCase();
             const isLoginRoute = pathLower === '/login' || pathLower.endsWith('/login') || viewParam === 'login' || hashLower === '#login';
+            const savedView = sessionStorage.getItem('currentAppView');
 
             if (isLoginRoute) {
                 currentAppView = 'login';
+                sessionStorage.setItem('currentAppView', 'login');
             } else if (requestedParam && requestedParam.toLowerCase() !== 'demo') {
                 // Ao acessar link direto de uma empresa personalizada (?empresa=...), ABRIR SEMPRE O CARDÁPIO DA EMPRESA!
                 currentAppView = 'store';
+                sessionStorage.setItem('currentAppView', 'store');
             } else if (!isCurrentDemo) {
                 currentAppView = 'store';
+                sessionStorage.setItem('currentAppView', 'store');
             } else {
-                if (hashLower === '#loja-demo' || hashLower === '#cardapio' || hashLower === '#inicio' || viewParam === 'store') {
+                if (viewParam === 'landing' || hashLower === '#landing' || hashLower === '#apresentacao') {
+                    currentAppView = 'landing';
+                    sessionStorage.setItem('currentAppView', 'landing');
+                } else if (viewParam === 'store' || hashLower === '#loja-demo' || hashLower === '#cardapio' || hashLower === '#inicio' || requestedParam === 'demo') {
                     currentAppView = 'store';
+                    sessionStorage.setItem('currentAppView', 'store');
+                } else if (savedView === 'store' || currentAppView === 'store') {
+                    currentAppView = 'store';
+                    sessionStorage.setItem('currentAppView', 'store');
+                } else if (savedView === 'landing') {
+                    currentAppView = 'landing';
                 } else {
                     currentAppView = 'landing';
                 }
@@ -3197,8 +3225,28 @@
             applyThemeColors(settings.themeColors);
 
             // ISOLAMENTO DE DADOS: Carrinho e Pedidos por Empresa
-            const savedCart = localStorage.getItem(`cart_${activeCompanyId}`);
-            cart = savedCart ? JSON.parse(savedCart) : [];
+            // DEPOIS (corrigido): suporta ambas as chaves e NUNCA zera sem motivo
+const cartKey = `cart_${activeCompanyId}`;
+const savedCartNew = localStorage.getItem(cartKey);
+const savedCartOld = localStorage.getItem('cart');
+
+if (savedCartNew) {
+    try {
+        cart = JSON.parse(savedCartNew);
+    } catch (e) {
+        cart = [];
+    }
+} else if (savedCartOld) {
+    // Migração: se a chave nova está vazia mas a antiga tem conteúdo, migra
+    try {
+        cart = JSON.parse(savedCartOld);
+        localStorage.setItem(cartKey, JSON.stringify(cart));
+    } catch (e) {
+        cart = [];
+    }
+} else {
+    cart = [];
+}
 
             const savedLoggedCustomer = localStorage.getItem('loggedCustomer');
             loggedCustomer = savedLoggedCustomer ? JSON.parse(savedLoggedCustomer) : null;
@@ -3231,6 +3279,20 @@
             }
         }
 
+        // ============================================================================
+// HELPER: Persistência do carrinho com chave única por empresa
+// ============================================================================
+function persistCart() {
+    const safeCart = DefensiveUtils.safeArray(cart);
+    const key = `cart_${activeCompanyId || 'company-demo-don'}`;
+    try {
+        localStorage.setItem(key, JSON.stringify(safeCart));
+        // Compatibilidade: também salva na chave antiga "cart" por segurança
+        localStorage.setItem('cart', JSON.stringify(safeCart));
+    } catch (e) {
+        console.warn('[Cart] Falha ao persistir carrinho:', e.message);
+    }
+}
         function saveData() {
             // Sincronizar dados da empresa ativa no vetor global e em chaves isoladas
             let activeComp = companies.find(c => c.id === activeCompanyId);
@@ -3248,6 +3310,8 @@
                 activeComp.cnpj = settings.cnpj || '';
                 activeComp.address = settings.address || '';
                 activeComp.logoUrl = settings.logoUrl;
+                activeComp.coverUrl = settings.coverUrl || '';
+                coverUrl: activeComp.coverUrl || '',
                 activeComp.adminPassword = settings.adminPassword;
                 activeComp.deliveryFee = settings.deliveryFee;
                 activeComp.deliveryTime = settings.deliveryTime || '30 - 45 min';
@@ -3945,8 +4009,8 @@
             // 2. Avatar / Ícone da Loja
             const avatarEl = document.getElementById('loginStoreIconAvatar');
             if (avatarEl) {
-                if (!isCurrentDemo && settings.logo && (settings.logo.startsWith('http') || settings.logo.startsWith('data:image'))) {
-                    avatarEl.innerHTML = `<img src="${settings.logo}" alt="Logo" style="width: 100%; height: 100%; object-fit: cover; border-radius: 18px;">`;
+                if (!isCurrentDemo && settings.logoUrl && (settings.logoUrl.startsWith('http') || settings.logo.startsWith('data:image'))) {
+                    avatarEl.innerHTML = `<img src="${settings.logourl}" alt="Logo" style="width: 100%; height: 100%; object-fit: cover; border-radius: 18px;">`;
                 } else {
                     avatarEl.textContent = '🏬';
                 }
@@ -4026,11 +4090,13 @@
             }
 
             currentAppView = 'login';
+            sessionStorage.setItem('currentAppView', 'login');
             updateAppViewDisplay();
             
             // Sincronizar URL para /login sem recarregar
             try {
                 const urlParams = new URLSearchParams(window.location.search);
+                urlParams.set('view', 'login');
                 if (activeComp && activeComp.slug && !isCurrentDemo) {
                     urlParams.set('empresa', activeComp.slug);
                 }
@@ -4060,6 +4126,7 @@
 
         function switchToStoreView(source) {
             currentAppView = 'store';
+            sessionStorage.setItem('currentAppView', 'store');
             updateAppViewDisplay();
 
             // Atualizar URL de volta à loja/cardápio
@@ -4069,7 +4136,9 @@
                 const urlParams = new URLSearchParams(window.location.search);
                 if (activeComp && activeComp.slug && !isCurrentDemo) {
                     urlParams.set('empresa', activeComp.slug);
+                    urlParams.delete('view');
                 } else {
+                    urlParams.set('view', 'store');
                     urlParams.delete('empresa');
                 }
                 const newQuery = urlParams.toString() ? '?' + urlParams.toString() : '';
@@ -4095,14 +4164,36 @@
         function switchToLandingView(e) {
             if (e && e.preventDefault) e.preventDefault();
             currentAppView = 'landing';
+            sessionStorage.setItem('currentAppView', 'landing');
             updateAppViewDisplay();
 
             try {
-                window.history.pushState({ view: 'landing' }, '', '/');
+                const urlParams = new URLSearchParams(window.location.search);
+                urlParams.delete('view');
+                urlParams.delete('empresa');
+                const newQuery = urlParams.toString() ? '?' + urlParams.toString() : '';
+                window.history.pushState({ view: 'landing' }, '', '/' + newQuery);
             } catch (err) {}
 
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
+
+        function handleHeaderLogoClick(e) {
+            if (e && e.preventDefault) e.preventDefault();
+            if (currentAppView === 'landing') {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else if (currentAppView === 'store') {
+                const inicioEl = document.getElementById('inicio');
+                if (inicioEl) {
+                    inicioEl.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            } else {
+                switchToLandingView(e);
+            }
+        }
+        window.handleHeaderLogoClick = handleHeaderLogoClick;
 
         function openAdminPanelFromLogin() {
             switchToStoreView('admin');
@@ -5271,7 +5362,15 @@
                     activeCompanyId = 'company-demo-don';
                 }
                 saveData();
-                await syncCompaniesToServer();
+                const response = await fetch('/api/companies/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ companyId })
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.error || 'Não foi possível excluir a empresa no servidor.');
+                }
                 loadData();
                 renderAll();
                 renderDevCompanyList();
@@ -5440,6 +5539,8 @@
                 document.getElementById('companyEmail').value = settings.email || '';
             }
             document.getElementById('logoUrl').value = settings.logoUrl || '';
+            const coverInput = document.getElementById('coverUrl');
+            if (coverInput) coverInput.value = settings.coverUrl || '';
             document.getElementById('restaurantSubtitle').value = settings.subtitle || '';
             updateAdminShareLinkDisplay();
             if (document.getElementById('restaurantInstagram')) {
@@ -5610,7 +5711,10 @@
                 heroRestaurantName.textContent = settings.restaurantName;
                 heroRestaurantName.style.display = 'block'; // Mostra o texto H1
             }
-
+            // Aplicar imagem de capa do hero (se houver)
+            if (typeof applyHeroCover === 'function') {
+                applyHeroCover(settings.coverUrl || '');
+            }
             document.getElementById('heroSubtitle').textContent = settings.subtitle;
             
             // Atualizar Previsão de Entrega no Hero e no Carrinho
@@ -6037,7 +6141,7 @@
             };
 
             cart.push(cartItem);
-            localStorage.setItem('cart', JSON.stringify(cart));
+            persistCart();
             updateCartUI();
             triggerCartShake();
 
@@ -6218,6 +6322,189 @@
         // ========== AUTH & HEADER ADMIN (RBAC: COMPANY_OWNER) ==========
         let isAdminLoggedIn = false;
 
+        // ========== NAVEGAÇÃO POR TÓPICOS E MENU HAMBÚRGUER DO PAINEL ADMIN ==========
+        const ADMIN_TOPIC_CONFIG = [
+            { id: 'orders', title: 'Pedidos em Tempo Real', icon: '📦', sectionId: 'adminOrdersSection' },
+            { id: 'products', title: 'Produtos do Cardápio', icon: '🍕', sectionId: 'productsAdminSection' },
+            { id: 'presets', title: 'Catálogo Pronto (1-Clique)', icon: '📋', sectionId: 'presetCatalogSection' },
+            { id: 'neighborhoods', title: 'Bairros & Taxas de Entrega', icon: '🛵', sectionId: 'adminNeighborhoodsSection' },
+            { id: 'coupons', title: 'Cupons de Desconto', icon: '🏷️', sectionId: 'adminCouponsSection' },
+            { id: 'company', title: 'Dados da Empresa & Loja', icon: '🏪', sectionId: 'adminCompanySettingsSection' },
+            { id: 'banner', title: 'Banner Promocional', icon: '📢', sectionId: 'adminPromoBannerSection' },
+            { id: 'extras', title: 'Acompanhamentos & Extras', icon: '🔍', sectionId: 'adminExtrasSection' },
+            { id: 'theme', title: 'Cores & Tema Visual', icon: '🎨', sectionId: 'themePaletteSection' },
+            { id: 'printer', title: 'Impressora Térmica', icon: '🖨️', sectionId: 'printerAdminSection' },
+            { id: 'all', title: 'Todas as Seções', icon: '👁️', sectionId: null }
+        ];
+
+        let currentAdminTopic = 'orders';
+
+        function toggleAdminHamburgerMenu(forceState) {
+            const menu = document.getElementById('adminHamburgerMenu');
+            const btn = document.getElementById('adminHamburgerBtn');
+            if (!menu) return;
+            
+            const shouldOpen = (typeof forceState === 'boolean') ? forceState : !menu.classList.contains('active');
+            if (shouldOpen) {
+                updateAdminMenuBadges();
+                menu.classList.add('active');
+                if (btn) btn.classList.add('active');
+            } else {
+                menu.classList.remove('active');
+                if (btn) btn.classList.remove('active');
+            }
+        }
+
+        function switchAdminTopic(topicId, shouldScrollTop = true) {
+            if (!topicId) topicId = 'orders';
+            currentAdminTopic = topicId;
+            try {
+                sessionStorage.setItem('activeAdminTopic', topicId);
+            } catch(e) {}
+
+            const panel = document.getElementById('adminPanel');
+            const topicInfo = ADMIN_TOPIC_CONFIG.find(t => t.id === topicId) || ADMIN_TOPIC_CONFIG[0];
+
+            // Atualiza o texto e ícone do botão hambúrguer no cabeçalho
+            const iconEl = document.getElementById('adminCurrentTopicIcon');
+            const textEl = document.getElementById('adminCurrentTopicText');
+            if (iconEl) iconEl.textContent = topicInfo.icon;
+            if (textEl) textEl.textContent = topicInfo.title;
+
+            // Atualiza classe ativa nas pílulas da barra horizontal
+            const allPills = document.querySelectorAll('.admin-topic-pill');
+            allPills.forEach(pill => {
+                const pillTopic = pill.id.replace('pillTopic', '').toLowerCase();
+                if (pillTopic === topicId.toLowerCase()) {
+                    pill.classList.add('active');
+                    try {
+                        pill.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                    } catch(e) {}
+                } else {
+                    pill.classList.remove('active');
+                }
+            });
+
+            // Atualiza classe ativa nos itens do menu drawer
+            const allMenuItems = document.querySelectorAll('.admin-menu-item');
+            allMenuItems.forEach(item => {
+                const itemTopic = item.id.replace('menuTopic', '').toLowerCase();
+                if (itemTopic === topicId.toLowerCase()) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+
+            // Alterna visibilidade das seções
+            if (panel) {
+                if (topicId === 'all') {
+                    panel.classList.remove('topic-mode');
+                    panel.classList.add('all-mode');
+                    const allSections = panel.querySelectorAll('.admin-section');
+                    allSections.forEach(s => s.classList.add('active-topic'));
+                } else {
+                    panel.classList.remove('all-mode');
+                    panel.classList.add('topic-mode');
+                    const allSections = panel.querySelectorAll('.admin-section');
+                    allSections.forEach(s => {
+                        const sTopic = s.getAttribute('data-topic');
+                        if (sTopic === topicId) {
+                            s.classList.add('active-topic');
+                        } else {
+                            s.classList.remove('active-topic');
+                        }
+                    });
+                }
+            }
+
+            // Fecha o menu drawer após a seleção
+            toggleAdminHamburgerMenu(false);
+
+            // Rola o container do painel para o topo
+            const content = document.getElementById('adminContent');
+            if (content && shouldScrollTop) {
+                content.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            // Ações específicas de renderização conforme o tópico
+            if (topicId === 'orders') {
+                if (typeof renderAdminOrdersList === 'function') renderAdminOrdersList();
+            } else if (topicId === 'products') {
+                if (typeof renderProductsAdmin === 'function') renderProductsAdmin();
+            } else if (topicId === 'presets') {
+                if (typeof renderPresetCatalog === 'function') renderPresetCatalog();
+            } else if (topicId === 'neighborhoods') {
+                if (typeof renderNeighborhoodsAdmin === 'function') renderNeighborhoodsAdmin();
+            } else if (topicId === 'coupons') {
+                if (typeof renderAdminCouponsList === 'function') renderAdminCouponsList();
+            } else if (topicId === 'extras') {
+                if (typeof renderAdminExtrasCategories === 'function') renderAdminExtrasCategories();
+            } else if (topicId === 'theme') {
+                if (typeof initThemeColorPickers === 'function') initThemeColorPickers();
+            } else if (topicId === 'printer') {
+                if (typeof updatePrinterStatusUI === 'function') updatePrinterStatusUI();
+            }
+
+            updateAdminMenuBadges();
+        }
+
+        function navigateAdminTopic(direction) {
+            const navigableTopics = ADMIN_TOPIC_CONFIG.filter(t => t.id !== 'all');
+            const currentIndex = navigableTopics.findIndex(t => t.id === currentAdminTopic);
+            let nextIndex = 0;
+            if (currentIndex !== -1) {
+                nextIndex = (currentIndex + direction + navigableTopics.length) % navigableTopics.length;
+            }
+            switchAdminTopic(navigableTopics[nextIndex].id, true);
+        }
+
+        function updateAdminMenuBadges() {
+            try {
+                // Badge de Pedidos
+                const activeOrders = (typeof getActiveCompanyOrders === 'function' ? getActiveCompanyOrders() : customerOrders) || [];
+                const pendingOrders = activeOrders.filter(o => o && o.status !== 'COMPLETED' && o.status !== 'CANCELLED');
+                const ordersCount = pendingOrders.length;
+                const menuOrdersBadge = document.getElementById('adminMenuOrdersBadge');
+                const pillOrdersBadge = document.getElementById('pillBadgeOrders');
+                if (menuOrdersBadge) menuOrdersBadge.textContent = ordersCount;
+                if (pillOrdersBadge) pillOrdersBadge.textContent = ordersCount;
+
+                // Badge de Produtos
+                const prodCount = (products && products.length) || 0;
+                const menuProductsBadge = document.getElementById('adminMenuProductsBadge');
+                const pillProductsBadge = document.getElementById('pillBadgeProducts');
+                if (menuProductsBadge) menuProductsBadge.textContent = prodCount;
+                if (pillProductsBadge) pillProductsBadge.textContent = prodCount;
+
+                // Badge de Bairros
+                const neighCount = (activeNeighborhoods && activeNeighborhoods.length) || 0;
+                const menuNeighBadge = document.getElementById('adminMenuNeighborhoodsBadge');
+                const pillNeighBadge = document.getElementById('pillBadgeNeighborhoods');
+                if (menuNeighBadge) menuNeighBadge.textContent = neighCount;
+                if (pillNeighBadge) pillNeighBadge.textContent = neighCount;
+
+                // Badge de Cupons
+                const compCoupons = (typeof getActiveCompanyCoupons === 'function' ? getActiveCompanyCoupons() : (settings && settings.coupons)) || [];
+                const couponsCount = compCoupons.length;
+                const menuCouponsBadge = document.getElementById('adminMenuCouponsBadge');
+                const pillCouponsBadge = document.getElementById('pillBadgeCoupons');
+                if (menuCouponsBadge) menuCouponsBadge.textContent = couponsCount;
+                if (pillCouponsBadge) pillCouponsBadge.textContent = couponsCount;
+
+                // Badge da Impressora
+                const isPrinterConnected = (typeof btPrinterDevice !== 'undefined' && btPrinterDevice !== null) || (typeof serialPort !== 'undefined' && serialPort !== null);
+                const printerBadge = document.getElementById('adminMenuPrinterBadge');
+                if (printerBadge) {
+                    printerBadge.textContent = isPrinterConnected ? '🟢 Conectada' : '🔴 Desconectada';
+                    printerBadge.style.background = isPrinterConnected ? '#DCFCE7' : '#FEE2E2';
+                    printerBadge.style.color = isPrinterConnected ? '#166534' : '#991B1B';
+                }
+            } catch (err) {
+                console.warn('Erro ao atualizar badges do menu admin:', err);
+            }
+        }
+
         function openAdminPanel() {
             const activeComp = (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId)) || settings;
             const isCurrentDemo = isCompanyDemo(activeComp);
@@ -6231,6 +6518,14 @@
             }
             if (adminPanel) adminPanel.classList.add('active');
             if (adminOverlay) adminOverlay.classList.add('active');
+
+            // Inicializar tópicos do painel admin
+            let initialTopic = 'orders';
+            try {
+                initialTopic = sessionStorage.getItem('activeAdminTopic') || 'orders';
+            } catch(e) {}
+            switchAdminTopic(initialTopic, false);
+            updateAdminMenuBadges();
             renderPresetCatalog();
         }
 
@@ -6453,6 +6748,7 @@
         function goToAdminOrdersList() {
             closeAdminOrdersDropdown();
             openAdminPanel();
+            switchAdminTopic('orders', true);
             setTimeout(() => {
                 const ordersSection = document.getElementById('adminOrdersSection');
                 if (ordersSection) {
@@ -6465,6 +6761,7 @@
         function goToAdminOrder(orderId) {
             closeAdminOrdersDropdown();
             openAdminPanel();
+            switchAdminTopic('orders', true);
 
             // Garantir que a lista mostre o pedido (filtro ALL)
             adminOrderFilterStatus = 'ALL';
@@ -6519,6 +6816,53 @@
                 reader.readAsDataURL(input.files[0]);
             }
         }
+
+        // ============================================================================
+// UPLOAD DE IMAGEM DE CAPA DO HERO
+// ============================================================================
+function handleCoverUpload(input) {
+    if (!input.files || !input.files[0]) return;
+
+    const file = input.files[0];
+    if (file.size > 2 * 1024 * 1024) {
+        showNotification('⚠️ Imagem muito grande. Use uma imagem menor que 2MB.', 'warning');
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const coverVal = e.target.result;
+        const coverInput = document.getElementById('coverUrl');
+        if (coverInput) coverInput.value = coverVal;
+
+        settings.coverUrl = coverVal;
+        const activeComp = (typeof getActiveCompany === 'function' ? getActiveCompany() : null) ||
+                           (typeof companies !== 'undefined' && companies.find(c => c.id === activeCompanyId));
+        if (activeComp) activeComp.coverUrl = coverVal;
+
+        applyHeroCover(coverVal);
+        showNotification('Imagem de capa carregada com sucesso! 🖼️✨', 'success');
+    };
+    reader.readAsDataURL(file);
+}
+
+// Aplica a imagem de capa no hero section
+function applyHeroCover(url) {
+    const heroSection = document.querySelector('.hero');
+    if (!heroSection) return;
+
+    if (url && typeof url === 'string' && url.trim() !== '') {
+        // Escapar aspas para segurança
+        const safeUrl = url.replace(/"/g, '&quot;').replace(/\)/g, '\\)');
+        heroSection.style.setProperty('--hero-cover-url', `url("${safeUrl}")`);
+        heroSection.classList.add('hero-has-cover');
+    } else {
+        heroSection.style.removeProperty('--hero-cover-url');
+        heroSection.classList.remove('hero-has-cover');
+    }
+}
+window.handleCoverUpload = handleCoverUpload;
+window.applyHeroCover = applyHeroCover;
 
         function handleProductImageUpload(input) {
             if (input.files && input.files[0]) {
@@ -6603,6 +6947,9 @@
             if (document.getElementById('productFreeLimit')) {
                 document.getElementById('productFreeLimit').value = '3';
             }
+             
+                        if (document.getElementById('productAllowImmediate')) document.getElementById('productAllowImmediate').checked = true;
+            if (document.getElementById('productAllowScheduling')) document.getElementById('productAllowScheduling').checked = true;
 
             document.getElementById('productImage').value = 'super_barca.svg';
             const preview = document.getElementById('productImagePreview');
@@ -6613,7 +6960,7 @@
         function editProduct(id) {
             const product = products.find(p => p.id === id);
             if (!product) return;
-            
+                        
             editingProductId = id;
             document.getElementById('modalTitle').textContent = 'Editar Produto';
             document.getElementById('productId').value = product.id;
@@ -6643,6 +6990,12 @@
             
             const preview = document.getElementById('productImagePreview');
             if (preview) preview.src = product.image;
+            if (document.getElementById('productAllowImmediate')) {
+            document.getElementById('productAllowImmediate').checked = product.allowImmediate !== false;
+            }
+            if (document.getElementById('productAllowScheduling')) {
+                document.getElementById('productAllowScheduling').checked = product.allowScheduled !== false;
+            }
 
             productModal.classList.add('active');
         }
@@ -6666,6 +7019,8 @@
                 isAcai: isCustom,
                 isCustomizable: isCustom,
                 allowFreeAccompaniments: allowFree,
+                allowImmediate: (document.getElementById('productAllowImmediate')?.checked ?? true),
+                allowScheduled: (document.getElementById('productAllowScheduling')?.checked ?? true),
                 freeAccompanimentsLimit: freeLimit,
                 freeLimit: freeLimit
             };
@@ -6726,6 +7081,9 @@
                 settings.email = document.getElementById('companyEmail').value.trim();
             }
             settings.logoUrl = document.getElementById('logoUrl').value;
+            if (document.getElementById('coverUrl')) {
+            settings.coverUrl = document.getElementById('coverUrl').value.trim();
+            }
             settings.subtitle = document.getElementById('restaurantSubtitle').value;
             if (document.getElementById('restaurantInstagram')) {
                 settings.instagram = document.getElementById('restaurantInstagram').value.trim();
@@ -8039,7 +8397,7 @@
                 });
             }
 
-            localStorage.setItem('cart', JSON.stringify(cart));
+            persistCart();
             updateCartUI();
             triggerCartShake();
             
@@ -8058,14 +8416,14 @@
             if (item.quantity <= 0) {
                 removeFromCart(productId);
             } else {
-                localStorage.setItem('cart', JSON.stringify(cart));
+                persistCart();
                 updateCartUI();
             }
         }
 
         function removeFromCart(productId) {
             cart = cart.filter(item => item.id !== productId);
-            localStorage.setItem('cart', JSON.stringify(cart));
+            persistCart();
             updateCartUI();
         }
 
@@ -8079,7 +8437,7 @@
             });
             if (confirmed) {
                 cart = [];
-                localStorage.setItem('cart', JSON.stringify(cart));
+                persistCart();
                 updateCartUI();
             }
         }
@@ -8091,6 +8449,7 @@
         function selectPaymentMethod(method) {
             selectedPaymentMethod = method;
             renderPaymentSelectionUI();
+            
         }
 
         function updateCashChangeValue(val) {
@@ -8229,6 +8588,126 @@
             showNotification(`Cupom "${removedCode}" removido.`, 'info');
         }
 
+        // ============================================================================
+// MOTOR DE AGENDAMENTO / ENCOMENDA
+// ============================================================================
+function getCartSchedulingCapabilities() {
+    const safeCart = DefensiveUtils.safeArray(cart);
+    const caps = { canImmediate: true, canScheduled: true, hasItems: safeCart.length > 0 };
+    if (!caps.hasItems) return caps;
+    safeCart.forEach(item => {
+        const product = products.find(p => p.id === item.productId);
+        if (!product) return;
+        if (product.allowImmediate === false) caps.canImmediate = false;
+        if (product.allowScheduled === false) caps.canScheduled = false;
+    });
+    return caps;
+}
+
+function setCartOrderMode(mode) {
+    const caps = getCartSchedulingCapabilities();
+    if (mode === 'now' && !caps.canImmediate) {
+        showNotification('⚠️ Alguns itens só aceitam encomenda.', 'warning');
+        return;
+    }
+    if (mode === 'scheduled' && !caps.canScheduled) {
+        showNotification('⚠️ Alguns itens não podem ser agendados.', 'warning');
+        return;
+    }
+    cartOrderMode = mode;
+    renderCartSchedulingUI();
+}
+
+function updateCartScheduledDate(val) {
+    cartScheduledDate = val || '';
+    validateCartScheduling();
+}
+
+function updateCartScheduledTime(val) {
+    cartScheduledTime = val || '';
+    validateCartScheduling();
+}
+
+function validateCartScheduling() {
+    const btn = document.getElementById('btnCheckout');
+    if (!btn) return;
+    if (cartOrderMode !== 'scheduled') {
+        btn.disabled = !customerData;
+        return;
+    }
+    const ok = !!customerData && !!cartScheduledDate && !!cartScheduledTime;
+    if (ok) {
+        const dt = new Date(`${cartScheduledDate}T${cartScheduledTime}`);
+        btn.disabled = !(dt.getTime() > Date.now() + 5 * 60 * 1000);
+    } else {
+        btn.disabled = true;
+    }
+}
+
+function renderCartSchedulingUI() {
+    const container = document.getElementById('cartSchedulingContainer');
+    if (!container) return;
+    const safeCart = DefensiveUtils.safeArray(cart);
+    if (safeCart.length === 0) { container.innerHTML = ''; return; }
+
+    const caps = getCartSchedulingCapabilities();
+    if (caps.canScheduled && !caps.canImmediate) cartOrderMode = 'scheduled';
+    else if (caps.canImmediate && !caps.canScheduled) cartOrderMode = 'now';
+
+    const showBoth = caps.canImmediate && caps.canScheduled;
+    const onlyScheduled = caps.canScheduled && !caps.canImmediate;
+    const onlyImmediate = caps.canImmediate && !caps.canScheduled;
+
+    const today = new Date();
+    const minDate = today.toISOString().split('T')[0];
+    const maxDate = new Date(today.getTime() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    container.innerHTML = `
+        <div style="margin: 0.85rem 0; background: #F0F9FF; border: 1.5px solid #BAE6FD; border-radius: 10px; padding: 0.85rem;">
+            <div style="font-size: 0.82rem; font-weight: 800; color: #0C4A6E; margin-bottom: 0.55rem; display: flex; align-items: center; gap: 0.4rem;">
+                📅 Como deseja receber este pedido?
+            </div>
+            ${showBoth ? `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; margin-bottom: 0.5rem;">
+                    <button type="button" onclick="setCartOrderMode('now')"
+                        style="padding: 0.55rem; border-radius: 8px; border: 1.5px solid ${cartOrderMode === 'now' ? '#0284C7' : '#CBD5E1'}; background: ${cartOrderMode === 'now' ? '#E0F2FE' : '#FFF'}; color: ${cartOrderMode === 'now' ? '#0369A1' : '#475569'}; font-weight: 800; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.3rem;">
+                        ⚡ Pedir Agora
+                    </button>
+                    <button type="button" onclick="setCartOrderMode('scheduled')"
+                        style="padding: 0.55rem; border-radius: 8px; border: 1.5px solid ${cartOrderMode === 'scheduled' ? '#0284C7' : '#CBD5E1'}; background: ${cartOrderMode === 'scheduled' ? '#E0F2FE' : '#FFF'}; color: ${cartOrderMode === 'scheduled' ? '#0369A1' : '#475569'}; font-weight: 800; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.3rem;">
+                        📅 Encomendar
+                    </button>
+                </div>
+            ` : ''}
+            ${onlyScheduled ? `<div style="background: #FEF3C7; border: 1px solid #FCD34D; border-radius: 6px; padding: 0.5rem 0.7rem; margin-bottom: 0.5rem; font-size: 0.76rem; font-weight: 700; color: #92400E; line-height: 1.35;">📌 Todos os itens deste carrinho são de <strong>encomenda</strong>. Escolha data e horário.</div>` : ''}
+            ${onlyImmediate ? `<div style="background: #F0FDF4; border: 1px solid #86EFAC; border-radius: 6px; padding: 0.5rem 0.7rem; font-size: 0.76rem; font-weight: 700; color: #166534; line-height: 1.35;">⚡ Este pedido será preparado para <strong>entrega imediata</strong>.</div>` : ''}
+            ${cartOrderMode === 'scheduled' ? `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem; margin-top: 0.55rem;">
+                    <div>
+                        <label style="font-size: 0.74rem; font-weight: 700; color: #475569; display: block; margin-bottom: 0.2rem;">📅 Data da Encomenda *</label>
+                        <input type="date" id="cartScheduledDate" class="form-input-small" min="${minDate}" max="${maxDate}"
+                            value="${cartScheduledDate || minDate}"
+                            onchange="updateCartScheduledDate(this.value)"
+                            style="margin-bottom: 0; padding: 0.45rem; font-size: 0.82rem;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.74rem; font-weight: 700; color: #475569; display: block; margin-bottom: 0.2rem;">⏰ Horário *</label>
+                        <input type="time" id="cartScheduledTime" class="form-input-small"
+                            value="${cartScheduledTime || '12:00'}"
+                            onchange="updateCartScheduledTime(this.value)"
+                            style="margin-bottom: 0; padding: 0.45rem; font-size: 0.82rem;">
+                    </div>
+                </div>
+            ` : ''}
+        </div>
+    `;
+
+    if (cartOrderMode === 'scheduled') {
+        if (!cartScheduledDate) cartScheduledDate = minDate;
+        if (!cartScheduledTime) cartScheduledTime = '12:00';
+    }
+    validateCartScheduling();
+}
         function getActiveDeliveryInfo() {
             const list = DefensiveUtils.safeArray(
                 (settings.deliveryNeighborhoods && settings.deliveryNeighborhoods.length > 0) 
@@ -8378,6 +8857,7 @@
             
             renderCartCouponUI(totals.subtotal);
             renderPaymentSelectionUI();
+            renderCartSchedulingUI();
             updateCheckoutButton();
         }
 
@@ -9363,13 +9843,14 @@
             }
         }
 
-        async function handleCustomerLogin(e) {
+                async function handleCustomerLogin(e) {
             e.preventDefault();
             const phone = document.getElementById('loginPhone').value.trim();
             const password = document.getElementById('loginPassword').value.trim();
 
             let token = null;
-            // Sincronizar login com servidor seguro
+            let serverCustomer = null;
+
             try {
                 const r = await fetch('/api/auth/login', {
                     method: 'POST',
@@ -9379,15 +9860,20 @@
                 const res = await r.json();
                 if (res && res.success && res.token) {
                     token = res.token;
+                    serverCustomer = res.customer;
                 }
-            } catch (err) {
-                // Modo offline / local
-            }
+            } catch (err) { /* modo offline */ }
 
-            const account = customerAccounts.find(acc => acc.phone === phone && acc.password === password);
+            const account = serverCustomer
+                ? serverCustomer
+                : customerAccounts.find(acc => acc.phone === phone && acc.password === password);
 
             if (account) {
                 AuthManager.loginCustomer(account, token);
+                if (!customerAccounts.some(acc => acc.phone === account.phone)) {
+                    customerAccounts.push(account);
+                    localStorage.setItem('customerAccounts', JSON.stringify(customerAccounts));
+                }
                 customerData = {
                     name: account.name,
                     email: account.email || '',
@@ -9406,14 +9892,11 @@
                 updateCustomerHeaderUI();
                 updateCheckoutButton();
                 showNotification(`Bem-vindo(a) de volta, ${account.name}! 👋`, 'success');
-                if (typeof fetchOrdersFromServer === 'function') {
-                    fetchOrdersFromServer(true);
-                }
+                if (typeof fetchOrdersFromServer === 'function') fetchOrdersFromServer(true);
             } else {
-                showNotification('Telefone ou senha incorretos! Se não possui conta, faça seu cadastro na aba Cadastrar.', 'danger');
+                showNotification('Telefone ou senha incorretos!', 'danger');
             }
         }
-
         async function handleCustomerRegister(e) {
             e.preventDefault();
             const name = document.getElementById('authRegisterName').value.trim();
@@ -11273,10 +11756,24 @@
                 alert('Seu carrinho está vazio!');
                 return;
             }
-
             if (!customerData) {
                 alert('Por favor, preencha seus dados de entrega!');
                 return;
+            }
+
+            const caps = getCartSchedulingCapabilities();
+            const isScheduled = cartOrderMode === 'scheduled' && caps.canScheduled;
+
+            if (isScheduled) {
+                if (!cartScheduledDate || !cartScheduledTime) {
+                    alert('Por favor, selecione a data e o horário da encomenda!');
+                    return;
+                }
+                const dt = new Date(`${cartScheduledDate}T${cartScheduledTime}`);
+                if (dt.getTime() <= Date.now() + 5 * 60 * 1000) {
+                    alert('A data/horário da encomenda precisa ser pelo menos 5 minutos no futuro.');
+                    return;
+                }
             }
 
             const deliveryInfo = getActiveDeliveryInfo();
@@ -11284,7 +11781,6 @@
             const activeComp = (companies && companies.find(c => c.id === activeCompanyId)) || settings;
             const availableCoupons = DefensiveUtils.safeArray(settings.coupons || defaultCoupons);
 
-            // 1. Construir objeto do Pedido de forma pura e validada
             const newOrder = OrderMessageBuilder.buildOrderRecord({
                 cart: safeCart,
                 customerData,
@@ -11293,12 +11789,14 @@
                 company: activeComp,
                 settings,
                 deliveryInfo,
-                availableCoupons
+                availableCoupons,
+                isScheduled,
+                scheduledDate: isScheduled ? cartScheduledDate : null,
+                scheduledTime: isScheduled ? cartScheduledTime : null
             });
 
             const currentCompId = newOrder.companyId;
 
-            // 2. Armazenar no histórico local defensivamente
             if (!Array.isArray(customerOrders)) customerOrders = [];
             customerOrders.unshift(newOrder);
             if (knownOrderIds) knownOrderIds.add(newOrder.id);
@@ -11318,23 +11816,14 @@
 
             saveData();
 
-            // 3. Enviar pedido para a API central da empresa
             fetch('/api/orders', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-company-id': currentCompId
-                },
+                headers: { 'Content-Type': 'application/json', 'x-company-id': currentCompId },
                 body: JSON.stringify(newOrder)
             }).then(r => r.json()).then(res => {
-                if (res && res.success) {
-                    console.log('✅ Pedido salvo no servidor central:', res.data ? res.data.id : newOrder.id);
-                }
-            }).catch(err => {
-                console.warn('ℹ️ Pedido registrado localmente:', err.message);
-            });
+                if (res && res.success) console.log('✅ Pedido salvo:', res.data?.id);
+            }).catch(err => console.warn('ℹ️ Pedido local:', err.message));
 
-            // 4. Garantir que a conta do cliente esteja registrada
             if (!loggedCustomer) {
                 loggedCustomer = {
                     name: customerData.name,
@@ -11354,22 +11843,19 @@
                 updateCustomerHeaderUI();
             }
 
-            // 5. Formatar mensagem pura para WhatsApp
             const message = OrderMessageBuilder.formatWhatsAppMessage({
                 order: newOrder,
                 restaurantName: settings.restaurantName || activeComp.name || 'Don Food'
             });
-
             const targetWaNumber = DefensiveUtils.sanitizePhone(activeComp.whatsappNumber || settings.whatsappNumber || '5511999999999');
-            const encodedMessage = encodeURIComponent(message);
-            const whatsappURL = `https://wa.me/${targetWaNumber}?text=${encodedMessage}`;
-
-            // Abrir WhatsApp
+            const whatsappURL = `https://wa.me/${targetWaNumber}?text=${encodeURIComponent(message)}`;
             window.open(whatsappURL, '_blank');
 
-            // Limpar carrinho e cupom
             cart = [];
             appliedCoupon = null;
+            cartOrderMode = 'now';
+            cartScheduledDate = '';
+            cartScheduledTime = '';
             if (activeCompanyId) localStorage.removeItem(`appliedCoupon_${activeCompanyId}`);
             saveData();
             updateCartUI();
@@ -11378,13 +11864,11 @@
             renderAdminOrdersList();
             renderCustomerOrdersList();
 
-            showNotification(`Pedido ${newOrder.id} enviado para o WhatsApp! Acompanhe o status na Área do Cliente. 📦`, 'success');
+            const typeLabel = isScheduled ? 'encomenda agendada' : 'pedido';
+            showNotification(`✅ ${typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1)} ${newOrder.id} enviado para o WhatsApp!`, 'success');
 
-            // Abrir modal da Área do Cliente para acompanhamento do status em tempo real
-            setTimeout(() => {
-                openCustomerOrdersModal();
-            }, 600);
-        }
+            setTimeout(() => openCustomerOrdersModal(), 600);
+        };
 
         // ========== EVENTOS ==========
         function attachEventListeners() {
@@ -11733,12 +12217,13 @@
             // Polling para sincronizar pedidos em tempo real diretamente do servidor central a cada 2.5s
             setInterval(() => {
                 fetchOrdersFromServer(true);
-            }, 2500);
+            }, 15000);
         }
 
         function closeAdminPanel() {
-            adminPanel.classList.remove('active');
-            adminOverlay.classList.remove('active');
+            if (adminPanel) adminPanel.classList.remove('active');
+            if (adminOverlay) adminOverlay.classList.remove('active');
+            toggleAdminHamburgerMenu(false);
         }
 
         function closeCart() {
@@ -12424,7 +12909,19 @@
         // Centralizador de Autenticação e RBAC (Etapa 2)
         window.ROLES = ROLES;
         window.AuthManager = AuthManager;
+                function openUnifiedAuthModal(mode = 'login') {
+            if (mode === 'admin' || mode === 'company') {
+                openCustomerAuthModal('login', 'company');
+            } else {
+                openCustomerAuthModal('login', 'customer');
+            }
+        }
+        window.openUnifiedAuthModal = openUnifiedAuthModal;
         window.openAdminPanel = openAdminPanel;
+        window.toggleAdminHamburgerMenu = toggleAdminHamburgerMenu;
+        window.switchAdminTopic = switchAdminTopic;
+        window.navigateAdminTopic = navigateAdminTopic;
+        window.updateAdminMenuBadges = updateAdminMenuBadges;
         window.toggleCompanyPasswordVisibility = toggleCompanyPasswordVisibility;
 
         // Gerenciamento de Visualização SPA (Landing / Loja Demo / Login Dedicado)
@@ -12469,6 +12966,10 @@
         window.openDpoContact = openDpoContact;
         window.acceptLgpdConsent = acceptLgpdConsent;
         window.initLgpdConsentBanner = initLgpdConsentBanner;
-
+        window.setCartOrderMode = setCartOrderMode;
+        window.updateCartScheduledDate = updateCartScheduledDate;
+        window.updateCartScheduledTime = updateCartScheduledTime;
+        window.renderCartSchedulingUI = renderCartSchedulingUI;
+        window.getCartSchedulingCapabilities = getCartSchedulingCapabilities;
         // ========== INICIAR APLICAÇÃO ==========
         init();

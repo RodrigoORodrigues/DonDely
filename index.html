@@ -83,20 +83,185 @@
 
     <!-- PAINEL ADMIN -->
     <div class="admin-overlay" id="adminOverlay"></div>
-    <aside class="admin-panel" id="adminPanel">
-        <div class="admin-header" style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
-            <h2 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #1E293B;">⚙️ Painel de Administração</h2>
-            <div style="display: flex; align-items: center; gap: 0.4rem;">
-                <button type="button" class="btn-admin-logout" onclick="logoutAdmin()" style="background: #FEE2E2; color: #DC2626; border: 1.5px solid #FCA5A5; padding: 0.35rem 0.7rem; border-radius: 8px; font-weight: 700; font-size: 0.8rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem;" title="Sair do Painel / Deslogar">
+    <aside class="admin-panel topic-mode" id="adminPanel">
+        <div class="admin-header" id="adminHeader">
+            <div class="admin-header-main">
+                <button type="button" class="btn-admin-hamburger" id="adminHamburgerBtn" onclick="toggleAdminHamburgerMenu()" title="Abrir Menu de Tópicos e Seções do Painel" aria-label="Menu de Seções">
+                    <span class="hamburger-icon-bars">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </span>
+                    <span class="admin-current-topic-label" id="adminCurrentTopicLabel">
+                        <span id="adminCurrentTopicIcon">📦</span>
+                        <span id="adminCurrentTopicText">Pedidos em Tempo Real</span>
+                    </span>
+                    <span class="hamburger-chevron" id="adminHamburgerChevron">▾</span>
+                </button>
+            </div>
+            <div class="admin-header-actions">
+                <button type="button" class="btn-admin-logout" id="btnAdminLogout" onclick="logoutAdmin()" title="Sair do Painel / Deslogar">
                     🚪 Sair
                 </button>
                 <button class="admin-close" id="adminClose" title="Fechar Painel">✕</button>
             </div>
         </div>
+
+        <!-- BARRA HORIZONTAL DE PÍLULAS DE ACESSO RÁPIDO AOS TÓPICOS -->
+        <div class="admin-topic-pills-bar" id="adminTopicPillsBar">
+            <button type="button" class="admin-topic-pill active" id="pillTopicOrders" onclick="switchAdminTopic('orders')">
+                <span>📦</span> <span>Pedidos</span> <span class="pill-badge" id="pillBadgeOrders">0</span>
+            </button>
+            <button type="button" class="admin-topic-pill" id="pillTopicProducts" onclick="switchAdminTopic('products')">
+                <span>🍕</span> <span>Produtos</span> <span class="pill-badge" id="pillBadgeProducts">0</span>
+            </button>
+            <button type="button" class="admin-topic-pill" id="pillTopicPresets" onclick="switchAdminTopic('presets')">
+                <span>📋</span> <span>Catálogo Pronto</span>
+            </button>
+            <button type="button" class="admin-topic-pill" id="pillTopicNeighborhoods" onclick="switchAdminTopic('neighborhoods')">
+                <span>🛵</span> <span>Bairros</span> <span class="pill-badge" id="pillBadgeNeighborhoods">0</span>
+            </button>
+            <button type="button" class="admin-topic-pill" id="pillTopicCoupons" onclick="switchAdminTopic('coupons')">
+                <span>🏷️</span> <span>Cupons</span> <span class="pill-badge" id="pillBadgeCoupons">0</span>
+            </button>
+            <button type="button" class="admin-topic-pill" id="pillTopicCompany" onclick="switchAdminTopic('company')">
+                <span>🏪</span> <span>Empresa</span>
+            </button>
+            <button type="button" class="admin-topic-pill" id="pillTopicBanner" onclick="switchAdminTopic('banner')">
+                <span>📢</span> <span>Banner</span>
+            </button>
+            <button type="button" class="admin-topic-pill" id="pillTopicExtras" onclick="switchAdminTopic('extras')">
+                <span>🔍</span> <span>Extras</span>
+            </button>
+            <button type="button" class="admin-topic-pill" id="pillTopicTheme" onclick="switchAdminTopic('theme')">
+                <span>🎨</span> <span>Tema</span>
+            </button>
+            <button type="button" class="admin-topic-pill" id="pillTopicPrinter" onclick="switchAdminTopic('printer')">
+                <span>🖨️</span> <span>Impressora</span>
+            </button>
+        </div>
+
+        <!-- MENU HAMBÚRGUER EXPANSÍVEL (LISTA DE TÓPICOS) -->
+        <div class="admin-hamburger-menu" id="adminHamburgerMenu">
+            <div class="admin-menu-header">
+                <div style="display: flex; align-items: center; gap: 0.45rem;">
+                    <span style="font-size: 1.2rem;">📑</span>
+                    <div>
+                        <div style="font-weight: 800; font-size: 0.92rem; color: #1E293B;">Seções do Painel</div>
+                        <div style="font-size: 0.72rem; color: #64748B;">Selecione o tópico desejado para gerenciar</div>
+                    </div>
+                </div>
+                <button type="button" class="admin-menu-close-btn" onclick="toggleAdminHamburgerMenu(false)" title="Fechar Menu">✕</button>
+            </div>
+            
+            <div class="admin-menu-scrollable">
+                <div class="admin-menu-category-title">⚡ OPERAÇÃO & VENDAS</div>
+                <div class="admin-menu-items-group">
+                    <button type="button" class="admin-menu-item" id="menuTopicOrders" onclick="switchAdminTopic('orders')">
+                        <span class="admin-menu-icon">📦</span>
+                        <div class="admin-menu-info">
+                            <span class="admin-menu-title">Pedidos em Tempo Real</span>
+                            <span class="admin-menu-desc">Acompanhe pedidos, atualize status e imprima comandas</span>
+                        </div>
+                        <span class="admin-menu-badge" id="adminMenuOrdersBadge">0</span>
+                    </button>
+
+                    <button type="button" class="admin-menu-item" id="menuTopicProducts" onclick="switchAdminTopic('products')">
+                        <span class="admin-menu-icon">🍕</span>
+                        <div class="admin-menu-info">
+                            <span class="admin-menu-title">Produtos do Cardápio</span>
+                            <span class="admin-menu-desc">Cadastre pratos, fotos, preços, acompanhamentos e taxas</span>
+                        </div>
+                        <span class="admin-menu-badge" id="adminMenuProductsBadge">0</span>
+                    </button>
+
+                    <button type="button" class="admin-menu-item" id="menuTopicPresets" onclick="switchAdminTopic('presets')">
+                        <span class="admin-menu-icon">📋</span>
+                        <div class="admin-menu-info">
+                            <span class="admin-menu-title">Catálogo Pronto (1-Clique)</span>
+                            <span class="admin-menu-desc">Adicione itens pré-configurados específicos do seu ramo</span>
+                        </div>
+                    </button>
+
+                    <button type="button" class="admin-menu-item" id="menuTopicNeighborhoods" onclick="switchAdminTopic('neighborhoods')">
+                        <span class="admin-menu-icon">🛵</span>
+                        <div class="admin-menu-info">
+                            <span class="admin-menu-title">Bairros & Taxas de Entrega</span>
+                            <span class="admin-menu-desc">Configure valores de frete e prazos por bairro e região</span>
+                        </div>
+                        <span class="admin-menu-badge" id="adminMenuNeighborhoodsBadge">0</span>
+                    </button>
+
+                    <button type="button" class="admin-menu-item" id="menuTopicCoupons" onclick="switchAdminTopic('coupons')">
+                        <span class="admin-menu-icon">🏷️</span>
+                        <div class="admin-menu-info">
+                            <span class="admin-menu-title">Cupons de Desconto</span>
+                            <span class="admin-menu-desc">Crie códigos com porcentagem (% OFF) para clientes</span>
+                        </div>
+                        <span class="admin-menu-badge" id="adminMenuCouponsBadge">0</span>
+                    </button>
+                </div>
+
+                <div class="admin-menu-category-title">⚙️ CONFIGURAÇÕES DA LOJA</div>
+                <div class="admin-menu-items-group">
+                    <button type="button" class="admin-menu-item" id="menuTopicCompany" onclick="switchAdminTopic('company')">
+                        <span class="admin-menu-icon">🏪</span>
+                        <div class="admin-menu-info">
+                            <span class="admin-menu-title">Dados da Empresa & Link Oficial</span>
+                            <span class="admin-menu-desc">Nome, slug exclusivo, logo, WhatsApp, endereço e horários</span>
+                        </div>
+                    </button>
+
+                    <button type="button" class="admin-menu-item" id="menuTopicBanner" onclick="switchAdminTopic('banner')">
+                        <span class="admin-menu-icon">📢</span>
+                        <div class="admin-menu-info">
+                            <span class="admin-menu-title">Banner Promocional</span>
+                            <span class="admin-menu-desc">Personalize o banner de destaque exibido no topo da loja</span>
+                        </div>
+                    </button>
+
+                    <button type="button" class="admin-menu-item" id="menuTopicExtras" onclick="switchAdminTopic('extras')">
+                        <span class="admin-menu-icon">🔍</span>
+                        <div class="admin-menu-info">
+                            <span class="admin-menu-title">Acompanhamentos & Extras</span>
+                            <span class="admin-menu-desc">Monte do Seu Jeito, blocos de itens e limite de grátis</span>
+                        </div>
+                    </button>
+
+                    <button type="button" class="admin-menu-item" id="menuTopicTheme" onclick="switchAdminTopic('theme')">
+                        <span class="admin-menu-icon">🎨</span>
+                        <div class="admin-menu-info">
+                            <span class="admin-menu-title">Cores & Tema Visual</span>
+                            <span class="admin-menu-desc">Paletas prontas e personalização completa de cores</span>
+                        </div>
+                    </button>
+
+                    <button type="button" class="admin-menu-item" id="menuTopicPrinter" onclick="switchAdminTopic('printer')">
+                        <span class="admin-menu-icon">🖨️</span>
+                        <div class="admin-menu-info">
+                            <span class="admin-menu-title">Impressora Térmica</span>
+                            <span class="admin-menu-desc">Conectar MTI-773 (58mm/80mm, Bluetooth ou USB)</span>
+                        </div>
+                        <span class="admin-menu-badge" id="adminMenuPrinterBadge">🔴</span>
+                    </button>
+                </div>
+
+                <div class="admin-menu-category-title">🌐 MODO DE VISUALIZAÇÃO</div>
+                <div class="admin-menu-items-group">
+                    <button type="button" class="admin-menu-item" id="menuTopicAll" onclick="switchAdminTopic('all')">
+                        <span class="admin-menu-icon">👁️</span>
+                        <div class="admin-menu-info">
+                            <span class="admin-menu-title">Visualizar Todas as Seções</span>
+                            <span class="admin-menu-desc">Rolar continuamente todas as seções de uma só vez</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
         
-        <div class="admin-content">
+        <div class="admin-content" id="adminContent">
             <!-- CONFIGURAÇÕES GERAIS -->
-            <div class="admin-section">
+            <div class="admin-section" id="adminCompanySettingsSection" data-topic="company">
                 <!-- CARTÃO DE LINK EXCLUSIVO DO CARDÁPIO -->
                 <div id="adminCompanyShareCard" style="background: linear-gradient(135deg, #1E1B4B, #3730A3, #4F46E5); border-radius: 12px; padding: 1.15rem; color: #FFFFFF; margin-bottom: 1.25rem; box-shadow: 0 4px 18px rgba(55, 48, 163, 0.3); border: 1px solid rgba(255, 255, 255, 0.15);">
                     <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.75rem; flex-wrap: wrap;">
@@ -176,6 +341,19 @@
                 </div>
                 
                 <div class="form-group">
+    <label class="form-label">🖼️ Imagem de Capa do Cardápio (Background do Hero)</label>
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <input type="text" class="form-input" id="coverUrl" placeholder="Ex: capa.jpg ou URL de uma imagem" style="flex: 1;">
+        <label class="btn-admin btn-primary-admin" style="cursor: pointer; padding: 0.5rem 1rem; margin: 0; white-space: nowrap;">
+            📁 Upload
+            <input type="file" id="coverFileInput" accept="image/*" style="display: none;" onchange="handleCoverUpload(this)">
+        </label>
+    </div>
+    <small style="color: var(--gray-600); font-size: 0.75rem; margin-top: 0.25rem; display: block;">
+        Recomendado: imagem horizontal em alta resolução (1920×1080 ou maior). O sistema aplica uma leve transparência automaticamente para manter o texto legível.
+    </small>
+</div>
+                <div class="form-group">
                     <label class="form-label">Subtítulo Promocional</label>
                     <input type="text" class="form-input" id="restaurantSubtitle" placeholder="Delivery rápido e sabor inigualável!">
                 </div>
@@ -242,10 +420,22 @@
                 </div>
                 
                 <button class="btn-admin btn-success" id="saveSettings">💾 Salvar Configurações</button>
+
+                <div class="admin-topic-nav-footer">
+                    <button type="button" class="btn-topic-nav btn-topic-prev" onclick="navigateAdminTopic(-1)">
+                        <span>←</span> <span class="topic-nav-text">Anterior</span>
+                    </button>
+                    <button type="button" class="btn-topic-nav btn-topic-menu" onclick="toggleAdminHamburgerMenu(true)">
+                        <span>☰</span> <span class="topic-nav-text">Menu de Tópicos</span>
+                    </button>
+                    <button type="button" class="btn-topic-nav btn-topic-next" onclick="navigateAdminTopic(1)">
+                        <span class="topic-nav-text">Próximo</span> <span>→</span>
+                    </button>
+                </div>
             </div>
 
             <!-- SEÇÃO DE BAIRROS E TAXAS DE ENTREGA POR REGIÃO (ZONA SUL, ZONA NORTE, CENTRO) -->
-            <div class="admin-section" id="adminNeighborhoodsSection">
+            <div class="admin-section" id="adminNeighborhoodsSection" data-topic="neighborhoods">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.5rem;">
                     <h3 class="admin-section-title" style="margin-bottom: 0;">🛵 Bairros & Taxas de Entrega por Região</h3>
                     <button type="button" class="btn-admin" onclick="resetNeighborhoodsToDefault()" style="background: #64748B; color: white; font-size: 0.78rem; padding: 0.35rem 0.7rem; border-radius: 6px;" title="Restaurar bairros padrão do RJ (Centro, Zona Sul e Zona Norte)">
@@ -360,10 +550,22 @@
                         💾 Salvar Alterações de Bairros
                     </button>
                 </div>
+
+                <div class="admin-topic-nav-footer">
+                    <button type="button" class="btn-topic-nav btn-topic-prev" onclick="navigateAdminTopic(-1)">
+                        <span>←</span> <span class="topic-nav-text">Anterior</span>
+                    </button>
+                    <button type="button" class="btn-topic-nav btn-topic-menu" onclick="toggleAdminHamburgerMenu(true)">
+                        <span>☰</span> <span class="topic-nav-text">Menu de Tópicos</span>
+                    </button>
+                    <button type="button" class="btn-topic-nav btn-topic-next" onclick="navigateAdminTopic(1)">
+                        <span class="topic-nav-text">Próximo</span> <span>→</span>
+                    </button>
+                </div>
             </div>
 
             <!-- BANNER PROMOCIONAL EM DESTAQUE (EDITÁVEL) -->
-            <div class="admin-section" id="adminPromoBannerSection">
+            <div class="admin-section" id="adminPromoBannerSection" data-topic="banner">
                 <h3 class="admin-section-title">📢 Banner Promocional no Topo (Editável)</h3>
                 <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 0.85rem;">
                     Personalize o banner de destaque exibido no topo do seu cardápio:
@@ -446,10 +648,22 @@
                         🔄 Restaurar Padrão da Categoria
                     </button>
                 </div>
+
+                <div class="admin-topic-nav-footer">
+                    <button type="button" class="btn-topic-nav btn-topic-prev" onclick="navigateAdminTopic(-1)">
+                        <span>←</span> <span class="topic-nav-text">Anterior</span>
+                    </button>
+                    <button type="button" class="btn-topic-nav btn-topic-menu" onclick="toggleAdminHamburgerMenu(true)">
+                        <span>☰</span> <span class="topic-nav-text">Menu de Tópicos</span>
+                    </button>
+                    <button type="button" class="btn-topic-nav btn-topic-next" onclick="navigateAdminTopic(1)">
+                        <span class="topic-nav-text">Próximo</span> <span>→</span>
+                    </button>
+                </div>
             </div>
 
             <!-- SEÇÃO DE ACOMPANHAMENTOS E INGREDIENTES EM DESTAQUE (EDITÁVEL) -->
-            <div class="admin-section" id="adminExtrasSection">
+            <div class="admin-section" id="adminExtrasSection" data-topic="extras">
                 <h3 class="admin-section-title">🔍 Seção de Acompanhamentos / Destaques (Editável)</h3>
                 <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 0.85rem;">
                     Personalize a seção de acompanhamentos e ingredientes em destaque que aparece no seu cardápio:
@@ -518,10 +732,22 @@
                         🔄 Restaurar Padrão da Categoria
                     </button>
                 </div>
+
+                <div class="admin-topic-nav-footer">
+                    <button type="button" class="btn-topic-nav btn-topic-prev" onclick="navigateAdminTopic(-1)">
+                        <span>←</span> <span class="topic-nav-text">Anterior</span>
+                    </button>
+                    <button type="button" class="btn-topic-nav btn-topic-menu" onclick="toggleAdminHamburgerMenu(true)">
+                        <span>☰</span> <span class="topic-nav-text">Menu de Tópicos</span>
+                    </button>
+                    <button type="button" class="btn-topic-nav btn-topic-next" onclick="navigateAdminTopic(1)">
+                        <span class="topic-nav-text">Próximo</span> <span>→</span>
+                    </button>
+                </div>
             </div>
 
             <!-- PALETA DE CORES E TEMA PERSONALIZADO DO APP -->
-            <div class="admin-section" id="themePaletteSection">
+            <div class="admin-section" id="themePaletteSection" data-topic="theme">
                 <h3 class="admin-section-title">🎨 Personalização de Cores e Tema (Paleta)</h3>
                 <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 0.85rem;">
                     Escolha uma paleta pré-definida ou personalize cada cor do seu aplicativo:
@@ -593,10 +819,22 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="admin-topic-nav-footer">
+                    <button type="button" class="btn-topic-nav btn-topic-prev" onclick="navigateAdminTopic(-1)">
+                        <span>←</span> <span class="topic-nav-text">Anterior</span>
+                    </button>
+                    <button type="button" class="btn-topic-nav btn-topic-menu" onclick="toggleAdminHamburgerMenu(true)">
+                        <span>☰</span> <span class="topic-nav-text">Menu de Tópicos</span>
+                    </button>
+                    <button type="button" class="btn-topic-nav btn-topic-next" onclick="navigateAdminTopic(1)">
+                        <span class="topic-nav-text">Próximo</span> <span>→</span>
+                    </button>
+                </div>
             </div>
 
             <!-- LISTAGEM DE PRODUTOS PRONTOS -->
-            <div class="admin-section">
+            <div class="admin-section" id="presetCatalogSection" data-topic="presets">
                 <h3 class="admin-section-title">📋 Listagem de Produtos Prontos (1-Clique)</h3>
                 <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 0.85rem;">
                     Selecione itens da listagem abaixo para inserir diretamente no seu cardápio:
@@ -607,10 +845,22 @@
                 <div class="preset-catalog-grid" id="presetCatalogGrid">
                     <!-- Gerado via JS -->
                 </div>
+
+                <div class="admin-topic-nav-footer">
+                    <button type="button" class="btn-topic-nav btn-topic-prev" onclick="navigateAdminTopic(-1)">
+                        <span>←</span> <span class="topic-nav-text">Anterior</span>
+                    </button>
+                    <button type="button" class="btn-topic-nav btn-topic-menu" onclick="toggleAdminHamburgerMenu(true)">
+                        <span>☰</span> <span class="topic-nav-text">Menu de Tópicos</span>
+                    </button>
+                    <button type="button" class="btn-topic-nav btn-topic-next" onclick="navigateAdminTopic(1)">
+                        <span class="topic-nav-text">Próximo</span> <span>→</span>
+                    </button>
+                </div>
             </div>
 
             <!-- GERENCIAR PRODUTOS -->
-            <div class="admin-section">
+            <div class="admin-section" id="productsAdminSection" data-topic="products">
                 <h3 class="admin-section-title">🍕 Gerenciar Produtos no Cardápio</h3>
                 
                 <div class="form-group">
@@ -627,10 +877,22 @@
                 <div class="product-admin-list" id="productAdminList">
                     <!-- Produtos serão listados aqui -->
                 </div>
+
+                <div class="admin-topic-nav-footer">
+                    <button type="button" class="btn-topic-nav btn-topic-prev" onclick="navigateAdminTopic(-1)">
+                        <span>←</span> <span class="topic-nav-text">Anterior</span>
+                    </button>
+                    <button type="button" class="btn-topic-nav btn-topic-menu" onclick="toggleAdminHamburgerMenu(true)">
+                        <span>☰</span> <span class="topic-nav-text">Menu de Tópicos</span>
+                    </button>
+                    <button type="button" class="btn-topic-nav btn-topic-next" onclick="navigateAdminTopic(1)">
+                        <span class="topic-nav-text">Próximo</span> <span>→</span>
+                    </button>
+                </div>
             </div>
 
             <!-- GERENCIAR CUPONS DE DESCONTO (% OFF) -->
-            <div class="admin-section" id="adminCouponsSection">
+            <div class="admin-section" id="adminCouponsSection" data-topic="coupons">
                 <h3 class="admin-section-title">🏷️ Gerenciar Cupons de Desconto (% de Desconto)</h3>
                 <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 0.85rem;">
                     Crie cupons com percentual de desconto (%) para seus clientes aplicarem no carrinho:
@@ -677,10 +939,22 @@
                 <div id="adminCouponsList" style="display: flex; flex-direction: column; gap: 0.5rem;">
                     <!-- Gerado dinamicamente via JS -->
                 </div>
+
+                <div class="admin-topic-nav-footer">
+                    <button type="button" class="btn-topic-nav btn-topic-prev" onclick="navigateAdminTopic(-1)">
+                        <span>←</span> <span class="topic-nav-text">Anterior</span>
+                    </button>
+                    <button type="button" class="btn-topic-nav btn-topic-menu" onclick="toggleAdminHamburgerMenu(true)">
+                        <span>☰</span> <span class="topic-nav-text">Menu de Tópicos</span>
+                    </button>
+                    <button type="button" class="btn-topic-nav btn-topic-next" onclick="navigateAdminTopic(1)">
+                        <span class="topic-nav-text">Próximo</span> <span>→</span>
+                    </button>
+                </div>
             </div>
 
             <!-- GERENCIAR PEDIDOS DOS CLIENTES (ADMIN) -->
-            <div class="admin-section" id="adminOrdersSection">
+            <div class="admin-section" id="adminOrdersSection" data-topic="orders">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem;">
                     <div>
                         <h3 class="admin-section-title" style="margin-bottom: 0.2rem; display: flex; align-items: center; gap: 0.4rem;">
@@ -743,10 +1017,22 @@
                         <!-- Gerado via JS -->
                     </div>
                 </div>
+
+                <div class="admin-topic-nav-footer">
+                    <button type="button" class="btn-topic-nav btn-topic-prev" onclick="navigateAdminTopic(-1)">
+                        <span>←</span> <span class="topic-nav-text">Anterior</span>
+                    </button>
+                    <button type="button" class="btn-topic-nav btn-topic-menu" onclick="toggleAdminHamburgerMenu(true)">
+                        <span>☰</span> <span class="topic-nav-text">Menu de Tópicos</span>
+                    </button>
+                    <button type="button" class="btn-topic-nav btn-topic-next" onclick="navigateAdminTopic(1)">
+                        <span class="topic-nav-text">Próximo</span> <span>→</span>
+                    </button>
+                </div>
             </div>
 
             <!-- CONECTAR IMPRESSORA TÉRMICA (MTI-773 / 58MM / BLUETOOTH / USB) -->
-            <div class="admin-section" id="printerAdminSection">
+            <div class="admin-section" id="printerAdminSection" data-topic="printer">
                 <h3 class="admin-section-title">🖨️ Conectar Impressora Térmica (MTI-773 / 58mm)</h3>
                 <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 0.85rem;">
                     Conecte a mini impressora térmica Bluetooth de 58mm (modelo <strong>MTI-773</strong>, POS-58 ou similar) diretamente do seu <strong>Celular, Notebook ou Computador</strong>.
@@ -839,6 +1125,18 @@
                         🚪 Sair da Empresa (Deslogar)
                     </button>
                 </div>
+
+                <div class="admin-topic-nav-footer">
+                    <button type="button" class="btn-topic-nav btn-topic-prev" onclick="navigateAdminTopic(-1)">
+                        <span>←</span> <span class="topic-nav-text">Anterior</span>
+                    </button>
+                    <button type="button" class="btn-topic-nav btn-topic-menu" onclick="toggleAdminHamburgerMenu(true)">
+                        <span>☰</span> <span class="topic-nav-text">Menu de Tópicos</span>
+                    </button>
+                    <button type="button" class="btn-topic-nav btn-topic-next" onclick="navigateAdminTopic(1)">
+                        <span class="topic-nav-text">Próximo</span> <span>→</span>
+                    </button>
+                </div>
             </div>
         </div>
     </aside>
@@ -913,6 +1211,26 @@
                             </label>
                             <input type="number" class="form-input" id="productFreeLimit" min="0" max="20" value="3" style="width: 75px; text-align: center; font-weight: 800; font-size: 0.95rem; padding: 0.25rem; border-color: #F59E0B; background: white;" title="Quantidade de acompanhamentos grátis permitidos">
                         </div>
+                    </div>
+                </div>
+                <!-- OPÇÕES DE ENCOMENDA/AGENDAMENTO -->
+                <div class="form-group" style="background: #F0F9FF; border: 1.5px solid #BAE6FD; border-radius: 10px; padding: 0.85rem; margin-bottom: 0.85rem;">
+                    <div style="font-weight: 800; color: #0C4A6E; font-size: 0.88rem; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 0.35rem;">
+                        📅 Opções de Pedido deste Produto
+                    </div>
+                    <div class="form-switch" style="margin-bottom: 0.55rem;">
+                        <label class="switch">
+                            <input type="checkbox" id="productAllowImmediate" checked>
+                            <span class="slider"></span>
+                        </label>
+                        <span class="switch-label" style="font-size: 0.84rem; color: #334155; font-weight: 600;">⚡ Aceita Pedido Imediato</span>
+                    </div>
+                    <div class="form-switch">
+                        <label class="switch">
+                            <input type="checkbox" id="productAllowScheduling" checked>
+                            <span class="slider"></span>
+                        </label>
+                        <span class="switch-label" style="font-size: 0.84rem; color: #334155; font-weight: 600;">📅 Aceita Encomenda Agendada</span>
                     </div>
                 </div>
 
@@ -1244,7 +1562,7 @@
     <!-- HEADER -->
     <header class="header">
         <div class="header-container">
-            <a href="#" class="logo">
+            <a href="javascript:void(0)" onclick="handleHeaderLogoClick(event)" class="logo">
                 <div class="logo-icon" id="logoIcon"></div>
                 <div class="logo-text-wrapper">
                     <span class="logo-title" id="headerRestaurantName">Don Food</span>
@@ -3434,6 +3752,9 @@
             <div class="cart-footer" id="cartFooter" style="display: none;">
                 <!-- FORMULÁRIO DE DADOS DO CLIENTE -->
                 <div id="customerFormContainer"></div>
+                
+                <!-- SEÇÃO DE TIPO DE PEDIDO (AGORA x ENCOMENDA) -->
+                <div id="cartSchedulingContainer"></div>
 
                 <!-- SELETOR DE FORMA DE PAGAMENTO -->
                 <div id="paymentSelectionContainer"></div>
