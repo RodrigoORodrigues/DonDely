@@ -1722,7 +1722,16 @@
                         return cleanHash.split('empresa=')[1].split('&')[0].trim();
                     } else if (cleanHash.startsWith('loja=')) {
                         return cleanHash.split('loja=')[1].split('&')[0].trim();
-                    } else if (cleanHash && !['cardapio', 'inicio', 'loja-demo', 'login', 'carrinho', 'pedidos', 'admin', 'dev'].includes(cleanHash.toLowerCase())) {
+                    } else if (cleanHash && ![
+                        // Seções da landing page demo
+                        'demorecursos', 'demodepoimentos', 'demodemonstracao', 'demoeconomia',
+                        'demobeneficio', 'democomofunciona', 'demoqrcode', 'demofaq',
+                        'demolgpd', 'democtafinal', 'demolandinghero', 'democomparativo',
+                        // Seções da loja (store view)
+                        'inicio', 'cardapio',
+                        // Rotas do sistema
+                        'loja-demo', 'login', 'carrinho', 'pedidos', 'admin', 'dev'
+                    ].includes(cleanHash.toLowerCase())) {
                         return cleanHash;
                     }
                 }
