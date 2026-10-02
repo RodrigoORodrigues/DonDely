@@ -1968,6 +1968,8 @@
             initSupabaseRealtimeOrders();
             // Iniciar banner de consentimento LGPD
             initLgpdConsentBanner();
+            // Iniciar carrossel de background do Hero Demo
+            initDemoHeroBgCarousel();
 
             // Verificação de rota direta para o Painel Dev (donfood.site/dev)
             checkDevUrlRoute();
@@ -12800,7 +12802,94 @@ function renderCartSchedulingUI() {
             }
         }
 
-        // Expor todas as funções globais necessárias para eventos onclick do HTML
+        // ============================================================================
+        // CARROSSEL DE BACKGROUND DO HERO DEMO (Imagens dos segmentos - 2.5s intervalo)
+        // ============================================================================
+        let demoHeroBgCarouselTimer = null;
+        let demoHeroBgCurrentIndex = 0;
+
+        const DEMO_HERO_BG_SEGMENTS = [
+            { key: 'açai', label: '🟣 Açaí & Gelados', gradient: 'linear-gradient(135deg, #59176B, #3E0C4C)' },
+            { key: 'burguer', label: '🟧 Hamburgueria Artesanal', gradient: 'linear-gradient(135deg, #EA580C, #9A3412)' },
+            { key: 'pizzaria', label: '🟢 Pizzaria & Massas', gradient: 'linear-gradient(135deg, #059669, #065F46)' },
+            { key: 'marmitaria', label: '🍱 Marmitaria Caseira', gradient: 'linear-gradient(135deg, #D97706, #92400E)' },
+            { key: 'sorveteria', label: '🔵 Sorveteria & Açaí', gradient: 'linear-gradient(135deg, #2563EB, #1E40AF)' },
+            { key: 'confeitaria', label: '🌸 Confeitaria & Bolos', gradient: 'linear-gradient(135deg, #DB2777, #9D174D)' },
+            { key: 'fastfood', label: '🔴 Fast Food & Lanches', gradient: 'linear-gradient(135deg, #DC2626, #991B1B)' },
+            { key: 'darkgourmet', label: '🖤 Gourmet Gold', gradient: 'linear-gradient(135deg, #1E1B4B, #0F172A)' }
+        ];
+
+        function initDemoHeroBgCarousel() {
+            const carousel = document.getElementById('demoHeroBgCarousel');
+            const labelEl = document.getElementById('demoHeroBgLabel');
+            if (!carousel) return;
+
+            const slides = carousel.querySelectorAll('.demo-hero-bg-slide');
+            if (slides.length === 0) return;
+
+            // Função para mostrar slide atual
+            function showSlide(index) {
+                slides.forEach((slide, i) => {
+                    slide.classList.remove('active', 'prev');
+                    if (i === index) {
+                        slide.classList.add('active');
+                    } else if (i === (index - 1 + slides.length) % slides.length) {
+                        slide.classList.add('prev');
+                    }
+                });
+
+                // Atualizar label
+                if (labelEl) {
+                    const segment = DEMO_HERO_BG_SEGMENTS[index];
+                    if (segment) {
+                        labelEl.textContent = segment.label;
+                        labelEl.style.background = `rgba(15, 23, 42, 0.85)`;
+                        labelEl.classList.add('visible');
+                    }
+                }
+            }
+
+            // Função para próximo slide
+            function nextSlide() {
+                // Esconder label temporariamente
+                if (labelEl) {
+                    labelEl.classList.remove('visible');
+                }
+                
+                setTimeout(() => {
+                    demoHeroBgCurrentIndex = (demoHeroBgCurrentIndex + 1) % slides.length;
+                    showSlide(demoHeroBgCurrentIndex);
+                }, 300); // Pequeno delay para transição suave do label
+            }
+
+            // Mostrar primeiro slide
+            showSlide(0);
+
+            // Iniciar timer (2.5 segundos)
+            demoHeroBgCarouselTimer = setInterval(nextSlide, 2500);
+
+            // Pausar ao hover
+            carousel.addEventListener('mouseenter', () => {
+                if (demoHeroBgCarouselTimer) {
+                    clearInterval(demoHeroBgCarouselTimer);
+                    demoHeroBgCarouselTimer = null;
+                }
+            });
+
+            // Retomar ao sair do hover
+            carousel.addEventListener('mouseleave', () => {
+                if (!demoHeroBgCarouselTimer) {
+                    demoHeroBgCarouselTimer = setInterval(nextSlide, 2500);
+                }
+            });
+
+            // Limpar ao destruir
+            window.addEventListener('beforeunload', () => {
+                if (demoHeroBgCarouselTimer) {
+                    clearInterval(demoHeroBgCarouselTimer);
+                }
+            });
+        }
         window.toggleFaqItem = toggleFaqItem;
         window.updateDemoSavingsCalc = updateDemoSavingsCalc;
         window.onDemoSavingsSliderChange = onDemoSavingsSliderChange;
