@@ -12803,10 +12803,12 @@ function renderCartSchedulingUI() {
         }
 
         // ============================================================================
-        // CARROSSEL DE BACKGROUND DO HERO DEMO (Imagens dos segmentos - 2.5s intervalo)
+        // SPLIT BACKGROUND HERO: DRAGGABLE SEPARATOR + CAROUSEL
         // ============================================================================
         let demoHeroBgCarouselTimer = null;
         let demoHeroBgCurrentIndex = 0;
+        let demoHeroSeparatorDrag = false;
+        let demoHeroSplitPosition = 50; // percentage
 
         const DEMO_HERO_BG_SEGMENTS = [
             { key: 'açai', label: '🟣 Açaí & Gelados', gradient: 'linear-gradient(135deg, #59176B, #3E0C4C)' },
@@ -12822,12 +12824,98 @@ function renderCartSchedulingUI() {
         function initDemoHeroBgCarousel() {
             const carousel = document.getElementById('demoHeroBgCarousel');
             const labelEl = document.getElementById('demoHeroBgLabel');
-            if (!carousel) return;
+            const splitBg = document.getElementById('demoHeroSplitBg');
+            const colorSide = document.getElementById('demoHeroColorSide');
+            const carouselSide = document.getElementById('demoHeroCarouselSide');
+            const separator = document.getElementById('demoHeroSeparator');
+            if (!carousel || !splitBg) return;
 
             const slides = carousel.querySelectorAll('.demo-hero-bg-slide');
             if (slides.length === 0) return;
 
-            // Função para mostrar slide atual
+            // ===== DRAGGABLE SEPARATOR =====
+            function updateSplitPosition(percentage) {
+                // Clamp between 10% and 90%
+                demoHeroSplitPosition = Math.max(10, Math.min(90, percentage));
+                
+                if (colorSide) colorSide.style.width = demoHeroSplitPosition + '%';
+                if (carouselSide) carouselSide.style.width = (100 - demoHeroSplitPosition) + '%';
+                if (separator) {
+                    separator.style.left = demoHeroSplitPosition + '%';
+                    separator.setAttribute('aria-valuenow', Math.round(demoHeroSplitPosition));
+                }
+            }
+
+            function startDrag(clientX) {
+                demoHeroSeparatorDrag = true;
+                document.body.style.cursor = 'ew-resize';
+                document.body.style.userSelect = 'none';
+                if (separator) separator.classList.add('dragging');
+                
+                function onMove(e) {
+                    if (!demoHeroSeparatorDrag) return;
+                    const x = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+                    const rect = splitBg.getBoundingClientRect();
+                    const percentage = ((x - rect.left) / rect.width) * 100;
+                    updateSplitPosition(percentage);
+                }
+                
+                function onUp() {
+                    demoHeroSeparatorDrag = false;
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                    if (separator) separator.classList.remove('dragging');
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                    document.removeEventListener('touchmove', onMove);
+                    document.removeEventListener('touchend', onUp);
+                }
+                
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+                document.addEventListener('touchmove', onMove, { passive: true });
+                document.addEventListener('touchend', onUp);
+            }
+
+            // Mouse events
+            separator.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                startDrag(e.clientX);
+            });
+
+            // Touch events
+            separator.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                startDrag(e.touches[0].clientX);
+            }, { passive: false });
+
+            // Keyboard support
+            separator.addEventListener('keydown', (e) => {
+                const step = e.shiftKey ? 10 : 5;
+                if (e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    updateSplitPosition(demoHeroSplitPosition - step);
+                } else if (e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    updateSplitPosition(demoHeroSplitPosition + step);
+                } else if (e.key === 'Home') {
+                    e.preventDefault();
+                    updateSplitPosition(10);
+                } else if (e.key === 'End') {
+                    e.preventDefault();
+                    updateSplitPosition(90);
+                }
+            });
+
+            // Double-click to reset to 50%
+            separator.addEventListener('dblclick', () => {
+                updateSplitPosition(50);
+            });
+
+            // Initialize at 50%
+            updateSplitPosition(50);
+
+            // ===== CAROUSEL =====
             function showSlide(index) {
                 slides.forEach((slide, i) => {
                     slide.classList.remove('active', 'prev');
@@ -12849,35 +12937,27 @@ function renderCartSchedulingUI() {
                 }
             }
 
-            // Função para próximo slide
             function nextSlide() {
-                // Esconder label temporariamente
-                if (labelEl) {
-                    labelEl.classList.remove('visible');
-                }
-                
+                if (labelEl) labelEl.classList.remove('visible');
                 setTimeout(() => {
                     demoHeroBgCurrentIndex = (demoHeroBgCurrentIndex + 1) % slides.length;
                     showSlide(demoHeroBgCurrentIndex);
-                }, 300); // Pequeno delay para transição suave do label
+                }, 300);
             }
 
-            // Mostrar primeiro slide
             showSlide(0);
 
-            // Iniciar timer (2.5 segundos)
             demoHeroBgCarouselTimer = setInterval(nextSlide, 2500);
 
-            // Pausar ao hover
-            carousel.addEventListener('mouseenter', () => {
+            // Pausar ao hover no carousel side
+            carouselSide.addEventListener('mouseenter', () => {
                 if (demoHeroBgCarouselTimer) {
                     clearInterval(demoHeroBgCarouselTimer);
                     demoHeroBgCarouselTimer = null;
                 }
             });
 
-            // Retomar ao sair do hover
-            carousel.addEventListener('mouseleave', () => {
+            carouselSide.addEventListener('mouseleave', () => {
                 if (!demoHeroBgCarouselTimer) {
                     demoHeroBgCarouselTimer = setInterval(nextSlide, 2500);
                 }
@@ -12885,9 +12965,7 @@ function renderCartSchedulingUI() {
 
             // Limpar ao destruir
             window.addEventListener('beforeunload', () => {
-                if (demoHeroBgCarouselTimer) {
-                    clearInterval(demoHeroBgCarouselTimer);
-                }
+                if (demoHeroBgCarouselTimer) clearInterval(demoHeroBgCarouselTimer);
             });
         }
         window.toggleFaqItem = toggleFaqItem;

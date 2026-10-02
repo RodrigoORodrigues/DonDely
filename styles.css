@@ -1888,7 +1888,6 @@
 
         .demo-landing-hero {
             margin-top: 76px;
-            background: linear-gradient(180deg, #FFFDF7 0%, #FFF7ED 50%, #FEF2F2 100%);
             color: #1F2937;
             padding: 3.5rem 1.5rem 2.75rem;
             position: relative;
@@ -1896,11 +1895,54 @@
             overflow: hidden;
         }
 
-        /* Background Carousel */
-        .demo-hero-bg-carousel {
+        /* ========== SPLIT BACKGROUND (Color + Carousel) ========== */
+        .demo-hero-split-bg {
             position: absolute;
             inset: 0;
             z-index: 0;
+            overflow: hidden;
+        }
+
+        /* Left Side: Solid Color / Gradient */
+        .demo-hero-color-side {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 50%;
+            background: linear-gradient(135deg, #FFFDF7 0%, #FFF7ED 50%, #FEF2F2 100%);
+            transition: width 0.1s linear;
+            will-change: width;
+        }
+
+        .demo-hero-color-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, 
+                rgba(15, 23, 42, 0.25) 0%, 
+                rgba(15, 23, 42, 0.15) 40%, 
+                rgba(255, 253, 247, 0.1) 70%, 
+                rgba(255, 253, 247, 0.05) 100%
+            );
+            pointer-events: none;
+        }
+
+        /* Right Side: Carousel */
+        .demo-hero-carousel-side {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 50%;
+            transition: width 0.1s linear;
+            will-change: width;
+            overflow: hidden;
+        }
+
+        /* Background Carousel (inside carousel side) */
+        .demo-hero-bg-carousel {
+            position: absolute;
+            inset: 0;
             overflow: hidden;
         }
 
@@ -1917,7 +1959,7 @@
         }
 
         .demo-hero-bg-slide.active {
-            opacity: 0.35;
+            opacity: 0.45;
             transform: scale(1.02);
         }
 
@@ -1930,10 +1972,10 @@
             position: absolute;
             inset: 0;
             background: linear-gradient(180deg, 
-                rgba(15, 23, 42, 0.65) 0%, 
-                rgba(15, 23, 42, 0.45) 40%, 
-                rgba(255, 253, 247, 0.3) 70%, 
-                rgba(255, 253, 247, 0.15) 100%
+                rgba(15, 23, 42, 0.55) 0%, 
+                rgba(15, 23, 42, 0.35) 40%, 
+                rgba(255, 253, 247, 0.2) 70%, 
+                rgba(255, 253, 247, 0.1) 100%
             );
             z-index: 1;
             pointer-events: none;
@@ -1967,6 +2009,102 @@
         .demo-hero-bg-label.visible {
             opacity: 1;
             transform: translateX(-50%) translateY(0);
+        }
+
+        /* Draggable Separator */
+        .demo-hero-separator {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            width: 4px;
+            z-index: 10;
+            cursor: ew-resize;
+            touch-action: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: left 0.1s linear;
+            will-change: left;
+        }
+
+        .demo-hero-separator::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: -12px;
+            right: -12px;
+            background: transparent;
+            z-index: -1;
+        }
+
+        .demo-hero-separator-handle {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #FFFFFF;
+            border: 2px solid #FED7AA;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15), 0 0 0 4px rgba(255, 255, 255, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #EA580C;
+            transition: all 0.2s ease;
+            transform: translateX(-50%);
+        }
+
+        .demo-hero-separator:hover .demo-hero-separator-handle,
+        .demo-hero-separator.dragging .demo-hero-separator-handle {
+            transform: translateX(-50%) scale(1.15);
+            border-color: #EA580C;
+            box-shadow: 0 6px 28px rgba(234, 88, 12, 0.3), 0 0 0 6px rgba(255, 255, 255, 0.95);
+        }
+
+        .demo-hero-separator:focus-visible {
+            outline: none;
+        }
+
+        .demo-hero-separator:focus-visible .demo-hero-separator-handle {
+            transform: translateX(-50%) scale(1.15);
+            border-color: #4F46E5;
+            box-shadow: 0 0 0 4px #4F46E5, 0 6px 28px rgba(79, 70, 229, 0.3);
+        }
+
+        .demo-hero-separator-tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(-8px);
+            background: rgba(15, 23, 42, 0.95);
+            color: #FDE68A;
+            padding: 0.4rem 0.85rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        .demo-hero-separator-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: rgba(15, 23, 42, 0.95);
+        }
+
+        .demo-hero-separator:hover .demo-hero-separator-tooltip,
+        .demo-hero-separator:focus-visible .demo-hero-separator-tooltip {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(-12px);
         }
 
         .demo-landing-container {
