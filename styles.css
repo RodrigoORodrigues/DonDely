@@ -3967,7 +3967,7 @@
             z-index: -1;
         }
 
-        .hero #storeHeroSeparatorHandle {
+        .hero #storeHeroSeparator .demo-hero-separator-handle {
             width: 48px;
             height: 48px;
             border-radius: 50%;
@@ -3982,8 +3982,8 @@
             transform: translateX(-50%);
         }
 
-        .hero #storeHeroSeparator:hover .hero #storeHeroSeparatorHandle,
-        .hero #storeHeroSeparator.dragging .hero #storeHeroSeparatorHandle {
+        .hero #storeHeroSeparator:hover .demo-hero-separator-handle,
+        .hero #storeHeroSeparator.dragging .demo-hero-separator-handle {
             transform: translateX(-50%) scale(1.15);
             border-color: var(--primary, #DC2626);
             box-shadow: 0 6px 28px rgba(220, 38, 38, 0.3), 0 0 0 6px rgba(255, 255, 255, 0.95);
@@ -3993,13 +3993,13 @@
             outline: none;
         }
 
-        .hero #storeHeroSeparator:focus-visible .hero #storeHeroSeparatorHandle {
+        .hero #storeHeroSeparator:focus-visible .demo-hero-separator-handle {
             transform: translateX(-50%) scale(1.15);
             border-color: var(--primary-dark, #991B1B);
             box-shadow: 0 0 0 4px var(--primary-dark, #991B1B), 0 6px 28px rgba(153, 27, 27, 0.3);
         }
 
-        .hero #storeHeroSeparatorTooltip {
+        .hero #storeHeroSeparator .demo-hero-separator-tooltip {
             position: absolute;
             bottom: 100%;
             left: 50%;
@@ -4018,7 +4018,7 @@
             z-index: 20;
         }
 
-        .hero #storeHeroSeparatorTooltip::after {
+        .hero #storeHeroSeparator .demo-hero-separator-tooltip::after {
             content: '';
             position: absolute;
             top: 100%;
@@ -4028,8 +4028,8 @@
             border-top-color: rgba(0, 0, 0, 0.95);
         }
 
-        .hero #storeHeroSeparator:hover .hero #storeHeroSeparatorTooltip,
-        .hero #storeHeroSeparator:focus-visible .hero #storeHeroSeparatorTooltip {
+        .hero #storeHeroSeparator:hover .demo-hero-separator-tooltip,
+        .hero #storeHeroSeparator:focus-visible .demo-hero-separator-tooltip {
             opacity: 1;
             visibility: visible;
             transform: translateX(-50%) translateY(-12px);

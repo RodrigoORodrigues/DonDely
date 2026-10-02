@@ -12993,19 +12993,8 @@ function renderCartSchedulingUI() {
             });
         }
 
-        // Inicializar ambos os heroes (landing demo + store)
+        // Inicializar Store Hero (?view=store)
         function initAllHeroSplitBg() {
-            // Demo Landing Hero
-            initHeroSplitBg({
-                carouselId: 'demoHeroBgCarousel',
-                labelId: 'demoHeroBgLabel',
-                splitBgId: 'demoHeroSplitBg',
-                colorSideId: 'demoHeroColorSide',
-                carouselSideId: 'demoHeroCarouselSide',
-                separatorId: 'demoHeroSeparator'
-            });
-
-            // Store Hero (?view=store)
             initHeroSplitBg({
                 carouselId: 'storeHeroBgCarousel',
                 labelId: 'storeHeroBgLabel',
