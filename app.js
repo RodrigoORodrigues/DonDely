@@ -12803,13 +12803,8 @@ function renderCartSchedulingUI() {
         }
 
         // ============================================================================
-        // SPLIT BACKGROUND HERO: DRAGGABLE SEPARATOR + CAROUSEL
+        // SPLIT BACKGROUND HERO: DRAGGABLE SEPARATOR + CAROUSEL (Reutilizável)
         // ============================================================================
-        let demoHeroBgCarouselTimer = null;
-        let demoHeroBgCurrentIndex = 0;
-        let demoHeroSeparatorDrag = false;
-        let demoHeroSplitPosition = 50; // percentage
-
         const DEMO_HERO_BG_SEGMENTS = [
             { key: 'açai', label: '🟣 Açaí & Gelados', gradient: 'linear-gradient(135deg, #59176B, #3E0C4C)' },
             { key: 'burguer', label: '🟧 Hamburgueria Artesanal', gradient: 'linear-gradient(135deg, #EA580C, #9A3412)' },
@@ -12821,39 +12816,68 @@ function renderCartSchedulingUI() {
             { key: 'darkgourmet', label: '🖤 Gourmet Gold', gradient: 'linear-gradient(135deg, #1E1B4B, #0F172A)' }
         ];
 
-        function initDemoHeroBgCarousel() {
-            const carousel = document.getElementById('demoHeroBgCarousel');
-            const labelEl = document.getElementById('demoHeroBgLabel');
-            const splitBg = document.getElementById('demoHeroSplitBg');
-            const colorSide = document.getElementById('demoHeroColorSide');
-            const carouselSide = document.getElementById('demoHeroCarouselSide');
-            const separator = document.getElementById('demoHeroSeparator');
+        // Estado por instância do hero
+        const heroSplitInstances = new Map();
+
+        function initHeroSplitBg(config) {
+            const {
+                carouselId,
+                labelId,
+                splitBgId,
+                colorSideId,
+                carouselSideId,
+                separatorId,
+                slideSelector = '.demo-hero-bg-slide',
+                segments = DEMO_HERO_BG_SEGMENTS,
+                intervalMs = 2500
+            } = config;
+
+            const carousel = document.getElementById(carouselId);
+            const labelEl = document.getElementById(labelId);
+            const splitBg = document.getElementById(splitBgId);
+            const colorSide = document.getElementById(colorSideId);
+            const carouselSide = document.getElementById(carouselSideId);
+            const separator = document.getElementById(separatorId);
+
             if (!carousel || !splitBg) return;
 
-            const slides = carousel.querySelectorAll('.demo-hero-bg-slide');
+            const slides = carousel.querySelectorAll(slideSelector);
             if (slides.length === 0) return;
+
+            // Estado da instância
+            const state = {
+                carouselTimer: null,
+                currentIndex: 0,
+                separatorDrag: false,
+                splitPosition: 50,
+                carouselId,
+                separatorId,
+                colorSideId,
+                carouselSideId,
+                splitBgId
+            };
+            heroSplitInstances.set(carouselId, state);
 
             // ===== DRAGGABLE SEPARATOR =====
             function updateSplitPosition(percentage) {
-                // Clamp between 10% and 90%
-                demoHeroSplitPosition = Math.max(10, Math.min(90, percentage));
+                state.splitPosition = Math.max(10, Math.min(90, percentage));
                 
-                if (colorSide) colorSide.style.width = demoHeroSplitPosition + '%';
-                if (carouselSide) carouselSide.style.width = (100 - demoHeroSplitPosition) + '%';
+                if (colorSide) colorSide.style.width = state.splitPosition + '%';
+                if (carouselSide) carouselSide.style.width = (100 - state.splitPosition) + '%';
                 if (separator) {
-                    separator.style.left = demoHeroSplitPosition + '%';
-                    separator.setAttribute('aria-valuenow', Math.round(demoHeroSplitPosition));
+                    separator.style.left = state.splitPosition + '%';
+                    separator.setAttribute('aria-valuenow', Math.round(state.splitPosition));
                 }
             }
 
             function startDrag(clientX) {
-                demoHeroSeparatorDrag = true;
+                state.separatorDrag = true;
                 document.body.style.cursor = 'ew-resize';
                 document.body.style.userSelect = 'none';
                 if (separator) separator.classList.add('dragging');
                 
                 function onMove(e) {
-                    if (!demoHeroSeparatorDrag) return;
+                    if (!state.separatorDrag) return;
                     const x = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
                     const rect = splitBg.getBoundingClientRect();
                     const percentage = ((x - rect.left) / rect.width) * 100;
@@ -12861,7 +12885,7 @@ function renderCartSchedulingUI() {
                 }
                 
                 function onUp() {
-                    demoHeroSeparatorDrag = false;
+                    state.separatorDrag = false;
                     document.body.style.cursor = '';
                     document.body.style.userSelect = '';
                     if (separator) separator.classList.remove('dragging');
@@ -12894,10 +12918,10 @@ function renderCartSchedulingUI() {
                 const step = e.shiftKey ? 10 : 5;
                 if (e.key === 'ArrowLeft') {
                     e.preventDefault();
-                    updateSplitPosition(demoHeroSplitPosition - step);
+                    updateSplitPosition(state.splitPosition - step);
                 } else if (e.key === 'ArrowRight') {
                     e.preventDefault();
-                    updateSplitPosition(demoHeroSplitPosition + step);
+                    updateSplitPosition(state.splitPosition + step);
                 } else if (e.key === 'Home') {
                     e.preventDefault();
                     updateSplitPosition(10);
@@ -12928,7 +12952,7 @@ function renderCartSchedulingUI() {
 
                 // Atualizar label
                 if (labelEl) {
-                    const segment = DEMO_HERO_BG_SEGMENTS[index];
+                    const segment = segments[index];
                     if (segment) {
                         labelEl.textContent = segment.label;
                         labelEl.style.background = `rgba(15, 23, 42, 0.85)`;
@@ -12940,34 +12964,60 @@ function renderCartSchedulingUI() {
             function nextSlide() {
                 if (labelEl) labelEl.classList.remove('visible');
                 setTimeout(() => {
-                    demoHeroBgCurrentIndex = (demoHeroBgCurrentIndex + 1) % slides.length;
-                    showSlide(demoHeroBgCurrentIndex);
+                    state.currentIndex = (state.currentIndex + 1) % slides.length;
+                    showSlide(state.currentIndex);
                 }, 300);
             }
 
             showSlide(0);
 
-            demoHeroBgCarouselTimer = setInterval(nextSlide, 2500);
+            state.carouselTimer = setInterval(nextSlide, intervalMs);
 
             // Pausar ao hover no carousel side
             carouselSide.addEventListener('mouseenter', () => {
-                if (demoHeroBgCarouselTimer) {
-                    clearInterval(demoHeroBgCarouselTimer);
-                    demoHeroBgCarouselTimer = null;
+                if (state.carouselTimer) {
+                    clearInterval(state.carouselTimer);
+                    state.carouselTimer = null;
                 }
             });
 
             carouselSide.addEventListener('mouseleave', () => {
-                if (!demoHeroBgCarouselTimer) {
-                    demoHeroBgCarouselTimer = setInterval(nextSlide, 2500);
+                if (!state.carouselTimer) {
+                    state.carouselTimer = setInterval(nextSlide, intervalMs);
                 }
             });
 
             // Limpar ao destruir
             window.addEventListener('beforeunload', () => {
-                if (demoHeroBgCarouselTimer) clearInterval(demoHeroBgCarouselTimer);
+                if (state.carouselTimer) clearInterval(state.carouselTimer);
             });
         }
+
+        // Inicializar ambos os heroes (landing demo + store)
+        function initAllHeroSplitBg() {
+            // Demo Landing Hero
+            initHeroSplitBg({
+                carouselId: 'demoHeroBgCarousel',
+                labelId: 'demoHeroBgLabel',
+                splitBgId: 'demoHeroSplitBg',
+                colorSideId: 'demoHeroColorSide',
+                carouselSideId: 'demoHeroCarouselSide',
+                separatorId: 'demoHeroSeparator'
+            });
+
+            // Store Hero (?view=store)
+            initHeroSplitBg({
+                carouselId: 'storeHeroBgCarousel',
+                labelId: 'storeHeroBgLabel',
+                splitBgId: 'storeHeroSplitBg',
+                colorSideId: 'storeHeroColorSide',
+                carouselSideId: 'storeHeroCarouselSide',
+                separatorId: 'storeHeroSeparator'
+            });
+        }
+
+        // Chamar no init()
+        initAllHeroSplitBg();
         window.toggleFaqItem = toggleFaqItem;
         window.updateDemoSavingsCalc = updateDemoSavingsCalc;
         window.onDemoSavingsSliderChange = onDemoSavingsSliderChange;

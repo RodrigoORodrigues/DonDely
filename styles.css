@@ -3822,6 +3822,225 @@
             animation: pulseGlow 6s ease-in-out infinite alternate;
         }
 
+        /* ========== STORE HERO SPLIT BACKGROUND (Color + Carousel) ========== */
+        /* O split-bg fica acima do gradiente base e abaixo do container */
+        .hero #storeHeroSplitBg {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .hero #storeHeroColorSide {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 50%;
+            background: var(--primary-dark, #991B1B);
+            background: linear-gradient(135deg, var(--primary-dark, #991B1B) 0%, var(--primary, #DC2626) 50%, var(--secondary, #EA580C) 100%);
+            transition: width 0.1s linear;
+            will-change: width;
+        }
+
+        .hero #storeHeroColorOverlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, 
+                rgba(0, 0, 0, 0.25) 0%, 
+                rgba(0, 0, 0, 0.15) 40%, 
+                transparent 70%, 
+                transparent 100%
+            );
+            pointer-events: none;
+        }
+
+        .hero #storeHeroCarouselSide {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 50%;
+            transition: width 0.1s linear;
+            will-change: width;
+            overflow: hidden;
+        }
+
+        .hero #storeHeroBgCarousel {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+        }
+
+        .hero #storeHeroBgSlide {
+            position: absolute;
+            inset: 0;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 0;
+            transition: opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1), transform 12s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: scale(1);
+            will-change: opacity, transform;
+        }
+
+        .hero #storeHeroBgSlide.active {
+            opacity: 0.45;
+            transform: scale(1.02);
+        }
+
+        .hero #storeHeroBgSlide.prev {
+            opacity: 0;
+            transform: scale(1.05);
+        }
+
+        .hero #storeHeroBgOverlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, 
+                rgba(0, 0, 0, 0.55) 0%, 
+                rgba(0, 0, 0, 0.35) 40%, 
+                rgba(0, 0, 0, 0.15) 70%, 
+                rgba(0, 0, 0, 0.05) 100%
+            );
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .hero #storeHeroBgLabel {
+            position: absolute;
+            bottom: 2.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 50px;
+            padding: 0.55rem 1.5rem;
+            color: #FDE68A;
+            font-size: 0.88rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            white-space: nowrap;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            transition: opacity 0.6s ease, transform 0.6s ease;
+            transform: translateX(-50%) translateY(10px);
+            pointer-events: none;
+        }
+
+        .hero #storeHeroBgLabel.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Draggable Separator for Store Hero */
+        .hero #storeHeroSeparator {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            width: 4px;
+            z-index: 10;
+            cursor: ew-resize;
+            touch-action: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: left 0.1s linear;
+            will-change: left;
+            pointer-events: auto;
+        }
+
+        .hero #storeHeroSeparator::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: -12px;
+            right: -12px;
+            background: transparent;
+            z-index: -1;
+        }
+
+        .hero #storeHeroSeparatorHandle {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #FFFFFF;
+            border: 2px solid var(--secondary, #F59E0B);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15), 0 0 0 4px rgba(255, 255, 255, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary, #DC2626);
+            transition: all 0.2s ease;
+            transform: translateX(-50%);
+        }
+
+        .hero #storeHeroSeparator:hover .hero #storeHeroSeparatorHandle,
+        .hero #storeHeroSeparator.dragging .hero #storeHeroSeparatorHandle {
+            transform: translateX(-50%) scale(1.15);
+            border-color: var(--primary, #DC2626);
+            box-shadow: 0 6px 28px rgba(220, 38, 38, 0.3), 0 0 0 6px rgba(255, 255, 255, 0.95);
+        }
+
+        .hero #storeHeroSeparator:focus-visible {
+            outline: none;
+        }
+
+        .hero #storeHeroSeparator:focus-visible .hero #storeHeroSeparatorHandle {
+            transform: translateX(-50%) scale(1.15);
+            border-color: var(--primary-dark, #991B1B);
+            box-shadow: 0 0 0 4px var(--primary-dark, #991B1B), 0 6px 28px rgba(153, 27, 27, 0.3);
+        }
+
+        .hero #storeHeroSeparatorTooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(-8px);
+            background: rgba(0, 0, 0, 0.95);
+            color: #FDE68A;
+            padding: 0.4rem 0.85rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        .hero #storeHeroSeparatorTooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: rgba(0, 0, 0, 0.95);
+        }
+
+        .hero #storeHeroSeparator:hover .hero #storeHeroSeparatorTooltip,
+        .hero #storeHeroSeparator:focus-visible .hero #storeHeroSeparatorTooltip {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(-12px);
+        }
+
+        /* Ensure hero-container stays above split-bg */
+        .hero > .hero-container {
+            position: relative;
+            z-index: 3;
+        }
+
         @keyframes pulseGlow {
             0% { transform: scale(1) translate(0, 0); opacity: 0.6; }
             100% { transform: scale(1.15) translate(-30px, 20px); opacity: 0.9; }
