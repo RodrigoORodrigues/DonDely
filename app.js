@@ -533,6 +533,9 @@
         let isFetchingOrders = false;
         let knownOrderIds = new Set();
 
+        // Estado de autenticação de admin da empresa (RBAC: COMPANY_OWNER)
+        let isAdminLoggedIn = false;
+
         // ============================================================================
         // GERENCIADOR DE COOKIES & SESSÃO MULTI-TENANT (MOBILE & DESKTOP)
         // ============================================================================
@@ -6320,7 +6323,7 @@ function persistCart() {
         }
 
         // ========== AUTH & HEADER ADMIN (RBAC: COMPANY_OWNER) ==========
-        let isAdminLoggedIn = false;
+        // isAdminLoggedIn is declared in the global variables section (top of file)
 
         // ========== NAVEGAÇÃO POR TÓPICOS E MENU HAMBÚRGUER DO PAINEL ADMIN ==========
         const ADMIN_TOPIC_CONFIG = [

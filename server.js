@@ -148,6 +148,17 @@ function validateCompanyPassword(enteredPassword, storedPassword) {
     return enteredPassword === storedPassword;
 }
 
+// Hash da senha da empresa no objeto (se ainda estiver em texto plano)
+// Retorna novo objeto com adminPassword hasheado
+function hashCompanyPasswordInObject(company) {
+    if (!company || !company.adminPassword) return company;
+    const pwd = company.adminPassword;
+    // Se já estiver no formato salt:hash, não re-hashear
+    if (pwd.includes(':')) return company;
+    const { hash, salt } = hashPassword(pwd);
+    return { ...company, adminPassword: `${salt}:${hash}` };
+}
+
 function generateSessionToken(payload) {
     const data = JSON.stringify({ ...payload, exp: Date.now() + 86400000 });
     const b64Data = Buffer.from(data).toString('base64url');
@@ -1284,7 +1295,9 @@ app.post('/api/companies', generalLimiter, async (req, res) => {
             for (const c of companies) {
                 if (c && c.id) {
                     const prev = compMap.get(c.id) || {};
-                    compMap.set(c.id, { ...prev, ...c });
+                    // Hash password before saving locally
+                    const companyWithHashedPwd = hashCompanyPasswordInObject({ ...prev, ...c });
+                    compMap.set(c.id, companyWithHashedPwd);
                     await saveCompanyToSupabase(c);
                 }
             }
@@ -1293,7 +1306,9 @@ app.post('/api/companies', generalLimiter, async (req, res) => {
             return res.json({ success: true, count: merged.length });
         } else if (company && company.id) {
             const prev = compMap.get(company.id) || {};
-            compMap.set(company.id, { ...prev, ...company });
+            // Hash password before saving locally
+            const companyWithHashedPwd = hashCompanyPasswordInObject({ ...prev, ...company });
+            compMap.set(company.id, companyWithHashedPwd);
             const merged = Array.from(compMap.values());
             writeJsonFile(COMPANIES_FILE, merged);
             await saveCompanyToSupabase(company);
@@ -1316,14 +1331,18 @@ app.post('/api/companies/upsert', generalLimiter, async (req, res) => {
             for (const c of companies) {
                 if (c && c.id) {
                     const prev = compMap.get(c.id) || {};
-                    compMap.set(c.id, { ...prev, ...c });
+                    // Hash password before saving locally
+                    const companyWithHashedPwd = hashCompanyPasswordInObject({ ...prev, ...c });
+                    compMap.set(c.id, companyWithHashedPwd);
                     await saveCompanyToSupabase(c);
                 }
             }
         }
         if (company && company.id) {
             const prev = compMap.get(company.id) || {};
-            compMap.set(company.id, { ...prev, ...company });
+            // Hash password before saving locally
+            const companyWithHashedPwd = hashCompanyPasswordInObject({ ...prev, ...company });
+            compMap.set(company.id, companyWithHashedPwd);
             await saveCompanyToSupabase(company);
         }
         const merged = Array.from(compMap.values());
