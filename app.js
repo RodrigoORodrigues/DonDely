@@ -9790,7 +9790,7 @@ function renderCartSchedulingUI() {
         }
 
         // ========== LOGIN DE EMPRESA (RESTRITO AOS DADOS CADASTRADOS NO PAINEL DEV) ==========
-        function handleUnifiedCompanyLogin(e) {
+        async function handleUnifiedCompanyLogin(e) {
             if (e) e.preventDefault();
             const emailInput = document.getElementById('unifiedCompLoginEmail');
             const passwordInput = document.getElementById('unifiedCompLoginPassword');
@@ -9803,45 +9803,108 @@ function renderCartSchedulingUI() {
 
             if (errorEl) errorEl.style.display = 'none';
 
-            const cleanPhone = enteredIdentifier.replace(/\D/g, '');
-            const lowerId = enteredIdentifier.toLowerCase();
-
-            // Validação estrita contra empresas cadastradas no Painel Dev
-            let matchedCompany = companies.find(c => {
-                if (c.adminPassword !== enteredPassword) return false;
-                const cEmail = (c.email || '').trim().toLowerCase();
-                const cPhone = (c.phone || c.whatsapp || '').replace(/\D/g, '');
-                const cSlug = (c.slug || '').trim().toLowerCase();
-
-                if (cEmail && cEmail === lowerId) return true;
-                if (cleanPhone.length >= 8 && cPhone && (cPhone === cleanPhone || cPhone.endsWith(cleanPhone) || cleanPhone.endsWith(cPhone))) {
-                    return true;
-                }
-                if (cSlug && cSlug === lowerId) return true;
-                return false;
-            });
-
-            // Se não encontrou por e-mail/telefone/slug exato, verificar pela senha da empresa cadastrada no Painel Dev
-            if (!matchedCompany) {
-                matchedCompany = companies.find(c => c.adminPassword === enteredPassword);
+            // Mostrar estado de carregamento
+            const submitBtn = e?.target?.querySelector('button[type="submit"]') || document.querySelector('#unifiedCompLoginForm button[type="submit"]');
+            const originalBtnText = submitBtn ? submitBtn.textContent : '';
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = '🔄 Entrando...';
             }
 
-            if (matchedCompany) {
-                switchActiveCompany(matchedCompany.id);
-                loginAdminSuccess(matchedCompany);
-                closeCustomerAuthModal();
-                if (emailInput) emailInput.value = '';
-                if (passwordInput) passwordInput.value = '';
-                openAdminPanel();
-                showNotification(`🚀 Acesso concedido à loja ${matchedCompany.name}!`, 'success');
-            } else {
-                if (errorEl) {
-                    errorEl.style.display = 'block';
-                    errorEl.textContent = '❌ E-mail/telefone ou senha incorretos!';
+            try {
+                // Usar a API do servidor para validar credenciais (suporta senhas hasheadas e texto plano)
+                const response = await fetch('/api/auth/company-login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        identifier: enteredIdentifier,
+                        password: enteredPassword
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success && result.company) {
+                    const matchedCompany = result.company;
+                    const token = result.token;
+
+                    // Ativar a empresa e fazer login
+                    switchActiveCompany(matchedCompany.id);
+                    loginAdminSuccess(matchedCompany, token);
+                    closeCustomerAuthModal();
+                    if (emailInput) emailInput.value = '';
+                    if (passwordInput) passwordInput.value = '';
+                    openAdminPanel();
+                    showNotification(`🚀 Acesso concedido à loja ${matchedCompany.name}!`, 'success');
+                } else {
+                    throw new Error(result.error || 'Credenciais inválidas');
                 }
-                if (passwordInput) {
-                    passwordInput.value = '';
-                    passwordInput.focus();
+            } catch (err) {
+                console.error('[Company Login] Erro:', err.message);
+                
+                // Fallback para validação local (modo offline)
+                const cleanPhone = enteredIdentifier.replace(/\D/g, '');
+                const lowerId = enteredIdentifier.toLowerCase();
+
+                let matchedCompany = companies.find(c => {
+                    // Verificar senha (suporta texto plano e hash salt:hash)
+                    const storedPwd = c.adminPassword || '';
+                    let passwordMatch = false;
+                    if (storedPwd.includes(':')) {
+                        // Senha hasheada - não podemos validar localmente sem crypto
+                        // Tentar comparar com o hash se o usuário digitou o hash completo (improvável)
+                        passwordMatch = false;
+                    } else {
+                        // Senha em texto plano
+                        passwordMatch = storedPwd === enteredPassword;
+                    }
+                    if (!passwordMatch) return false;
+
+                    const cEmail = (c.email || '').trim().toLowerCase();
+                    const cPhone = (c.phone || c.whatsapp || '').replace(/\D/g, '');
+                    const cSlug = (c.slug || '').trim().toLowerCase();
+
+                    if (cEmail && cEmail === lowerId) return true;
+                    if (cleanPhone.length >= 8 && cPhone && (cPhone === cleanPhone || cPhone.endsWith(cleanPhone) || cleanPhone.endsWith(cPhone))) {
+                        return true;
+                    }
+                    if (cSlug && cSlug === lowerId) return true;
+                    return false;
+                });
+
+                // Fallback: verificar apenas pela senha
+                if (!matchedCompany) {
+                    matchedCompany = companies.find(c => {
+                        const storedPwd = c.adminPassword || '';
+                        if (!storedPwd.includes(':')) {
+                            return storedPwd === enteredPassword;
+                        }
+                        return false;
+                    });
+                }
+
+                if (matchedCompany) {
+                    switchActiveCompany(matchedCompany.id);
+                    loginAdminSuccess(matchedCompany);
+                    closeCustomerAuthModal();
+                    if (emailInput) emailInput.value = '';
+                    if (passwordInput) passwordInput.value = '';
+                    openAdminPanel();
+                    showNotification(`🚀 Acesso concedido à loja ${matchedCompany.name}! (modo offline)`, 'success');
+                } else {
+                    if (errorEl) {
+                        errorEl.style.display = 'block';
+                        errorEl.textContent = '❌ E-mail/telefone ou senha incorretos!';
+                    }
+                    if (passwordInput) {
+                        passwordInput.value = '';
+                        passwordInput.focus();
+                    }
+                }
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalBtnText || '🚀 Entrar na Loja';
                 }
             }
         }
