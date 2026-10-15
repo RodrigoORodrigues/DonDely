@@ -1,25 +1,47 @@
-# Dependency directories
+# Dependências
 node_modules/
-package-lock.json
+.pnp
+.pnp.js
 
-# Environment variables & secrets
+# Lockfiles alternativos (projeto usa bun.lock; evite misturar)
+package-lock.json
+yarn.lock
+
+# Ambiente e segredos
 .env
 .env.local
 .env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
 *.pem
 *.key
 *.cert
 service-account*.json
 
-# Logs
-logs
+# Logs e runtime
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+bun-debug.log*
 
-# Runtime data & temp files
+# Sistema e IDE
 .DS_Store
 Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Cache e build
 tmp/
 .cache/
+coverage/
+.nyc_output/
+dist/
+build/
+
+# Dados locais gerados em runtime
+data/.write_test_*
